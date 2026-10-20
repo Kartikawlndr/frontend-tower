@@ -249,22 +249,6 @@ export default function ApplicationFormPage() {
     >
       <h1 className="text-page-title">Application Form</h1>
  
-      <Card title="Submission method">
-        <CardBody className="pt-4">
-          <Select
-            id="submission-method"
-            label="Method"
-            value="form"
-            onChange={(e) => {
-              if (e.target.value === "upload") router.push("/submission/upload");
-            }}
-          >
-            <option value="upload">Upload Excel</option>
-            <option value="form">Application Form</option>
-          </Select>
-        </CardBody>
-      </Card>
- 
       <Card title="Tower identity">
         <CardBody className="grid gap-4 pt-4 md:grid-cols-2">
           <Input id="kode-menara" label="Kode/ID Menara" requiredMark {...field("kode")} />

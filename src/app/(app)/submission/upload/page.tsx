@@ -66,21 +66,6 @@ export default function UploadExcelPage() {
     <div className="mx-auto flex max-w-[960px] flex-col gap-6">
       <h1 className="text-page-title">Upload Excel</h1>
  
-      <Card title="Submission method">
-        <CardBody className="pt-4">
-          <Select
-            label="Method"
-            value="upload"
-            onChange={(e) => {
-              if (e.target.value === "form") router.push("/submission/form");
-            }}
-          >
-            <option value="upload">Upload Excel</option>
-            <option value="form">Application Form</option>
-          </Select>
-        </CardBody>
-      </Card>
- 
       <Card title="Upload file">
         <CardBody className="flex flex-col gap-4 pt-4">
           {error && (
