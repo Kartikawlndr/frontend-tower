@@ -125,11 +125,16 @@ function YearField({
   error,
 }: {
   value: string;
+<<<<<<< HEAD
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+=======
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+>>>>>>> eaabc77156011a5d639e7753da5b540a51de762c
   error?: string;
 }) {
   return (
     <div className="flex w-full flex-col gap-1">
+<<<<<<< HEAD
     <label htmlFor="tahun-pembangunan" className="text-field-label">
       Tahun Pembangunan
       <span className="ml-0.5 text-danger">*</span>
@@ -176,6 +181,40 @@ function YearField({
       </p>
     )}
   </div>
+=======
+      <label htmlFor="tahun-pembangunan" className="text-field-label">
+        Tahun Pembangunan
+        <span className="ml-0.5 text-danger">*</span>
+      </label>
+      <div className="relative">
+        <input
+          id="tahun-pembangunan"
+          inputMode="numeric"
+          value={value}
+          onChange={onChange}
+          aria-invalid={error ? "true" : "false"}
+          aria-describedby="tahun-pembangunan-note"
+          className={cn(
+            "h-9 w-full rounded-input border border-border bg-surface pl-2.5 pr-9 text-sm text-text transition-colors duration-150 placeholder:text-muted focus:border-primary focus:outline-none",
+            error && "border-danger"
+          )}
+        />
+        <Calendar
+          className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+          aria-hidden
+        />
+      </div>
+      {error ? (
+        <p id="tahun-pembangunan-note" className="text-helper text-danger" role="alert">
+          {error}
+        </p>
+      ) : (
+        <p id="tahun-pembangunan-note" className="text-helper">
+          4 digits, 1900 to current year
+        </p>
+      )}
+    </div>
+>>>>>>> eaabc77156011a5d639e7753da5b540a51de762c
   );
 }
  
@@ -265,6 +304,7 @@ export default function ApplicationFormPage() {
  
       <Card title="Tower identity">
         <CardBody className="grid gap-4 pt-4 md:grid-cols-2">
+<<<<<<< HEAD
           <Input 
             id="kode-menara" 
             label="Kode/ID Menara" 
@@ -279,6 +319,10 @@ export default function ApplicationFormPage() {
             requiredMark 
             {...field("kode")} 
           />
+=======
+          <Input id="kode-menara" label="Kode/ID Menara" requiredMark {...field("kode")} />
+          <Input id="nama-pemilik" label="Nama Pemilik Menara" requiredMark {...field("pemilik")} />
+>>>>>>> eaabc77156011a5d639e7753da5b540a51de762c
           <YearField
             value={values.tahun}
             onChange={change("tahun")}
@@ -295,10 +339,17 @@ export default function ApplicationFormPage() {
         </CardBody>
       </Card>
  
+<<<<<<< HEAD
       <Card title="Penyelenggara">
         <CardBody className="flex flex-col gap-4 pt-4">
           <p className="text-helper">
             Setiap baris mewakili satu data penyewa
+=======
+      <Card title="Tenants">
+        <CardBody className="flex flex-col gap-4 pt-4">
+          <p className="text-helper">
+            One network provider per row. Add a row for each tenant on this tower.
+>>>>>>> eaabc77156011a5d639e7753da5b540a51de762c
           </p>
           {tenants.map((t, i) => (
             <div key={t.id} className="flex items-start gap-3">
@@ -324,7 +375,11 @@ export default function ApplicationFormPage() {
           <div>
             <Button type="button" variant="outline" onClick={addTenant}>
               <Plus className="h-4 w-4" strokeWidth={2} />
+<<<<<<< HEAD
               Add Penyelenggara
+=======
+              Add tenant
+>>>>>>> eaabc77156011a5d639e7753da5b540a51de762c
             </Button>
           </div>
         </CardBody>
@@ -337,7 +392,11 @@ export default function ApplicationFormPage() {
             label="Longitude"
             requiredMark
             inputMode="decimal"
+<<<<<<< HEAD
             hint="Antara 95 sampai 141, maks. 6 angka di belakang koma"
+=======
+            hint="95 to 141, up to 6 decimals"
+>>>>>>> eaabc77156011a5d639e7753da5b540a51de762c
             {...field("longitude")}
           />
           <Input
@@ -345,7 +404,11 @@ export default function ApplicationFormPage() {
             label="Latitude"
             requiredMark
             inputMode="decimal"
+<<<<<<< HEAD
             hint="Antara -11 sampai 6, maks. 6 angka di belakang koma"
+=======
+            hint="-11 to 6, up to 6 decimals"
+>>>>>>> eaabc77156011a5d639e7753da5b540a51de762c
             {...field("latitude")}
           />
           <div className="md:col-span-2">

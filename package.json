@@ -18,7 +18,10 @@
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+<<<<<<< HEAD
     "recharts": "^3.10.1",
+=======
+>>>>>>> eaabc77156011a5d639e7753da5b540a51de762c
     "tailwind-merge": "^3.7.0",
     "xlsx": "^0.18.5"
   },

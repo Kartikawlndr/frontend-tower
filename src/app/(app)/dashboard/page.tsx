@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
+<<<<<<< HEAD
 import { useAuth } from "@/context/AuthContext";
 import {
   Building2,
@@ -9,6 +10,11 @@ import {
   FileSpreadsheet,
   Globe2,
   MapPin,
+=======
+import {
+  Download,
+  FileSpreadsheet,
+>>>>>>> eaabc77156011a5d639e7753da5b540a51de762c
   RotateCcw,
   Search,
   Settings2,
@@ -255,6 +261,7 @@ const DEFAULT_FILTERS: QueryFilters = {
 };
 
 export default function DashboardPage() {
+<<<<<<< HEAD
   const { role } = useAuth();
 
   // Web Manager dan Super Admin hanya melihat Insights.
@@ -263,6 +270,8 @@ export default function DashboardPage() {
 
   // Normal User hanya melihat Query Data, Tower Map, dan Tower Data.
   const canViewTowerData = role === "Normal User";
+=======
+>>>>>>> eaabc77156011a5d639e7753da5b540a51de762c
   const [draftFilters, setDraftFilters] =
     useState<QueryFilters>(DEFAULT_FILTERS);
   const [appliedFilters, setAppliedFilters] =
@@ -405,6 +414,7 @@ export default function DashboardPage() {
   }
 
   return (
+<<<<<<< HEAD
     <div className="space-y-6 pb-12">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-[26px] font-bold text-[#1f2a37]">
@@ -720,6 +730,10 @@ export default function DashboardPage() {
       {/* ========================================================= */}
       {/* SECTION ORIGINAL CODE KAMU: QUERY DATA, MAP, & TABLE */}
       {/* ========================================================= */}
+=======
+    <div className="space-y-6">
+      <h1 className="text-[26px] font-bold text-[#1f2a37]">Dashboard</h1>
+>>>>>>> eaabc77156011a5d639e7753da5b540a51de762c
 
       {/* 1. Query Data Card */}
       <form
@@ -769,6 +783,7 @@ export default function DashboardPage() {
             />
           </div>
 
+<<<<<<< HEAD
           <div className="flex flex-col gap-1">
             <label className="text-sm font-medium">Tahun pembangunan</label>
             <select 
@@ -782,6 +797,21 @@ export default function DashboardPage() {
                 </option>
               ))}
             </select>
+=======
+          <div>
+            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
+              Tahun pembangunan
+            </label>
+            <input
+              type="text"
+              value={draftFilters.tahun}
+              onChange={(e) =>
+                setDraftFilters({ ...draftFilters, tahun: e.target.value })
+              }
+              placeholder="YYYY"
+              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
+            />
+>>>>>>> eaabc77156011a5d639e7753da5b540a51de762c
           </div>
 
           <div>
@@ -809,7 +839,11 @@ export default function DashboardPage() {
 
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
+<<<<<<< HEAD
               Penyelenggara 
+=======
+              Penyelenggara (Tenant)
+>>>>>>> eaabc77156011a5d639e7753da5b540a51de762c
             </label>
             <input
               type="text"
@@ -950,7 +984,11 @@ export default function DashboardPage() {
         </div>
       </form>
 
+<<<<<<< HEAD
       {/* 2. Real Interactive Tower Map Card */}
+=======
+      {/* 2. Real Interactive Tower Map Card (Leaflet + OpenStreetMap) */}
+>>>>>>> eaabc77156011a5d639e7753da5b540a51de762c
       <div className="rounded-[10px] border border-[#e5e7eb] bg-white p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-[16px] font-semibold text-[#1f2a37]">
@@ -1202,6 +1240,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+<<<<<<< HEAD
         </>
       )}
     </div>
@@ -1211,3 +1250,8 @@ export default function DashboardPage() {
 
 
 
+=======
+    </div>
+  );
+}
+>>>>>>> eaabc77156011a5d639e7753da5b540a51de762c
