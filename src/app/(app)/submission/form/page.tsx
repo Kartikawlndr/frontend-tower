@@ -125,43 +125,57 @@ function YearField({
   error,
 }: {
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   error?: string;
 }) {
   return (
     <div className="flex w-full flex-col gap-1">
-      <label htmlFor="tahun-pembangunan" className="text-field-label">
-        Tahun Pembangunan
-        <span className="ml-0.5 text-danger">*</span>
-      </label>
-      <div className="relative">
-        <input
-          id="tahun-pembangunan"
-          inputMode="numeric"
-          value={value}
-          onChange={onChange}
-          aria-invalid={error ? "true" : "false"}
-          aria-describedby="tahun-pembangunan-note"
-          className={cn(
-            "h-9 w-full rounded-input border border-border bg-surface pl-2.5 pr-9 text-sm text-text transition-colors duration-150 placeholder:text-muted focus:border-primary focus:outline-none",
-            error && "border-danger"
-          )}
-        />
-        <Calendar
-          className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
-          aria-hidden
-        />
-      </div>
-      {error ? (
-        <p id="tahun-pembangunan-note" className="text-helper text-danger" role="alert">
-          {error}
-        </p>
-      ) : (
-        <p id="tahun-pembangunan-note" className="text-helper">
-          4 digits, 1900 to current year
-        </p>
-      )}
+    <label htmlFor="tahun-pembangunan" className="text-field-label">
+      Tahun Pembangunan
+      <span className="ml-0.5 text-danger">*</span>
+    </label>
+    <div className="relative">
+      <select
+        id="tahun-pembangunan"
+        value={value}
+        onChange={onChange}
+        aria-invalid={error ? "true" : "false"}
+        aria-describedby="tahun-pembangunan-note"
+        className={cn(
+          "h-9 w-full rounded-input border border-border bg-surface pl-2.5 pr-9 text-sm text-text transition-colors duration-150 focus:border-primary focus:outline-none appearance-none cursor-pointer",
+          error && "border-danger"
+        )}
+      >
+        <option value="" disabled>Pilih tahun pembangunan</option>
+        {Array.from({ length: 2026 - 1900 + 1 }, (_, index) => 1900 + index)
+          .reverse() // Membalik urutan agar tahun 2026 berada di paling atas
+          .map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+      </select>
+      
+      {/* Ikon panah dropdown pengganti ikon kalender */}
+      <svg
+        className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+      </svg>
     </div>
+    {error ? (
+      <p id="tahun-pembangunan-note" className="text-helper text-danger" role="alert">
+        {error}
+      </p>
+    ) : (
+      <p id="tahun-pembangunan-note" className="text-helper">
+        Tahun 1900 hingga tahun ini
+      </p>
+    )}
+  </div>
   );
 }
  
@@ -251,8 +265,20 @@ export default function ApplicationFormPage() {
  
       <Card title="Tower identity">
         <CardBody className="grid gap-4 pt-4 md:grid-cols-2">
-          <Input id="kode-menara" label="Kode/ID Menara" requiredMark {...field("kode")} />
-          <Input id="nama-pemilik" label="Nama Pemilik Menara" requiredMark {...field("pemilik")} />
+          <Input 
+            id="kode-menara" 
+            label="Kode/ID Menara" 
+            placeholder="e.g. TOW-JKT-001" 
+            requiredMark 
+            {...field("kode")} 
+          />
+          <Input 
+            id="nama-pemilik" 
+            label="Nama Pemilik Menara" 
+            placeholder="Owner name" 
+            requiredMark 
+            {...field("kode")} 
+          />
           <YearField
             value={values.tahun}
             onChange={change("tahun")}
@@ -269,10 +295,10 @@ export default function ApplicationFormPage() {
         </CardBody>
       </Card>
  
-      <Card title="Tenants">
+      <Card title="Penyelenggara">
         <CardBody className="flex flex-col gap-4 pt-4">
           <p className="text-helper">
-            One network provider per row. Add a row for each tenant on this tower.
+            Setiap baris mewakili satu data penyewa
           </p>
           {tenants.map((t, i) => (
             <div key={t.id} className="flex items-start gap-3">
@@ -298,7 +324,7 @@ export default function ApplicationFormPage() {
           <div>
             <Button type="button" variant="outline" onClick={addTenant}>
               <Plus className="h-4 w-4" strokeWidth={2} />
-              Add tenant
+              Add Penyelenggara
             </Button>
           </div>
         </CardBody>
@@ -311,7 +337,7 @@ export default function ApplicationFormPage() {
             label="Longitude"
             requiredMark
             inputMode="decimal"
-            hint="95 to 141, up to 6 decimals"
+            hint="Antara 95 sampai 141, maks. 6 angka di belakang koma"
             {...field("longitude")}
           />
           <Input
@@ -319,7 +345,7 @@ export default function ApplicationFormPage() {
             label="Latitude"
             requiredMark
             inputMode="decimal"
-            hint="-11 to 6, up to 6 decimals"
+            hint="Antara -11 sampai 6, maks. 6 angka di belakang koma"
             {...field("latitude")}
           />
           <div className="md:col-span-2">

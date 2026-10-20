@@ -444,19 +444,19 @@ export default function DashboardPage() {
             />
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Tahun pembangunan
-            </label>
-            <input
-              type="text"
-              value={draftFilters.tahun}
-              onChange={(e) =>
-                setDraftFilters({ ...draftFilters, tahun: e.target.value })
-              }
-              placeholder="YYYY"
-              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
-            />
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium">Tahun pembangunan</label>
+            <select 
+              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3"
+              defaultValue=""
+            >
+              <option value="" disabled>Tahun</option>
+              {Array.from({ length: 2026 - 1900 + 1 }, (_, i) => 2026 - i).map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -484,7 +484,7 @@ export default function DashboardPage() {
 
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Penyelenggara (Tenant)
+              Penyelenggara 
             </label>
             <input
               type="text"

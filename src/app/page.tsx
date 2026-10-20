@@ -247,7 +247,7 @@ export default function AuthPage() {
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Nama Penyelenggara / PT"
+                    placeholder="Nama Lengkap"
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0070ba] focus:ring-1 focus:ring-[#0070ba] text-slate-800 placeholder:text-slate-400 transition-all text-xs"
                   />
                 </div>
@@ -262,20 +262,6 @@ export default function AuthPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="nama@perusahaan.com"
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0070ba] focus:ring-1 focus:ring-[#0070ba] text-slate-800 placeholder:text-slate-400 transition-all text-xs"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block font-bold tracking-wider text-slate-600 text-[10px] uppercase">
-                    NAMA PENGGUNA
-                  </label>
-                  <input 
-                    type="text" 
-                    required
-                    value={signUpUsername}
-                    onChange={(e) => setSignUpUsername(e.target.value)}
-                    placeholder="Nama Pengguna"
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0070ba] focus:ring-1 focus:ring-[#0070ba] text-slate-800 placeholder:text-slate-400 transition-all text-xs"
                   />
                 </div>
