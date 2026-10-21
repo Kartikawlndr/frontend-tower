@@ -1,8 +1,7 @@
 "use client";
 
+import React, { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
-import { useAuth } from "@/context/AuthContext";
 import {
   Building2,
   Download,
@@ -13,35 +12,57 @@ import {
   Search,
   Settings2,
 } from "lucide-react";
-import type { MapTowerItem } from "@/components/dashboard/tower-map";
 
-const TowerMap = dynamic(() => import("@/components/dashboard/tower-map"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex h-95 w-full items-center justify-center rounded-[10px] border border-[#d0d5db] bg-[#e7f3fb] text-[13px] text-[#6b7280]">
-      Loading interactive map...
-    </div>
-  ),
-});
+// Dynamically import the Leaflet map to avoid SSR window errors
+const TowerMap = dynamic(
+  () =>
+    import("@/components/dashboard/tower-map").then(
+      (mod) => mod.default || mod
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-105 w-full items-center justify-center rounded-lg border border-[#d0d5db] bg-[#e7f3fb] text-[13px] text-[#6b7280]">
+        Loading interactive tower map...
+      </div>
+    ),
+  }
+);
 
-interface DashboardTower extends MapTowerItem {
-  kapasitasMaks: number;
+export interface TowerRecord {
+  id: string;
+  kodeId: string;
+  namaPemilik: string;
+  tahun: number | string;
+  jenisMenara: string;
+  tenants: string[];
+  longitude: number;
+  latitude: number;
+  alamat: string;
+  provinsi?: string;
+  kabupaten?: string;
+  kecamatan?: string;
+  tinggiAgl: number;
+  kapasitasMaks?: number;
+  registrationNo: string;
+  status?: "REGISTERED" | "PENDING" | "REJECTED";
 }
 
-const SAMPLE_DASHBOARD_TOWERS: DashboardTower[] = [
+const SAMPLE_DASHBOARD_TOWERS: TowerRecord[] = [
   {
     id: "1",
     kodeId: "TOW-JKT-001",
     namaPemilik: "PT Dayamitra Telekomunikasi",
     tahun: 2019,
     jenisMenara: "Greenfield",
-    tenants: "Telkomsel, Indosat",
+    tenants: ["Telkomsel", "Indosat"],
     longitude: 106.827153,
     latitude: -6.175392,
     alamat: "Jl. Medan Merdeka Barat No. 9, Jakarta Pusat",
     tinggiAgl: 72,
     kapasitasMaks: 4,
     registrationNo: "REG-2026-000101",
+    status: "REGISTERED",
   },
   {
     id: "2",
@@ -49,13 +70,14 @@ const SAMPLE_DASHBOARD_TOWERS: DashboardTower[] = [
     namaPemilik: "PT Profesional Telekomunikasi",
     tahun: 2020,
     jenisMenara: "Rooftop",
-    tenants: "XL Axiata, Smartfren",
+    tenants: ["XL Axiata", "Smartfren"],
     longitude: 107.619123,
     latitude: -6.917464,
     alamat: "Jl. Asia Afrika No. 65, Bandung",
     tinggiAgl: 45,
     kapasitasMaks: 3,
     registrationNo: "REG-2026-000102",
+    status: "REGISTERED",
   },
   {
     id: "3",
@@ -63,13 +85,14 @@ const SAMPLE_DASHBOARD_TOWERS: DashboardTower[] = [
     namaPemilik: "PT Tower Bersama",
     tahun: 2018,
     jenisMenara: "Monopole",
-    tenants: "Telkomsel",
+    tenants: ["Telkomsel"],
     longitude: 112.752088,
     latitude: -7.257472,
     alamat: "Jl. Pemuda No. 15, Surabaya",
     tinggiAgl: 36,
     kapasitasMaks: 2,
     registrationNo: "REG-2026-000103",
+    status: "REGISTERED",
   },
   {
     id: "4",
@@ -77,13 +100,14 @@ const SAMPLE_DASHBOARD_TOWERS: DashboardTower[] = [
     namaPemilik: "PT Solusi Tunas Pratama",
     tahun: 2021,
     jenisMenara: "Self-supporting",
-    tenants: "Indosat, XL Axiata",
+    tenants: ["Indosat", "XL Axiata"],
     longitude: 98.672226,
     latitude: 3.595196,
     alamat: "Jl. Balai Kota No. 2, Medan",
     tinggiAgl: 65,
     kapasitasMaks: 4,
     registrationNo: "REG-2026-000104",
+    status: "REGISTERED",
   },
   {
     id: "5",
@@ -91,13 +115,14 @@ const SAMPLE_DASHBOARD_TOWERS: DashboardTower[] = [
     namaPemilik: "PT Dayamitra Telekomunikasi",
     tahun: 2022,
     jenisMenara: "Greenfield",
-    tenants: "Telkomsel, Smartfren",
+    tenants: ["Telkomsel", "Smartfren"],
     longitude: 119.432731,
     latitude: -5.147665,
     alamat: "Jl. Ahmad Yani No. 2, Makassar",
     tinggiAgl: 55,
     kapasitasMaks: 3,
     registrationNo: "REG-2026-000105",
+    status: "REGISTERED",
   },
   {
     id: "6",
@@ -105,13 +130,14 @@ const SAMPLE_DASHBOARD_TOWERS: DashboardTower[] = [
     namaPemilik: "PT Bali Towerindo Sentra",
     tahun: 2021,
     jenisMenara: "Monopole",
-    tenants: "Telkomsel, XL Axiata",
+    tenants: ["Telkomsel", "XL Axiata"],
     longitude: 115.212629,
     latitude: -8.670458,
     alamat: "Jl. Raya Puputan No. 10, Denpasar",
     tinggiAgl: 40,
     kapasitasMaks: 3,
     registrationNo: "REG-2026-000106",
+    status: "REGISTERED",
   },
   {
     id: "7",
@@ -119,13 +145,14 @@ const SAMPLE_DASHBOARD_TOWERS: DashboardTower[] = [
     namaPemilik: "PT Tower Bersama",
     tahun: 2023,
     jenisMenara: "Self-supporting",
-    tenants: "Telkomsel, Indosat",
+    tenants: ["Telkomsel", "Indosat"],
     longitude: 116.8312,
     latitude: -1.265386,
     alamat: "Jl. Jenderal Sudirman No. 1, Balikpapan",
     tinggiAgl: 60,
     kapasitasMaks: 4,
     registrationNo: "REG-2026-000107",
+    status: "REGISTERED",
   },
   {
     id: "8",
@@ -133,13 +160,14 @@ const SAMPLE_DASHBOARD_TOWERS: DashboardTower[] = [
     namaPemilik: "PT Profesional Telekomunikasi",
     tahun: 2017,
     jenisMenara: "Guyed",
-    tenants: "Indosat",
+    tenants: ["Indosat"],
     longitude: 104.745804,
     latitude: -2.990934,
     alamat: "Jl. Kapten A. Rivai, Palembang",
     tinggiAgl: 50,
     kapasitasMaks: 2,
     registrationNo: "REG-2026-000108",
+    status: "REGISTERED",
   },
   {
     id: "9",
@@ -147,13 +175,14 @@ const SAMPLE_DASHBOARD_TOWERS: DashboardTower[] = [
     namaPemilik: "PT Centratama Menara Indonesia",
     tahun: 2020,
     jenisMenara: "Rooftop",
-    tenants: "XL Axiata",
+    tenants: ["XL Axiata"],
     longitude: 110.4203,
     latitude: -6.966667,
     alamat: "Jl. Pandanaran No. 100, Semarang",
     tinggiAgl: 32,
     kapasitasMaks: 2,
     registrationNo: "REG-2026-000109",
+    status: "REGISTERED",
   },
   {
     id: "10",
@@ -161,13 +190,14 @@ const SAMPLE_DASHBOARD_TOWERS: DashboardTower[] = [
     namaPemilik: "PT Dayamitra Telekomunikasi",
     tahun: 2022,
     jenisMenara: "Greenfield",
-    tenants: "Telkomsel",
+    tenants: ["Telkomsel"],
     longitude: 124.842079,
     latitude: 1.47483,
     alamat: "Jl. Piere Tendean, Manado",
     tinggiAgl: 58,
     kapasitasMaks: 3,
     registrationNo: "REG-2026-000110",
+    status: "REGISTERED",
   },
   {
     id: "11",
@@ -175,13 +205,14 @@ const SAMPLE_DASHBOARD_TOWERS: DashboardTower[] = [
     namaPemilik: "PT Tower Bersama",
     tahun: 2024,
     jenisMenara: "Self-supporting",
-    tenants: "Telkomsel, Indosat",
+    tenants: ["Telkomsel", "Indosat"],
     longitude: 128.1814,
     latitude: -3.6954,
     alamat: "Jl. Sultan Hairun, Ambon",
     tinggiAgl: 64,
     kapasitasMaks: 4,
     registrationNo: "REG-2026-000111",
+    status: "REGISTERED",
   },
   {
     id: "12",
@@ -189,13 +220,14 @@ const SAMPLE_DASHBOARD_TOWERS: DashboardTower[] = [
     namaPemilik: "PT Dayamitra Telekomunikasi",
     tahun: 2023,
     jenisMenara: "Greenfield",
-    tenants: "Telkomsel",
+    tenants: ["Telkomsel"],
     longitude: 140.71813,
     latitude: -2.53371,
     alamat: "Jl. Ahmad Yani, Jayapura",
     tinggiAgl: 70,
     kapasitasMaks: 4,
     registrationNo: "REG-2026-000112",
+    status: "REGISTERED",
   },
 ];
 
@@ -254,6 +286,11 @@ const DEFAULT_FILTERS: QueryFilters = {
   registrationNo: "",
 };
 
+const YEAR_OPTIONS = Array.from(
+  { length: 2026 - 1900 + 1 },
+  (_, i) => 2026 - i
+);
+
 export default function DashboardPage() {
   const { role } = useAuth();
 
@@ -282,10 +319,10 @@ export default function DashboardPage() {
     tinggiAgl: true,
     registrationNo: true,
   });
-  const [showColMenu, setShowColMenu] = useState(false);
+  const [showColMenu, setShowColMenu] = useState<boolean>(false);
 
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [page, setPage] = useState<number>(1);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
 
   const filteredTowers = useMemo(() => {
     const lonMin = parseFloat(appliedFilters.lonMin);
@@ -323,7 +360,10 @@ export default function DashboardPage() {
       }
       if (
         appliedFilters.tenant &&
-        !t.tenants.toLowerCase().includes(appliedFilters.tenant.toLowerCase())
+        !t.tenants
+          .join(", ")
+          .toLowerCase()
+          .includes(appliedFilters.tenant.toLowerCase())
       ) {
         return false;
       }
@@ -355,6 +395,7 @@ export default function DashboardPage() {
     Math.ceil(filteredTowers.length / rowsPerPage)
   );
   const safePage = Math.min(page, totalPages);
+
   const paginatedTowers = useMemo(() => {
     const start = (safePage - 1) * rowsPerPage;
     return filteredTowers.slice(start, start + rowsPerPage);
@@ -374,7 +415,10 @@ export default function DashboardPage() {
   }
 
   function toggleColumn(key: ColumnKey) {
-    setVisibleCols((prev) => ({ ...prev, [key]: !prev[key] }));
+    setVisibleCols((prev: Record<ColumnKey, boolean>) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
   }
 
   function exportCsv(onlyVisibleColumns: boolean) {
@@ -386,7 +430,9 @@ export default function DashboardPage() {
     const rows = filteredTowers.map((t) =>
       cols
         .map((c) => {
-          const val = String(t[c.key] ?? "").replace(/"/g, '""');
+          const rawVal =
+            c.key === "tenants" ? t.tenants.join(", ") : t[c.key];
+          const val = String(rawVal ?? "").replace(/"/g, '""');
           return `"${val}"`;
         })
         .join(",")
@@ -736,6 +782,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* 1. Kode/ID */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Kode / ID menara
@@ -744,13 +791,17 @@ export default function DashboardPage() {
               type="text"
               value={draftFilters.kodeId}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, kodeId: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  kodeId: e.target.value,
+                }))
               }
               placeholder="e.g. TOW-JKT-001"
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 2. Nama pemilik */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Nama pemilik
@@ -759,31 +810,41 @@ export default function DashboardPage() {
               type="text"
               value={draftFilters.namaPemilik}
               onChange={(e) =>
-                setDraftFilters({
-                  ...draftFilters,
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
                   namaPemilik: e.target.value,
-                })
+                }))
               }
               placeholder="Owner name"
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Tahun pembangunan</label>
-            <select 
-              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3"
-              defaultValue=""
+          {/* 3. Tahun pembangunan */}
+          <div>
+            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
+              Tahun pembangunan
+            </label>
+            <select
+              value={draftFilters.tahun}
+              onChange={(e) =>
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  tahun: e.target.value,
+                }))
+              }
+              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
             >
-              <option value="" disabled>Tahun</option>
-              {Array.from({ length: 2026 - 1900 + 1 }, (_, i) => 2026 - i).map((year) => (
-                <option key={year} value={year}>
+              <option value="">Semua Tahun</option>
+              {YEAR_OPTIONS.map((year) => (
+                <option key={year} value={String(year)}>
                   {year}
                 </option>
               ))}
             </select>
           </div>
 
+          {/* 4. Jenis menara */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Jenis menara
@@ -791,10 +852,10 @@ export default function DashboardPage() {
             <select
               value={draftFilters.jenisMenara}
               onChange={(e) =>
-                setDraftFilters({
-                  ...draftFilters,
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
                   jenisMenara: e.target.value,
-                })
+                }))
               }
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
             >
@@ -807,21 +868,26 @@ export default function DashboardPage() {
             </select>
           </div>
 
+          {/* 5. Penyelenggara */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Penyelenggara 
+              Penyelenggara
             </label>
             <input
               type="text"
               value={draftFilters.tenant}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, tenant: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  tenant: e.target.value,
+                }))
               }
               placeholder="e.g. Telkomsel"
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 6. Alamat */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Alamat
@@ -830,13 +896,17 @@ export default function DashboardPage() {
               type="text"
               value={draftFilters.alamat}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, alamat: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  alamat: e.target.value,
+                }))
               }
               placeholder="Street / City"
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 7. Longitude min */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Longitude min
@@ -846,12 +916,16 @@ export default function DashboardPage() {
               step="any"
               value={draftFilters.lonMin}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, lonMin: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  lonMin: e.target.value,
+                }))
               }
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 8. Longitude max */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Longitude max
@@ -861,12 +935,16 @@ export default function DashboardPage() {
               step="any"
               value={draftFilters.lonMax}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, lonMax: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  lonMax: e.target.value,
+                }))
               }
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 9. Latitude min */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Latitude min
@@ -876,12 +954,16 @@ export default function DashboardPage() {
               step="any"
               value={draftFilters.latMin}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, latMin: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  latMin: e.target.value,
+                }))
               }
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 10. Latitude max */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Latitude max
@@ -891,12 +973,16 @@ export default function DashboardPage() {
               step="any"
               value={draftFilters.latMax}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, latMax: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  latMax: e.target.value,
+                }))
               }
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 11. Tinggi AGL min */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Tinggi AGL min (m)
@@ -905,13 +991,17 @@ export default function DashboardPage() {
               type="number"
               value={draftFilters.tinggiMin}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, tinggiMin: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  tinggiMin: e.target.value,
+                }))
               }
               placeholder="e.g. 40"
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 12. Registration number */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Registration number
@@ -920,10 +1010,10 @@ export default function DashboardPage() {
               type="text"
               value={draftFilters.registrationNo}
               onChange={(e) =>
-                setDraftFilters({
-                  ...draftFilters,
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
                   registrationNo: e.target.value,
-                })
+                }))
               }
               placeholder="REG-2026-..."
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
@@ -957,21 +1047,11 @@ export default function DashboardPage() {
             Tower map
           </h2>
           <span className="text-[12px] text-[#6b7280]">
-            Showing {filteredTowers.length} tower pins (click a pin or table row to focus)
+            Showing {filteredTowers.length} tower pins
           </span>
         </div>
 
-        <TowerMap
-          towers={filteredTowers}
-          selectedPinId={selectedPinId}
-          onSelectPin={setSelectedPinId}
-          bbox={{
-            lonMin: parseFloat(appliedFilters.lonMin),
-            lonMax: parseFloat(appliedFilters.lonMax),
-            latMin: parseFloat(appliedFilters.latMin),
-            latMax: parseFloat(appliedFilters.latMax),
-          }}
-        />
+        <TowerMap towers={filteredTowers} />
       </div>
 
       {/* 3. Tower Data Card */}
@@ -990,7 +1070,7 @@ export default function DashboardPage() {
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShowColMenu((v) => !v)}
+                onClick={() => setShowColMenu((v: boolean) => !v)}
                 className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-[#d0d5db] bg-white px-3.5 text-[13px] font-medium text-[#1f2a37] hover:bg-[#f5f6f8]"
               >
                 <Settings2 className="h-4 w-4 text-[#6b7280]" />
@@ -1079,9 +1159,7 @@ export default function DashboardPage() {
                       key={tower.id}
                       onClick={() => setSelectedPinId(tower.id)}
                       className={`cursor-pointer transition-colors ${
-                        isSelected
-                          ? "bg-[#eaf5fc]"
-                          : "hover:bg-[#f5f6f8]"
+                        isSelected ? "bg-[#eaf5fc]" : "hover:bg-[#f5f6f8]"
                       }`}
                     >
                       {visibleCols.kodeId && (
@@ -1106,7 +1184,7 @@ export default function DashboardPage() {
                       )}
                       {visibleCols.tenants && (
                         <td className="px-3.5 py-2.5 text-[#1f2a37]">
-                          {tower.tenants}
+                          {tower.tenants.join(", ")}
                         </td>
                       )}
                       {visibleCols.longitude && (
@@ -1120,7 +1198,7 @@ export default function DashboardPage() {
                         </td>
                       )}
                       {visibleCols.alamat && (
-                        <td className="min-w-55 px-3.5 py-2.5 text-[#6b7280]">
+                        <td className="max-w-60 truncate px-3.5 py-2.5 text-[#6b7280]">
                           {tower.alamat}
                         </td>
                       )}
@@ -1169,7 +1247,7 @@ export default function DashboardPage() {
                   setRowsPerPage(Number(e.target.value));
                   setPage(1);
                 }}
-                className="h-8 rounded-lg border border-[#d0d5db] bg-white px-2 text-[13px] text-[#1f2a37]"
+                className="h-8 w-18 rounded-lg border border-[#d0d5db] bg-white px-2 text-[13px] text-[#1f2a37]"
               >
                 <option value={10}>10</option>
                 <option value={25}>25</option>
@@ -1182,7 +1260,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 disabled={safePage <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                onClick={() => setPage((p: number) => Math.max(1, p - 1))}
                 className="h-8 rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Prev
@@ -1193,7 +1271,9 @@ export default function DashboardPage() {
               <button
                 type="button"
                 disabled={safePage >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() =>
+                  setPage((p: number) => Math.min(totalPages, p + 1))
+                }
                 className="h-8 rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next
