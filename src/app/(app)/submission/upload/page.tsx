@@ -39,6 +39,14 @@ export default function UploadExcelPage() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
+  const handleDownloadTemplate = () => {
+        const link = document.createElement("a");
+        link.href = "/Template_Pendaftaran_Menara.xlsx"; // Mengarah ke folder public
+        link.download = "template-menara.xlsx"; // Nama file saat di-download oleh user
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
  
   function accept(next: File | undefined) {
     if (!next) return;
@@ -132,11 +140,10 @@ export default function UploadExcelPage() {
           )}
  
           <p className="text-helper">
-            Each row is one tenant relationship. Repeat the tower fields on every
-            row for a tower with several tenants.
+            Satu baris untuk satu penyewa. Data menara diisi ulang jika lebih dari satu penyewa.
           </p>
           <div>
-            <Button variant="outline" disabled>
+            <Button type="button" variant="outline" onClick={handleDownloadTemplate}>
               <Download className="h-4 w-4" strokeWidth={2} />
               Download template
             </Button>
