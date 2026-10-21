@@ -1,48 +1,25 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-<<<<<<< Updated upstream
-import { useMemo, useState } from "react";
 import {
   Download,
   FileSpreadsheet,
   RotateCcw,
-=======
-import {
->>>>>>> Stashed changes
   Search,
-  RotateCcw,
-  Download,
-  SlidersHorizontal,
-  RefreshCw,
-  Radio,
-  Building2,
-  Users,
-  AlertCircle,
-  MapPin,
-  ChevronLeft,
-  ChevronRight,
+  Settings2,
 } from "lucide-react";
-
-import { Card } from "@/components/ui/card"
-import { CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card-parts"
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select-radix"
-import { Table } from "@/components/ui/table"
-import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table-parts"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog-radix"
 
 // Dynamically import the Leaflet map to avoid SSR window errors
 const TowerMap = dynamic(
-  () => import("@/components/dashboard/tower-map").then((mod) => mod.default || mod),
+  () =>
+    import("@/components/dashboard/tower-map").then(
+      (mod) => mod.default || mod
+    ),
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[420px] w-full items-center justify-center rounded-lg border border-[#e5e7eb] bg-[#f5f6f8] text-sm text-[#6b7280]">
+      <div className="flex h-105 w-full items-center justify-center rounded-lg border border-[#d0d5db] bg-[#e7f3fb] text-[13px] text-[#6b7280]">
         Loading interactive tower map...
       </div>
     ),
@@ -63,46 +40,193 @@ export interface TowerRecord {
   kabupaten?: string;
   kecamatan?: string;
   tinggiAgl: number;
+  kapasitasMaks?: number;
   registrationNo: string;
   status?: "REGISTERED" | "PENDING" | "REJECTED";
 }
 
-interface DashboardStats {
-  totalTowers: number;
-  registeredTowers: number;
-  totalTenants: number;
-  pendingOrRejected: number;
-}
-
-interface FilterState {
-  kodeId: string;
-  namaPemilik: string;
-  tahun: string;
-  jenisMenara: string;
-  tenants: string;
-  longitude: string;
-  latitude: string;
-  alamat: string;
-  provinsi: string;
-  kabupaten: string;
-  tinggiAgl: string;
-  registrationNo: string;
-}
-
-const INITIAL_FILTERS: FilterState = {
-  kodeId: "",
-  namaPemilik: "",
-  tahun: "",
-  jenisMenara: "ALL",
-  tenants: "",
-  longitude: "",
-  latitude: "",
-  alamat: "",
-  provinsi: "",
-  kabupaten: "",
-  tinggiAgl: "",
-  registrationNo: "",
-};
+const SAMPLE_DASHBOARD_TOWERS: TowerRecord[] = [
+  {
+    id: "1",
+    kodeId: "TOW-JKT-001",
+    namaPemilik: "PT Dayamitra Telekomunikasi",
+    tahun: 2019,
+    jenisMenara: "Greenfield",
+    tenants: ["Telkomsel", "Indosat"],
+    longitude: 106.827153,
+    latitude: -6.175392,
+    alamat: "Jl. Medan Merdeka Barat No. 9, Jakarta Pusat",
+    tinggiAgl: 72,
+    kapasitasMaks: 4,
+    registrationNo: "REG-2026-000101",
+    status: "REGISTERED",
+  },
+  {
+    id: "2",
+    kodeId: "TOW-BDG-002",
+    namaPemilik: "PT Profesional Telekomunikasi",
+    tahun: 2020,
+    jenisMenara: "Rooftop",
+    tenants: ["XL Axiata", "Smartfren"],
+    longitude: 107.619123,
+    latitude: -6.917464,
+    alamat: "Jl. Asia Afrika No. 65, Bandung",
+    tinggiAgl: 45,
+    kapasitasMaks: 3,
+    registrationNo: "REG-2026-000102",
+    status: "REGISTERED",
+  },
+  {
+    id: "3",
+    kodeId: "TOW-SBY-003",
+    namaPemilik: "PT Tower Bersama",
+    tahun: 2018,
+    jenisMenara: "Monopole",
+    tenants: ["Telkomsel"],
+    longitude: 112.752088,
+    latitude: -7.257472,
+    alamat: "Jl. Pemuda No. 15, Surabaya",
+    tinggiAgl: 36,
+    kapasitasMaks: 2,
+    registrationNo: "REG-2026-000103",
+    status: "REGISTERED",
+  },
+  {
+    id: "4",
+    kodeId: "TOW-MDN-004",
+    namaPemilik: "PT Solusi Tunas Pratama",
+    tahun: 2021,
+    jenisMenara: "Self-supporting",
+    tenants: ["Indosat", "XL Axiata"],
+    longitude: 98.672226,
+    latitude: 3.595196,
+    alamat: "Jl. Balai Kota No. 2, Medan",
+    tinggiAgl: 65,
+    kapasitasMaks: 4,
+    registrationNo: "REG-2026-000104",
+    status: "REGISTERED",
+  },
+  {
+    id: "5",
+    kodeId: "TOW-MKS-005",
+    namaPemilik: "PT Dayamitra Telekomunikasi",
+    tahun: 2022,
+    jenisMenara: "Greenfield",
+    tenants: ["Telkomsel", "Smartfren"],
+    longitude: 119.432731,
+    latitude: -5.147665,
+    alamat: "Jl. Ahmad Yani No. 2, Makassar",
+    tinggiAgl: 55,
+    kapasitasMaks: 3,
+    registrationNo: "REG-2026-000105",
+    status: "REGISTERED",
+  },
+  {
+    id: "6",
+    kodeId: "TOW-DPS-006",
+    namaPemilik: "PT Bali Towerindo Sentra",
+    tahun: 2021,
+    jenisMenara: "Monopole",
+    tenants: ["Telkomsel", "XL Axiata"],
+    longitude: 115.212629,
+    latitude: -8.670458,
+    alamat: "Jl. Raya Puputan No. 10, Denpasar",
+    tinggiAgl: 40,
+    kapasitasMaks: 3,
+    registrationNo: "REG-2026-000106",
+    status: "REGISTERED",
+  },
+  {
+    id: "7",
+    kodeId: "TOW-BPN-007",
+    namaPemilik: "PT Tower Bersama",
+    tahun: 2023,
+    jenisMenara: "Self-supporting",
+    tenants: ["Telkomsel", "Indosat"],
+    longitude: 116.8312,
+    latitude: -1.265386,
+    alamat: "Jl. Jenderal Sudirman No. 1, Balikpapan",
+    tinggiAgl: 60,
+    kapasitasMaks: 4,
+    registrationNo: "REG-2026-000107",
+    status: "REGISTERED",
+  },
+  {
+    id: "8",
+    kodeId: "TOW-PLM-008",
+    namaPemilik: "PT Profesional Telekomunikasi",
+    tahun: 2017,
+    jenisMenara: "Guyed",
+    tenants: ["Indosat"],
+    longitude: 104.745804,
+    latitude: -2.990934,
+    alamat: "Jl. Kapten A. Rivai, Palembang",
+    tinggiAgl: 50,
+    kapasitasMaks: 2,
+    registrationNo: "REG-2026-000108",
+    status: "REGISTERED",
+  },
+  {
+    id: "9",
+    kodeId: "TOW-SMG-009",
+    namaPemilik: "PT Centratama Menara Indonesia",
+    tahun: 2020,
+    jenisMenara: "Rooftop",
+    tenants: ["XL Axiata"],
+    longitude: 110.4203,
+    latitude: -6.966667,
+    alamat: "Jl. Pandanaran No. 100, Semarang",
+    tinggiAgl: 32,
+    kapasitasMaks: 2,
+    registrationNo: "REG-2026-000109",
+    status: "REGISTERED",
+  },
+  {
+    id: "10",
+    kodeId: "TOW-MDO-010",
+    namaPemilik: "PT Dayamitra Telekomunikasi",
+    tahun: 2022,
+    jenisMenara: "Greenfield",
+    tenants: ["Telkomsel"],
+    longitude: 124.842079,
+    latitude: 1.47483,
+    alamat: "Jl. Piere Tendean, Manado",
+    tinggiAgl: 58,
+    kapasitasMaks: 3,
+    registrationNo: "REG-2026-000110",
+    status: "REGISTERED",
+  },
+  {
+    id: "11",
+    kodeId: "TOW-AMB-011",
+    namaPemilik: "PT Tower Bersama",
+    tahun: 2024,
+    jenisMenara: "Self-supporting",
+    tenants: ["Telkomsel", "Indosat"],
+    longitude: 128.1814,
+    latitude: -3.6954,
+    alamat: "Jl. Sultan Hairun, Ambon",
+    tinggiAgl: 64,
+    kapasitasMaks: 4,
+    registrationNo: "REG-2026-000111",
+    status: "REGISTERED",
+  },
+  {
+    id: "12",
+    kodeId: "TOW-JYP-012",
+    namaPemilik: "PT Dayamitra Telekomunikasi",
+    tahun: 2023,
+    jenisMenara: "Greenfield",
+    tenants: ["Telkomsel"],
+    longitude: 140.71813,
+    latitude: -2.53371,
+    alamat: "Jl. Ahmad Yani, Jayapura",
+    tinggiAgl: 70,
+    kapasitasMaks: 4,
+    registrationNo: "REG-2026-000112",
+    status: "REGISTERED",
+  },
+];
 
 type ColumnKey =
   | "kodeId"
@@ -117,57 +241,53 @@ type ColumnKey =
   | "registrationNo";
 
 const ALL_COLUMNS: { key: ColumnKey; label: string }[] = [
-  { key: "kodeId", label: "Kode ID" },
-  { key: "namaPemilik", label: "Nama Pemilik" },
+  { key: "kodeId", label: "Kode/ID" },
+  { key: "namaPemilik", label: "Nama pemilik" },
   { key: "tahun", label: "Tahun" },
-  { key: "jenisMenara", label: "Jenis Menara" },
-  { key: "tenants", label: "Tenants" },
+  { key: "jenisMenara", label: "Jenis menara" },
+  { key: "tenants", label: "Penyelenggara" },
   { key: "longitude", label: "Longitude" },
   { key: "latitude", label: "Latitude" },
   { key: "alamat", label: "Alamat" },
   { key: "tinggiAgl", label: "Tinggi AGL (m)" },
-  { key: "registrationNo", label: "No. Registrasi" },
+  { key: "registrationNo", label: "Registration No." },
 ];
 
-// Normalize raw API item to TowerRecord
-function normalizeTowerRecord(raw: Record<string, any>, idx: number): TowerRecord {
-  const rawTenants = raw.tenants ?? raw.operator ?? [];
-  const tenantsArray = Array.isArray(rawTenants)
-    ? rawTenants
-    : typeof rawTenants === "string" && rawTenants.trim().length > 0
-    ? rawTenants.split(",").map((t) => t.trim())
-    : [];
-
-  return {
-    id: String(raw.id ?? raw.kodeId ?? raw.kode_id ?? `row-${idx}`),
-    kodeId: String(raw.kodeId ?? raw.kode_id ?? raw.towerId ?? "-"),
-    namaPemilik: String(raw.namaPemilik ?? raw.nama_pemilik ?? raw.ownerName ?? "-"),
-    tahun: raw.tahun ?? raw.year ?? "-",
-    jenisMenara: String(raw.jenisMenara ?? raw.jenis_menara ?? raw.towerType ?? "-"),
-    tenants: tenantsArray,
-    longitude: Number(raw.longitude ?? raw.lng ?? raw.lon ?? 0),
-    latitude: Number(raw.latitude ?? raw.lat ?? 0),
-    alamat: String(raw.alamat ?? raw.address ?? "-"),
-    provinsi: raw.provinsi ?? raw.province ?? "",
-    kabupaten: raw.kabupaten ?? raw.city ?? "",
-    kecamatan: raw.kecamatan ?? raw.district ?? "",
-    tinggiAgl: Number(raw.tinggiAgl ?? raw.tinggi_agl ?? raw.height ?? 0),
-    registrationNo: String(
-      raw.registrationNo ?? raw.registration_no ?? raw.noRegistrasi ?? "-"
-    ),
-    status: raw.status ?? "REGISTERED",
-  };
+interface QueryFilters {
+  kodeId: string;
+  namaPemilik: string;
+  tahun: string;
+  jenisMenara: string;
+  tenant: string;
+  alamat: string;
+  lonMin: string;
+  lonMax: string;
+  latMin: string;
+  latMax: string;
+  tinggiMin: string;
+  registrationNo: string;
 }
 
-export default function AdminDashboardPage() {
-  // Dynamic data states (No hardcoded sample data)
-  const [towers, setTowers] = useState<TowerRecord[]>([]);
-  const [totalCount, setTotalCount] = useState<number>(0);
-  const [apiStats, setApiStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+const DEFAULT_FILTERS: QueryFilters = {
+  kodeId: "",
+  namaPemilik: "",
+  tahun: "",
+  jenisMenara: "",
+  tenant: "",
+  alamat: "",
+  lonMin: "95",
+  lonMax: "141",
+  latMin: "-11",
+  latMax: "6",
+  tinggiMin: "",
+  registrationNo: "",
+};
 
-<<<<<<< Updated upstream
+const YEAR_OPTIONS = Array.from(
+  { length: 2026 - 1900 + 1 },
+  (_, i) => 2026 - i
+);
+
 export default function DashboardPage() {
   const [draftFilters, setDraftFilters] =
     useState<QueryFilters>(DEFAULT_FILTERS);
@@ -177,17 +297,6 @@ export default function DashboardPage() {
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
 
   const [visibleCols, setVisibleCols] = useState<Record<ColumnKey, boolean>>({
-=======
-  // Filter & query states
-  const [draftFilters, setDraftFilters] = useState<FilterState>(INITIAL_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState<FilterState>(INITIAL_FILTERS);
-
-  // Table pagination & selection states
-  const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(10);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>({
->>>>>>> Stashed changes
     kodeId: true,
     namaPemilik: true,
     tahun: true,
@@ -199,274 +308,138 @@ export default function DashboardPage() {
     tinggiAgl: true,
     registrationNo: true,
   });
+  const [showColMenu, setShowColMenu] = useState<boolean>(false);
 
-  // Dynamic options extracted from real data (or API metadata)
-  const [towerTypes, setTowerTypes] = useState<string[]>([]);
+  const [page, setPage] = useState<number>(1);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
 
-  const fetchDashboardData = useCallback(
-    async (signal?: AbortSignal) => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
-        const params = new URLSearchParams();
-
-        params.set("page", String(page));
-        params.set("limit", String(pageSize));
-
-        Object.entries(appliedFilters).forEach(([key, value]) => {
-          const trimmed = value.trim();
-          if (trimmed && trimmed !== "ALL") {
-            params.set(key, trimmed);
-          }
-        });
-
-        const token =
-          typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
-        const response = await fetch(`${baseUrl}/api/towers?${params.toString()}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          cache: "no-store",
-          signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch tower data (${response.status} ${response.statusText})`
-          );
-        }
-
-        const payload = await response.json();
-
-        // Support both `{ data: [...], total, stats }` and direct array `[...]` responses
-        const rawList: Record<string, any>[] = Array.isArray(payload)
-          ? payload
-          : Array.isArray(payload?.data)
-          ? payload.data
-          : Array.isArray(payload?.towers)
-          ? payload.towers
-          : [];
-
-        const normalized = rawList.map(normalizeTowerRecord);
-        setTowers(normalized);
-        setTotalCount(
-          typeof payload?.total === "number"
-            ? payload.total
-            : typeof payload?.meta?.total === "number"
-            ? payload.meta.total
-            : normalized.length
-        );
-
-        if (payload?.stats) {
-          setApiStats(payload.stats);
-        }
-
-        // Populate distinct tower types dynamically from live records
-        setTowerTypes((prev) => {
-          const set = new Set(prev);
-          normalized.forEach((item) => {
-            if (item.jenisMenara && item.jenisMenara !== "-") {
-              set.add(item.jenisMenara);
-            }
-          });
-          return Array.from(set);
-        });
-      } catch (err: any) {
-        if (err?.name === "AbortError") return;
-        setError(err?.message || "Unable to load live tower records from server.");
-        setTowers([]);
-        setTotalCount(0);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [appliedFilters, page, pageSize]
-  );
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchDashboardData(controller.signal);
-    return () => controller.abort();
-  }, [fetchDashboardData]);
-
-  // Derived KPI metrics from real API response
-  const stats: DashboardStats = useMemo(() => {
-    if (apiStats) return apiStats;
-    const uniqueTenants = new Set<string>();
-    let registered = 0;
-    let flagged = 0;
-
-    towers.forEach((t) => {
-      t.tenants.forEach((op) => uniqueTenants.add(op));
-      if (t.status === "REJECTED" || t.status === "PENDING") {
-        flagged += 1;
-      } else {
-        registered += 1;
-      }
-    });
-
-    return {
-      totalTowers: totalCount || towers.length,
-      registeredTowers: registered,
-      totalTenants: uniqueTenants.size,
-      pendingOrRejected: flagged,
-    };
-  }, [apiStats, towers, totalCount]);
-
-  // Client-side fallback filter if backend returns full list without server-side filtering
   const filteredTowers = useMemo(() => {
-    return towers.filter((t) => {
+    const lonMin = parseFloat(appliedFilters.lonMin);
+    const lonMax = parseFloat(appliedFilters.lonMax);
+    const latMin = parseFloat(appliedFilters.latMin);
+    const latMax = parseFloat(appliedFilters.latMax);
+    const tinggiMin = parseFloat(appliedFilters.tinggiMin);
+
+    return SAMPLE_DASHBOARD_TOWERS.filter((t) => {
       if (
         appliedFilters.kodeId &&
         !t.kodeId.toLowerCase().includes(appliedFilters.kodeId.toLowerCase())
-      )
+      ) {
         return false;
+      }
       if (
         appliedFilters.namaPemilik &&
         !t.namaPemilik
           .toLowerCase()
           .includes(appliedFilters.namaPemilik.toLowerCase())
-      )
+      ) {
         return false;
+      }
       if (
         appliedFilters.tahun &&
-        !String(t.tahun).includes(appliedFilters.tahun.trim())
-      )
+        String(t.tahun) !== appliedFilters.tahun.trim()
+      ) {
         return false;
+      }
       if (
-        appliedFilters.jenisMenara !== "ALL" &&
-        t.jenisMenara.toLowerCase() !== appliedFilters.jenisMenara.toLowerCase()
-      )
+        appliedFilters.jenisMenara &&
+        t.jenisMenara !== appliedFilters.jenisMenara
+      ) {
         return false;
+      }
       if (
-        appliedFilters.tenants &&
+        appliedFilters.tenant &&
         !t.tenants
           .join(", ")
           .toLowerCase()
-          .includes(appliedFilters.tenants.toLowerCase())
-      )
+          .includes(appliedFilters.tenant.toLowerCase())
+      ) {
         return false;
+      }
       if (
         appliedFilters.alamat &&
         !t.alamat.toLowerCase().includes(appliedFilters.alamat.toLowerCase())
-      )
+      ) {
         return false;
-      if (
-        appliedFilters.provinsi &&
-        !(t.provinsi || "")
-          .toLowerCase()
-          .includes(appliedFilters.provinsi.toLowerCase())
-      )
-        return false;
-      if (
-        appliedFilters.kabupaten &&
-        !(t.kabupaten || "")
-          .toLowerCase()
-          .includes(appliedFilters.kabupaten.toLowerCase())
-      )
-        return false;
+      }
+      if (!Number.isNaN(lonMin) && t.longitude < lonMin) return false;
+      if (!Number.isNaN(lonMax) && t.longitude > lonMax) return false;
+      if (!Number.isNaN(latMin) && t.latitude < latMin) return false;
+      if (!Number.isNaN(latMax) && t.latitude > latMax) return false;
+      if (!Number.isNaN(tinggiMin) && t.tinggiAgl < tinggiMin) return false;
       if (
         appliedFilters.registrationNo &&
         !t.registrationNo
           .toLowerCase()
           .includes(appliedFilters.registrationNo.toLowerCase())
-      )
+      ) {
         return false;
-      if (
-        appliedFilters.longitude &&
-        !String(t.longitude).includes(appliedFilters.longitude.trim())
-      )
-        return false;
-      if (
-        appliedFilters.latitude &&
-        !String(t.latitude).includes(appliedFilters.latitude.trim())
-      )
-        return false;
-      if (
-        appliedFilters.tinggiAgl &&
-        Number(t.tinggiAgl) < Number(appliedFilters.tinggiAgl)
-      )
-        return false;
+      }
       return true;
     });
-  }, [towers, appliedFilters]);
+  }, [appliedFilters]);
 
-  const handleApplyFilters = (e: React.FormEvent) => {
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredTowers.length / rowsPerPage)
+  );
+  const safePage = Math.min(page, totalPages);
+
+  const paginatedTowers = useMemo(() => {
+    const start = (safePage - 1) * rowsPerPage;
+    return filteredTowers.slice(start, start + rowsPerPage);
+  }, [filteredTowers, safePage, rowsPerPage]);
+
+  function handleQuerySubmit(e: React.FormEvent) {
     e.preventDefault();
+    setAppliedFilters(draftFilters);
     setPage(1);
-    setAppliedFilters({ ...draftFilters });
-  };
+  }
 
-  const handleResetFilters = () => {
-    setDraftFilters(INITIAL_FILTERS);
-    setAppliedFilters(INITIAL_FILTERS);
+  function handleReset() {
+    setDraftFilters(DEFAULT_FILTERS);
+    setAppliedFilters(DEFAULT_FILTERS);
+    setSelectedPinId(null);
     setPage(1);
-  };
+  }
 
-  const toggleSelectAll = () => {
-    if (selectedIds.size === filteredTowers.length && filteredTowers.length > 0) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredTowers.map((t) => t.id)));
-    }
-  };
+  function toggleColumn(key: ColumnKey) {
+    setVisibleCols((prev: Record<ColumnKey, boolean>) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  }
 
-  const toggleSelectRow = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  function exportCsv(onlyVisibleColumns: boolean) {
+    const cols = onlyVisibleColumns
+      ? ALL_COLUMNS.filter((c) => visibleCols[c.key])
+      : ALL_COLUMNS;
 
-  const handleExportCsv = () => {
-    const rowsToExport =
-      selectedIds.size > 0
-        ? filteredTowers.filter((t) => selectedIds.has(t.id))
-        : filteredTowers;
-
-    if (rowsToExport.length === 0) return;
-
-    const activeCols = ALL_COLUMNS.filter((c) => visibleColumns[c.key]);
-    const header = activeCols.map((c) => `"${c.label}"`).join(",");
-    const csvRows = rowsToExport.map((row) =>
-      activeCols
+    const header = cols.map((c) => `"${c.label}"`).join(",");
+    const rows = filteredTowers.map((t) =>
+      cols
         .map((c) => {
-          const val =
-            c.key === "tenants" ? row.tenants.join("; ") : (row as any)[c.key];
-          return `"${String(val ?? "").replace(/"/g, '""')}"`;
+          const rawVal =
+            c.key === "tenants" ? t.tenants.join(", ") : t[c.key];
+          const val = String(rawVal ?? "").replace(/"/g, '""');
+          return `"${val}"`;
         })
         .join(",")
     );
 
-    const csvContent = [header, ...csvRows].join("\n");
+    const csvContent = "\uFEFF" + [header, ...rows].join("\r\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute(
-      "download",
-      `tower-records-${new Date().toISOString().slice(0, 10)}.csv`
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = onlyVisibleColumns
+      ? "dashboard-towers-export.csv"
+      : "dashboard-towers-all.csv";
+    a.click();
     URL.revokeObjectURL(url);
-  };
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil((totalCount || filteredTowers.length) / pageSize)
-  );
+  }
 
   return (
-<<<<<<< Updated upstream
     <div className="space-y-6">
       <h1 className="text-[26px] font-bold text-[#1f2a37]">Dashboard</h1>
 
@@ -485,6 +458,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* 1. Kode/ID */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Kode / ID menara
@@ -493,13 +467,17 @@ export default function DashboardPage() {
               type="text"
               value={draftFilters.kodeId}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, kodeId: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  kodeId: e.target.value,
+                }))
               }
               placeholder="e.g. TOW-JKT-001"
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 2. Nama pemilik */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Nama pemilik
@@ -508,31 +486,41 @@ export default function DashboardPage() {
               type="text"
               value={draftFilters.namaPemilik}
               onChange={(e) =>
-                setDraftFilters({
-                  ...draftFilters,
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
                   namaPemilik: e.target.value,
-                })
+                }))
               }
               placeholder="Owner name"
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Tahun pembangunan</label>
-            <select 
-              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3"
-              defaultValue=""
+          {/* 3. Tahun pembangunan */}
+          <div>
+            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
+              Tahun pembangunan
+            </label>
+            <select
+              value={draftFilters.tahun}
+              onChange={(e) =>
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  tahun: e.target.value,
+                }))
+              }
+              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
             >
-              <option value="" disabled>Tahun</option>
-              {Array.from({ length: 2026 - 1900 + 1 }, (_, i) => 2026 - i).map((year) => (
-                <option key={year} value={year}>
+              <option value="">Semua Tahun</option>
+              {YEAR_OPTIONS.map((year) => (
+                <option key={year} value={String(year)}>
                   {year}
                 </option>
               ))}
             </select>
           </div>
 
+          {/* 4. Jenis menara */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Jenis menara
@@ -540,10 +528,10 @@ export default function DashboardPage() {
             <select
               value={draftFilters.jenisMenara}
               onChange={(e) =>
-                setDraftFilters({
-                  ...draftFilters,
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
                   jenisMenara: e.target.value,
-                })
+                }))
               }
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
             >
@@ -556,21 +544,26 @@ export default function DashboardPage() {
             </select>
           </div>
 
+          {/* 5. Penyelenggara */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Penyelenggara 
+              Penyelenggara
             </label>
             <input
               type="text"
               value={draftFilters.tenant}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, tenant: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  tenant: e.target.value,
+                }))
               }
               placeholder="e.g. Telkomsel"
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 6. Alamat */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Alamat
@@ -579,13 +572,17 @@ export default function DashboardPage() {
               type="text"
               value={draftFilters.alamat}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, alamat: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  alamat: e.target.value,
+                }))
               }
               placeholder="Street / City"
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 7. Longitude min */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Longitude min
@@ -595,12 +592,16 @@ export default function DashboardPage() {
               step="any"
               value={draftFilters.lonMin}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, lonMin: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  lonMin: e.target.value,
+                }))
               }
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 8. Longitude max */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Longitude max
@@ -610,12 +611,16 @@ export default function DashboardPage() {
               step="any"
               value={draftFilters.lonMax}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, lonMax: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  lonMax: e.target.value,
+                }))
               }
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 9. Latitude min */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Latitude min
@@ -625,12 +630,16 @@ export default function DashboardPage() {
               step="any"
               value={draftFilters.latMin}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, latMin: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  latMin: e.target.value,
+                }))
               }
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 10. Latitude max */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Latitude max
@@ -640,12 +649,16 @@ export default function DashboardPage() {
               step="any"
               value={draftFilters.latMax}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, latMax: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  latMax: e.target.value,
+                }))
               }
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 11. Tinggi AGL min */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Tinggi AGL min (m)
@@ -654,13 +667,17 @@ export default function DashboardPage() {
               type="number"
               value={draftFilters.tinggiMin}
               onChange={(e) =>
-                setDraftFilters({ ...draftFilters, tinggiMin: e.target.value })
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
+                  tinggiMin: e.target.value,
+                }))
               }
               placeholder="e.g. 40"
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
             />
           </div>
 
+          {/* 12. Registration number */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
               Registration number
@@ -669,10 +686,10 @@ export default function DashboardPage() {
               type="text"
               value={draftFilters.registrationNo}
               onChange={(e) =>
-                setDraftFilters({
-                  ...draftFilters,
+                setDraftFilters((p: QueryFilters) => ({
+                  ...p,
                   registrationNo: e.target.value,
-                })
+                }))
               }
               placeholder="REG-2026-..."
               className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
@@ -699,28 +716,18 @@ export default function DashboardPage() {
         </div>
       </form>
 
-      {/* 2. Real Interactive Tower Map Card (Leaflet + OpenStreetMap) */}
+      {/* 2. Real Interactive Tower Map Card */}
       <div className="rounded-[10px] border border-[#e5e7eb] bg-white p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-[16px] font-semibold text-[#1f2a37]">
             Tower map
           </h2>
           <span className="text-[12px] text-[#6b7280]">
-            Showing {filteredTowers.length} tower pins (click a pin or table row to focus)
+            Showing {filteredTowers.length} tower pins
           </span>
         </div>
 
-        <TowerMap
-          towers={filteredTowers}
-          selectedPinId={selectedPinId}
-          onSelectPin={setSelectedPinId}
-          bbox={{
-            lonMin: parseFloat(appliedFilters.lonMin),
-            lonMax: parseFloat(appliedFilters.lonMax),
-            latMin: parseFloat(appliedFilters.latMin),
-            latMax: parseFloat(appliedFilters.latMax),
-          }}
-        />
+        <TowerMap towers={filteredTowers} />
       </div>
 
       {/* 3. Tower Data Card */}
@@ -739,7 +746,7 @@ export default function DashboardPage() {
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setShowColMenu((v) => !v)}
+                onClick={() => setShowColMenu((v: boolean) => !v)}
                 className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-[#d0d5db] bg-white px-3.5 text-[13px] font-medium text-[#1f2a37] hover:bg-[#f5f6f8]"
               >
                 <Settings2 className="h-4 w-4 text-[#6b7280]" />
@@ -767,698 +774,189 @@ export default function DashboardPage() {
                       </label>
                     ))}
                   </div>
-=======
-    <div className="min-h-screen bg-[#f5f6f8] p-6 text-[#1f2a37]">
-      <div className="mx-auto max-w-7xl space-y-6">
-        {/* Top Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#1f2a37]">
-              Admin Dashboard
-            </h1>
-            <p className="text-sm text-[#6b7280]">
-              Real-time telecommunications tower spatial monitoring & record management
-            </p>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <Button
+                </div>
+              )}
+            </div>
+
+            <button
               type="button"
-              variant="outline"
-              onClick={() => fetchDashboardData()}
-              disabled={loading}
-              className="border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] hover:bg-[#f5f6f8]"
+              onClick={() => exportCsv(false)}
+              className="inline-flex h-9 items-center gap-2 rounded-[10px] bg-[#00a8e8] px-4 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
             >
-              <RefreshCw
-                className={`mr-2 h-4 w-4 text-[#016db0] ${
-                  loading ? "animate-spin" : ""
-                }`}
-              />
-              Refresh Data
-            </Button>
-            <Button
+              <Download className="h-4 w-4" />
+              Download
+            </button>
+
+            <button
               type="button"
-              onClick={handleExportCsv}
-              disabled={filteredTowers.length === 0}
-              className="bg-[#016db0] text-white hover:bg-[#01588f]"
+              onClick={() => exportCsv(true)}
+              className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-[#d0d5db] bg-white px-4 text-[13px] font-medium text-[#1f2a37] hover:bg-[#f5f6f8]"
             >
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
-            </Button>
+              <FileSpreadsheet className="h-4 w-4 text-[#016db0]" />
+              Export
+            </button>
           </div>
         </div>
 
-        {/* Error Alert Banner (Project Red #8f181b) */}
-        {error && (
-          <Card className="border-[#8f181b]/30 bg-[#8f181b]/5 shadow-none">
-            <CardContent className="flex items-center justify-between py-4">
-              <div className="flex items-center gap-3 text-[#8f181b]">
-                <AlertCircle className="h-5 w-5 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold">Failed to load live data</p>
-                  <p className="text-xs opacity-90">{error}</p>
->>>>>>> Stashed changes
-                </div>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => fetchDashboardData()}
-                className="border-[#8f181b]/40 bg-[#ffffff] text-[#8f181b] hover:bg-[#8f181b]/10"
-              >
-                Retry
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Dynamic KPI Summary Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="border-[#e5e7eb] bg-[#ffffff] shadow-xs">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription className="text-xs font-medium uppercase tracking-wider text-[#6b7280]">
-                Total Tower Records
-              </CardDescription>
-              <div className="rounded-md bg-[#016db0]/10 p-2 text-[#016db0]">
-                <Radio className="h-4 w-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#1f2a37]">
-                {loading ? "—" : stats.totalTowers.toLocaleString()}
-              </div>
-              <p className="mt-1 text-xs text-[#6b7280]">
-                Live records synced from database
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-[#e5e7eb] bg-[#ffffff] shadow-xs">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription className="text-xs font-medium uppercase tracking-wider text-[#6b7280]">
-                Registered & Verified
-              </CardDescription>
-              <div className="rounded-md bg-[#016db0]/10 p-2 text-[#016db0]">
-                <Building2 className="h-4 w-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#016db0]">
-                {loading ? "—" : stats.registeredTowers.toLocaleString()}
-              </div>
-              <p className="mt-1 text-xs text-[#6b7280]">
-                Active towers in current query
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-[#e5e7eb] bg-[#ffffff] shadow-xs">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription className="text-xs font-medium uppercase tracking-wider text-[#6b7280]">
-                Active Operators / Tenants
-              </CardDescription>
-              <div className="rounded-md bg-[#016db0]/10 p-2 text-[#016db0]">
-                <Users className="h-4 w-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#1f2a37]">
-                {loading ? "—" : stats.totalTenants.toLocaleString()}
-              </div>
-              <p className="mt-1 text-xs text-[#6b7280]">
-                Distinct network tenants
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-[#e5e7eb] bg-[#ffffff] shadow-xs">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription className="text-xs font-medium uppercase tracking-wider text-[#6b7280]">
-                Pending / Flagged
-              </CardDescription>
-              <div className="rounded-md bg-[#8f181b]/10 p-2 text-[#8f181b]">
-                <AlertCircle className="h-4 w-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#8f181b]">
-                {loading ? "—" : stats.pendingOrRejected.toLocaleString()}
-              </div>
-              <p className="mt-1 text-xs text-[#6b7280]">
-                Requires review or validation
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* 12-Field Query Data Filter Card */}
-        <Card className="border-[#e5e7eb] bg-[#ffffff] shadow-xs">
-          <CardHeader className="border-b border-[#e5e7eb] pb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base font-semibold text-[#1f2a37]">
-                  Query Tower Data
-                </CardTitle>
-                <CardDescription className="text-xs text-[#6b7280]">
-                  Filter live tower database across 12 spatial and administrative parameters
-                </CardDescription>
-              </div>
-              <Badge
-                variant="outline"
-                className="border-[#016db0]/30 bg-[#016db0]/10 text-[#016db0]"
-              >
-                Live Query
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-5">
-            <form onSubmit={handleApplyFilters} className="space-y-5">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {/* 1. Kode ID */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-[#6b7280]">
-                    Kode ID Menara
-                  </Label>
-                  <Input
-                    placeholder="e.g. TWR-JKT-001"
-                    value={draftFilters.kodeId}
-                    onChange={(e) =>
-                      setDraftFilters((p) => ({ ...p, kodeId: e.target.value }))
-                    }
-                    className="border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] focus-visible:ring-[#016db0]"
-                  />
-                </div>
-
-                {/* 2. Nama Pemilik */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-[#6b7280]">
-                    Nama Pemilik
-                  </Label>
-                  <Input
-                    placeholder="Owner / Provider name"
-                    value={draftFilters.namaPemilik}
-                    onChange={(e) =>
-                      setDraftFilters((p) => ({ ...p, namaPemilik: e.target.value }))
-                    }
-                    className="border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] focus-visible:ring-[#016db0]"
-                  />
-                </div>
-
-                {/* 3. Tahun */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-[#6b7280]">
-                    Tahun Pembangunan
-                  </Label>
-                  <Input
-                    type="number"
-                    placeholder="e.g. 2023"
-                    value={draftFilters.tahun}
-                    onChange={(e) =>
-                      setDraftFilters((p) => ({ ...p, tahun: e.target.value }))
-                    }
-                    className="border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] focus-visible:ring-[#016db0]"
-                  />
-                </div>
-
-                {/* 4. Jenis Menara */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-[#6b7280]">
-                    Jenis Menara
-                  </Label>
-                  <Select
-                    value={draftFilters.jenisMenara}
-                    onValueChange={(value) =>
-                      setDraftFilters((p) => ({ ...p, jenisMenara: value }))
-                    }
-                  >
-                    <SelectTrigger className="border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] focus:ring-[#016db0]">
-                      <SelectValue placeholder="All Tower Types" />
-                    </SelectTrigger>
-                    <SelectContent className="border-[#e5e7eb] bg-[#ffffff] text-[#1f2a37]">
-                      <SelectItem value="ALL">All Tower Types</SelectItem>
-                      {towerTypes.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* 5. Tenants */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-[#6b7280]">
-                    Tenants / Operator
-                  </Label>
-                  <Input
-                    placeholder="e.g. Telkomsel, Indosat"
-                    value={draftFilters.tenants}
-                    onChange={(e) =>
-                      setDraftFilters((p) => ({ ...p, tenants: e.target.value }))
-                    }
-                    className="border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] focus-visible:ring-[#016db0]"
-                  />
-                </div>
-
-                {/* 6. No. Registrasi */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-[#6b7280]">
-                    No. Registrasi
-                  </Label>
-                  <Input
-                    placeholder="Registration number"
-                    value={draftFilters.registrationNo}
-                    onChange={(e) =>
-                      setDraftFilters((p) => ({
-                        ...p,
-                        registrationNo: e.target.value,
-                      }))
-                    }
-                    className="border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] focus-visible:ring-[#016db0]"
-                  />
-                </div>
-
-                {/* 7. Provinsi */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-[#6b7280]">
-                    Provinsi
-                  </Label>
-                  <Input
-                    placeholder="Province"
-                    value={draftFilters.provinsi}
-                    onChange={(e) =>
-                      setDraftFilters((p) => ({ ...p, provinsi: e.target.value }))
-                    }
-                    className="border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] focus-visible:ring-[#016db0]"
-                  />
-                </div>
-
-                {/* 8. Kabupaten / Kota */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-[#6b7280]">
-                    Kabupaten / Kota
-                  </Label>
-                  <Input
-                    placeholder="City / Regency"
-                    value={draftFilters.kabupaten}
-                    onChange={(e) =>
-                      setDraftFilters((p) => ({ ...p, kabupaten: e.target.value }))
-                    }
-                    className="border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] focus-visible:ring-[#016db0]"
-                  />
-                </div>
-
-                {/* 9. Alamat */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-[#6b7280]">
-                    Alamat Lokasi
-                  </Label>
-                  <Input
-                    placeholder="Street / Village address"
-                    value={draftFilters.alamat}
-                    onChange={(e) =>
-                      setDraftFilters((p) => ({ ...p, alamat: e.target.value }))
-                    }
-                    className="border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] focus-visible:ring-[#016db0]"
-                  />
-                </div>
-
-                {/* 10. Longitude */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-[#6b7280]">
-                    Longitude
-                  </Label>
-                  <Input
-                    placeholder="e.g. 106.8271"
-                    value={draftFilters.longitude}
-                    onChange={(e) =>
-                      setDraftFilters((p) => ({ ...p, longitude: e.target.value }))
-                    }
-                    className="border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] focus-visible:ring-[#016db0]"
-                  />
-                </div>
-
-                {/* 11. Latitude */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-[#6b7280]">
-                    Latitude
-                  </Label>
-                  <Input
-                    placeholder="e.g. -6.1751"
-                    value={draftFilters.latitude}
-                    onChange={(e) =>
-                      setDraftFilters((p) => ({ ...p, latitude: e.target.value }))
-                    }
-                    className="border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] focus-visible:ring-[#016db0]"
-                  />
-                </div>
-
-                {/* 12. Min Tinggi AGL */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-[#6b7280]">
-                    Min. Tinggi AGL (m)
-                  </Label>
-                  <Input
-                    type="number"
-                    placeholder="e.g. 45"
-                    value={draftFilters.tinggiAgl}
-                    onChange={(e) =>
-                      setDraftFilters((p) => ({ ...p, tinggiAgl: e.target.value }))
-                    }
-                    className="border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] focus-visible:ring-[#016db0]"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 border-t border-[#e5e7eb] pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleResetFilters}
-                  className="border-[#d0d5db] bg-[#ffffff] text-[#6b7280] hover:bg-[#f5f6f8] hover:text-[#1f2a37]"
-                >
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  Reset Filter
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-[#016db0] text-white hover:bg-[#01588f]"
-                >
-                  <Search className="mr-2 h-4 w-4" />
-                  Apply Query
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Spatial Distribution Map Card */}
-        <Card className="border-[#e5e7eb] bg-[#ffffff] shadow-xs">
-          <CardHeader className="flex flex-row items-center justify-between border-b border-[#e5e7eb] pb-4">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-[#016db0]" />
-              <div>
-                <CardTitle className="text-base font-semibold text-[#1f2a37]">
-                  Tower Spatial Distribution
-                </CardTitle>
-                <CardDescription className="text-xs text-[#6b7280]">
-                  Showing {filteredTowers.length} live coordinates on map
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-4">
-            <TowerMap towers={filteredTowers as any} />
-          </CardContent>
-        </Card>
-
-        {/* Live Data Table Card */}
-        <Card className="border-[#e5e7eb] bg-[#ffffff] shadow-xs">
-          <CardHeader className="flex flex-col gap-3 border-b border-[#e5e7eb] pb-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle className="text-base font-semibold text-[#1f2a37]">
-                Tower Data Records
-              </CardTitle>
-              <CardDescription className="text-xs text-[#6b7280]">
-                {loading
-                  ? "Fetching records from database..."
-                  : `Showing ${filteredTowers.length} of ${
-                      totalCount || filteredTowers.length
-                    } records`}
-              </CardDescription>
-            </div>
-
-            {/* Column Visibility Dialog (Shadcn Dialog) */}
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] hover:bg-[#f5f6f8]"
-                >
-                  <SlidersHorizontal className="mr-2 h-4 w-4 text-[#016db0]" />
-                  Columns
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="border-[#e5e7eb] bg-[#ffffff] text-[#1f2a37] sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="text-[#1f2a37]">
-                    Configure Visible Columns
-                  </DialogTitle>
-                </DialogHeader>
-                <div className="grid grid-cols-2 gap-3 py-3">
-                  {ALL_COLUMNS.map((col) => (
-                    <label
-                      key={col.key}
-                      className="flex cursor-pointer items-center gap-2 rounded-md border border-[#e5e7eb] p-2.5 text-sm hover:bg-[#f5f6f8]"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns[col.key]}
-                        onChange={(e) =>
-                          setVisibleColumns((prev) => ({
-                            ...prev,
-                            [col.key]: e.target.checked,
-                          }))
-                        }
-                        className="h-4 w-4 rounded border-[#d0d5db] accent-[#016db0]"
-                      />
-                      <span className="text-xs font-medium text-[#1f2a37]">
+        <div className="overflow-x-auto rounded-lg border border-[#e5e7eb]">
+          <table className="w-full border-collapse text-left text-[13px]">
+            <thead>
+              <tr className="border-b border-[#e5e7eb] bg-[#ddeef9] text-[12px] font-semibold text-[#1f2a37]">
+                {ALL_COLUMNS.map(
+                  (col) =>
+                    visibleCols[col.key] && (
+                      <th
+                        key={col.key}
+                        className="whitespace-nowrap px-3.5 py-2.5"
+                      >
                         {col.label}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
+                      </th>
+                    )
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#e5e7eb]">
+              {paginatedTowers.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={
+                      ALL_COLUMNS.filter((c) => visibleCols[c.key]).length || 1
+                    }
+                    className="px-4 py-8 text-center text-[13px] text-[#6b7280]"
+                  >
+                    No tower records match the current query filters.
+                  </td>
+                </tr>
+              ) : (
+                paginatedTowers.map((tower) => {
+                  const isSelected = selectedPinId === tower.id;
+                  return (
+                    <tr
+                      key={tower.id}
+                      onClick={() => setSelectedPinId(tower.id)}
+                      className={`cursor-pointer transition-colors ${
+                        isSelected ? "bg-[#eaf5fc]" : "hover:bg-[#f5f6f8]"
+                      }`}
+                    >
+                      {visibleCols.kodeId && (
+                        <td className="whitespace-nowrap px-3.5 py-2.5 font-medium text-[#1f2a37]">
+                          {tower.kodeId}
+                        </td>
+                      )}
+                      {visibleCols.namaPemilik && (
+                        <td className="whitespace-nowrap px-3.5 py-2.5 text-[#1f2a37]">
+                          {tower.namaPemilik}
+                        </td>
+                      )}
+                      {visibleCols.tahun && (
+                        <td className="whitespace-nowrap px-3.5 py-2.5 text-[#1f2a37]">
+                          {tower.tahun}
+                        </td>
+                      )}
+                      {visibleCols.jenisMenara && (
+                        <td className="whitespace-nowrap px-3.5 py-2.5 text-[#1f2a37]">
+                          {tower.jenisMenara}
+                        </td>
+                      )}
+                      {visibleCols.tenants && (
+                        <td className="px-3.5 py-2.5 text-[#1f2a37]">
+                          {tower.tenants.join(", ")}
+                        </td>
+                      )}
+                      {visibleCols.longitude && (
+                        <td className="whitespace-nowrap px-3.5 py-2.5 font-mono text-[12px] text-[#1f2a37]">
+                          {tower.longitude.toFixed(6)}
+                        </td>
+                      )}
+                      {visibleCols.latitude && (
+                        <td className="whitespace-nowrap px-3.5 py-2.5 font-mono text-[12px] text-[#1f2a37]">
+                          {tower.latitude.toFixed(6)}
+                        </td>
+                      )}
+                      {visibleCols.alamat && (
+                        <td className="max-w-60 truncate px-3.5 py-2.5 text-[#6b7280]">
+                          {tower.alamat}
+                        </td>
+                      )}
+                      {visibleCols.tinggiAgl && (
+                        <td className="whitespace-nowrap px-3.5 py-2.5 text-[#1f2a37]">
+                          {tower.tinggiAgl}
+                        </td>
+                      )}
+                      {visibleCols.registrationNo && (
+                        <td className="whitespace-nowrap px-3.5 py-2.5 font-mono text-[12px] text-[#016db0]">
+                          {tower.registrationNo}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-[#f5f6f8]">
-                  <TableRow className="border-b border-[#e5e7eb]">
-                    <TableHead className="w-10 px-4">
-                      <input
-                        type="checkbox"
-                        checked={
-                          filteredTowers.length > 0 &&
-                          selectedIds.size === filteredTowers.length
-                        }
-                        onChange={toggleSelectAll}
-                        className="h-4 w-4 rounded border-[#d0d5db] accent-[#016db0]"
-                      />
-                    </TableHead>
-                    {visibleColumns.kodeId && (
-                      <TableHead className="text-xs font-semibold text-[#6b7280]">
-                        Kode ID
-                      </TableHead>
-                    )}
-                    {visibleColumns.namaPemilik && (
-                      <TableHead className="text-xs font-semibold text-[#6b7280]">
-                        Nama Pemilik
-                      </TableHead>
-                    )}
-                    {visibleColumns.tahun && (
-                      <TableHead className="text-xs font-semibold text-[#6b7280]">
-                        Tahun
-                      </TableHead>
-                    )}
-                    {visibleColumns.jenisMenara && (
-                      <TableHead className="text-xs font-semibold text-[#6b7280]">
-                        Jenis Menara
-                      </TableHead>
-                    )}
-                    {visibleColumns.tenants && (
-                      <TableHead className="text-xs font-semibold text-[#6b7280]">
-                        Tenants
-                      </TableHead>
-                    )}
-                    {visibleColumns.longitude && (
-                      <TableHead className="text-xs font-semibold text-[#6b7280]">
-                        Longitude
-                      </TableHead>
-                    )}
-                    {visibleColumns.latitude && (
-                      <TableHead className="text-xs font-semibold text-[#6b7280]">
-                        Latitude
-                      </TableHead>
-                    )}
-                    {visibleColumns.alamat && (
-                      <TableHead className="text-xs font-semibold text-[#6b7280]">
-                        Alamat
-                      </TableHead>
-                    )}
-                    {visibleColumns.tinggiAgl && (
-                      <TableHead className="text-xs font-semibold text-[#6b7280]">
-                        Tinggi AGL
-                      </TableHead>
-                    )}
-                    {visibleColumns.registrationNo && (
-                      <TableHead className="text-xs font-semibold text-[#6b7280]">
-                        No. Registrasi
-                      </TableHead>
-                    )}
-                  </TableRow>
-                </TableHeader>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[13px] text-[#6b7280]">
+          <div>
+            Showing{" "}
+            <span className="font-medium text-[#1f2a37]">
+              {filteredTowers.length === 0
+                ? 0
+                : (safePage - 1) * rowsPerPage + 1}
+            </span>
+            –
+            <span className="font-medium text-[#1f2a37]">
+              {Math.min(safePage * rowsPerPage, filteredTowers.length)}
+            </span>{" "}
+            of{" "}
+            <span className="font-medium text-[#1f2a37]">
+              {filteredTowers.length}
+            </span>
+          </div>
 
-                <TableBody>
-                  {loading ? (
-                    Array.from({ length: 5 }).map((_, idx) => (
-                      <TableRow key={idx} className="border-b border-[#e5e7eb]">
-                        <TableCell colSpan={11} className="py-4">
-                          <div className="h-5 w-full animate-pulse rounded bg-[#f5f6f8]" />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : filteredTowers.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={11}
-                        className="py-12 text-center text-sm text-[#6b7280]"
-                      >
-                        No tower records found matching the current query.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredTowers.map((tower) => (
-                      <TableRow
-                        key={tower.id}
-                        className="border-b border-[#e5e7eb] hover:bg-[#f5f6f8]/60"
-                      >
-                        <TableCell className="px-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(tower.id)}
-                            onChange={() => toggleSelectRow(tower.id)}
-                            className="h-4 w-4 rounded border-[#d0d5db] accent-[#016db0]"
-                          />
-                        </TableCell>
-                        {visibleColumns.kodeId && (
-                          <TableCell className="font-medium text-[#016db0]">
-                            {tower.kodeId}
-                          </TableCell>
-                        )}
-                        {visibleColumns.namaPemilik && (
-                          <TableCell className="text-[#1f2a37]">
-                            {tower.namaPemilik}
-                          </TableCell>
-                        )}
-                        {visibleColumns.tahun && (
-                          <TableCell className="text-[#6b7280]">
-                            {tower.tahun}
-                          </TableCell>
-                        )}
-                        {visibleColumns.jenisMenara && (
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className="border-[#d0d5db] bg-[#f5f6f8] text-[#1f2a37]"
-                            >
-                              {tower.jenisMenara}
-                            </Badge>
-                          </TableCell>
-                        )}
-                        {visibleColumns.tenants && (
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {tower.tenants.length > 0 ? (
-                                tower.tenants.map((tenant, i) => (
-                                  <Badge
-                                    key={i}
-                                    className="bg-[#016db0]/10 text-[#016db0] hover:bg-[#016db0]/20"
-                                  >
-                                    {tenant}
-                                  </Badge>
-                                ))
-                              ) : (
-                                <span className="text-xs text-[#6b7280]">-</span>
-                              )}
-                            </div>
-                          </TableCell>
-                        )}
-                        {visibleColumns.longitude && (
-                          <TableCell className="font-mono text-xs text-[#6b7280]">
-                            {tower.longitude.toFixed(5)}
-                          </TableCell>
-                        )}
-                        {visibleColumns.latitude && (
-                          <TableCell className="font-mono text-xs text-[#6b7280]">
-                            {tower.latitude.toFixed(5)}
-                          </TableCell>
-                        )}
-                        {visibleColumns.alamat && (
-                          <TableCell className="max-w-[240px] truncate text-[#1f2a37]">
-                            {tower.alamat}
-                          </TableCell>
-                        )}
-                        {visibleColumns.tinggiAgl && (
-                          <TableCell className="text-[#1f2a37]">
-                            {tower.tinggiAgl} m
-                          </TableCell>
-                        )}
-                        {visibleColumns.registrationNo && (
-                          <TableCell className="font-mono text-xs text-[#1f2a37]">
-                            {tower.registrationNo}
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span>Rows per page</span>
+              <select
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="h-8 w-18 rounded-lg border border-[#d0d5db] bg-white px-2 text-[13px] text-[#1f2a37]"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
             </div>
 
-            {/* Pagination Footer */}
-            <div className="flex flex-col items-center justify-between gap-4 border-t border-[#e5e7eb] px-6 py-4 sm:flex-row">
-              <div className="flex items-center gap-2 text-xs text-[#6b7280]">
-                <span>Rows per page:</span>
-                <Select
-                  value={String(pageSize)}
-                  onValueChange={(val) => {
-                    setPageSize(Number(val));
-                    setPage(1);
-                  }}
-                >
-                  <SelectTrigger className="h-8 w-[72px] border-[#d0d5db] bg-[#ffffff] text-xs text-[#1f2a37]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="border-[#e5e7eb] bg-[#ffffff] text-[#1f2a37]">
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[#6b7280]">
-                  Page <strong className="text-[#1f2a37]">{page}</strong> of{" "}
-                  <strong className="text-[#1f2a37]">{totalPages}</strong>
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1 || loading}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="h-8 border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] hover:bg-[#f5f6f8]"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= totalPages || loading}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className="h-8 border-[#d0d5db] bg-[#ffffff] text-[#1f2a37] hover:bg-[#f5f6f8]"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={safePage <= 1}
+                onClick={() => setPage((p: number) => Math.max(1, p - 1))}
+                className="h-8 rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Prev
+              </button>
+              <span className="px-2 text-[13px] font-medium text-[#1f2a37]">
+                {safePage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={safePage >= totalPages}
+                onClick={() =>
+                  setPage((p: number) => Math.min(totalPages, p + 1))
+                }
+                className="h-8 rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+              </button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
