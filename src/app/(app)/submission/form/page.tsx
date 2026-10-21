@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
 
+// Dynamic import dengan destructuring komponen react-leaflet secara langsung
 const MapWithLeaflet = dynamic(
   async () => {
     const L = await import("leaflet");
@@ -24,11 +25,16 @@ const MapWithLeaflet = dynamic(
       shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
     });
 
-    // Helper untuk menggeser peta secara otomatis saat koordinat berubah
+    // Helper untuk menggeser peta dan mereset ukuran otomatis saat dimuat
     function MapViewController({ center }: { center: [number, number] }) {
       const map = useMap();
       useEffect(() => {
-        map.setView(center, map.getZoom(), { animate: true });
+        const timer = setTimeout(() => {
+          map.invalidateSize();
+          map.setView(center, map.getZoom(), { animate: true });
+        }, 50);
+
+        return () => clearTimeout(timer);
       }, [center, map]);
       return null;
     }
@@ -54,20 +60,6 @@ const MapWithLeaflet = dynamic(
       isLocked: boolean;
       onMapClick: (lat: number, lng: number) => void;
     }) {
-      const [isReady, setIsReady] = useState(false);
-
-      useEffect(() => {
-        setIsReady(true);
-      }, []);
-
-      if (!isReady) {
-        return (
-          <div className="w-full h-full flex items-center justify-center bg-slate-100 text-sm text-slate-500">
-            Memuat peta...
-          </div>
-        );
-      }
-
       return (
         <MapContainer
           center={position}
@@ -280,8 +272,14 @@ export default function ApplicationFormPage() {
   const [attempted, setAttempted] = useState(false);
   const [notice, setNotice] = useState("");
 
-  const [mapInput, setMapInput] = useState("-6.174531, 106.826902");
+  const [mapInput, setMapInput] = useState("");
   const [isLocked, setIsLocked] = useState(false);
+
+  // State untuk memastikan peta siap dirender dengan aman saat pindah halaman
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   function revalidate(nextValues: Values, nextTenants: Tenant[]) {
     if (attempted) setErrors(validate(nextValues, nextTenants));
@@ -297,7 +295,7 @@ export default function ApplicationFormPage() {
     };
   }
 
-  // Update koordinat secara live dan geser peta otomatis
+  // Pengetikan manual di input Latitude / Longitude
   function handleCoordChange(key: "longitude" | "latitude") {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       if (isLocked) return;
@@ -308,27 +306,34 @@ export default function ApplicationFormPage() {
       revalidate(next, tenants);
 
       if (key === "longitude") {
-        setMapInput(`${values.latitude || "-6.174531"}, ${val}`);
+        const lat = next.latitude || "";
+        setMapInput(lat ? `${lat}, ${val}` : val);
       } else {
-        setMapInput(`${val}, ${values.longitude || "106.826902"}`);
+        const lng = next.longitude || "";
+        setMapInput(lng ? `${val}, ${lng}` : val);
       }
     };
   }
 
-  // Handle pengetikan di input atas maps secara live
+  // Pengetikan di kotak atas (Tempel link/koordinat) dengan pemisahan koma yang akurat saat dihapus
   const handleMapInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isLocked) return;
     const val = e.target.value;
     setMapInput(val);
-    const match = val.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
-    if (match) {
-      const next = { ...values, latitude: match[1], longitude: match[2] };
-      setValues(next);
-      revalidate(next, tenants);
-    }
+
+    const parts = val.split(",");
+    const latVal = parts[0] !== undefined ? parts[0].trim() : "";
+    const lngVal = parts[1] !== undefined ? parts[1].trim() : "";
+
+    const next = {
+      ...values,
+      latitude: latVal,
+      longitude: lngVal,
+    };
+    setValues(next);
+    revalidate(next, tenants);
   };
 
-  // Tombol "Pasang Titik" (untuk mengunci) atau "Ubah Titik ✎" (untuk membuka kunci)
   const handleApplyCoordinates = () => {
     if (isLocked) {
       setIsLocked(false);
@@ -336,18 +341,17 @@ export default function ApplicationFormPage() {
     }
 
     if (!mapInput.trim()) return;
-    const match = mapInput.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+    const match = mapInput.match(/(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
     if (match) {
       const next = { ...values, latitude: match[1], longitude: match[2] };
       setValues(next);
-      setIsLocked(true); // Kunci setelah pengguna mengecek dan mengklik tombol Pasang Titik
+      setIsLocked(true);
       revalidate(next, tenants);
     } else {
       alert("Format koordinat tidak valid. Contoh: -6.174531, 106.826902");
     }
   };
 
-  // Klik peta memperbarui posisi secara live tanpa langsung mengunci
   const handleMapClick = (clickedLat: number, clickedLng: number) => {
     if (isLocked) return;
     const formattedLat = clickedLat.toFixed(6);
@@ -504,7 +508,7 @@ export default function ApplicationFormPage() {
                 value={mapInput}
                 disabled={isLocked}
                 onChange={handleMapInputChange}
-                placeholder="-6.174531, 106.826902"
+                placeholder="e.g. -6.174531, 106.826902"
                 className="flex-1 px-3.5 py-2 border border-border bg-surface rounded-input text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:bg-slate-100 disabled:cursor-not-allowed"
               />
               <button
@@ -534,11 +538,18 @@ export default function ApplicationFormPage() {
                 </span>
               </div>
             )}
-            <MapWithLeaflet
-              position={mapPosition}
-              isLocked={isLocked}
-              onMapClick={handleMapClick}
-            />
+            
+            {isMounted ? (
+              <MapWithLeaflet
+                position={mapPosition}
+                isLocked={isLocked}
+                onMapClick={handleMapClick}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-slate-100 text-sm text-slate-500">
+                Memuat peta...
+              </div>
+            )}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -547,6 +558,7 @@ export default function ApplicationFormPage() {
               label="Longitude"
               requiredMark
               inputMode="decimal"
+              placeholder="e.g. 106.826902"
               hint="Antara 95 sampai 141, maks. 6 angka di belakang koma"
               value={values.longitude}
               onChange={handleCoordChange("longitude")}
@@ -558,6 +570,7 @@ export default function ApplicationFormPage() {
               label="Latitude"
               requiredMark
               inputMode="decimal"
+              placeholder="e.g. -6.174531"
               hint="Antara -11 sampai 6, maks. 6 angka di belakang koma"
               value={values.latitude}
               onChange={handleCoordChange("latitude")}
