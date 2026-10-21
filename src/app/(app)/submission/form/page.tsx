@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Plus, Send } from "lucide-react";
+import { Plus, Send } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,41 +15,6 @@ import "leaflet/dist/leaflet.css";
 const MapWithLeaflet = dynamic(
   async () => {
     const L = await import("leaflet");
-    const { MapContainer, TileLayer, Marker, useMap, useMapEvents } = await import("react-leaflet");
-
-    // Fix icon marker default Leaflet
-    delete (L.Icon.Default.prototype as any)._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-    });
-
-    // Helper untuk menggeser peta dan mereset ukuran otomatis saat dimuat
-    function MapViewController({ center }: { center: [number, number] }) {
-      const map = useMap();
-      useEffect(() => {
-        const timer = setTimeout(() => {
-          map.invalidateSize();
-          map.setView(center, map.getZoom(), { animate: true });
-        }, 50);
-
-        return () => clearTimeout(timer);
-      }, [center, map]);
-      return null;
-    }
-
-    // Helper untuk menangani klik di dalam peta
-    function MapEventsHandler({ onMapClick, isLocked }: { onMapClick: (lat: number, lng: number) => void; isLocked: boolean }) {
-      useMapEvents({
-        click(e) {
-          if (!isLocked) {
-            onMapClick(e.latlng.lat, e.latlng.lng);
-          }
-        },
-      });
-      return null;
-    }
 
     function LeafletMapComponent({
       position,
@@ -60,25 +25,89 @@ const MapWithLeaflet = dynamic(
       isLocked: boolean;
       onMapClick: (lat: number, lng: number) => void;
     }) {
-      return (
-        <MapContainer
-          center={position}
-          zoom={13}
-          dragging={!isLocked}
-          scrollWheelZoom={!isLocked}
-          touchZoom={!isLocked}
-          doubleClickZoom={true}
-          className="w-full h-full"
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <Marker position={position} />
-          <MapViewController center={position} />
-          <MapEventsHandler onMapClick={onMapClick} isLocked={isLocked} />
-        </MapContainer>
-      );
+      const containerRef = useRef<HTMLDivElement>(null);
+      const mapRef = useRef<ReturnType<typeof L.map> | null>(null);
+      const markerRef = useRef<ReturnType<typeof L.marker> | null>(null);
+      const initialPosition = useRef(position);
+      const onMapClickRef = useRef(onMapClick);
+      const isLockedRef = useRef(isLocked);
+      const [latitude, longitude] = position;
+
+      useEffect(() => {
+        onMapClickRef.current = onMapClick;
+        isLockedRef.current = isLocked;
+      }, [onMapClick, isLocked]);
+
+      useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const map = L.map(container, {
+          center: initialPosition.current,
+          zoom: 13,
+          dragging: !isLockedRef.current,
+          scrollWheelZoom: !isLockedRef.current,
+          touchZoom: !isLockedRef.current,
+          doubleClickZoom: true,
+        });
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        }).addTo(map);
+
+        const marker = L.marker(initialPosition.current, {
+          icon: L.icon({
+            iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+            iconRetinaUrl:
+              "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+            shadowUrl:
+              "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41],
+          }),
+        }).addTo(map);
+        const handleClick = (event: L.LeafletMouseEvent) => {
+          if (!isLockedRef.current) {
+            onMapClickRef.current(event.latlng.lat, event.latlng.lng);
+          }
+        };
+        map.on("click", handleClick);
+        mapRef.current = map;
+        markerRef.current = marker;
+
+        const resizeFrame = requestAnimationFrame(() => map.invalidateSize());
+        return () => {
+          cancelAnimationFrame(resizeFrame);
+          map.off("click", handleClick);
+          map.remove();
+          mapRef.current = null;
+          markerRef.current = null;
+        };
+      }, []);
+
+      useEffect(() => {
+        const map = mapRef.current;
+        const marker = markerRef.current;
+        if (!map || !marker) return;
+
+        const nextPosition: [number, number] = [latitude, longitude];
+        marker.setLatLng(nextPosition);
+        map.panTo(nextPosition);
+      }, [latitude, longitude]);
+
+      useEffect(() => {
+        const map = mapRef.current;
+        if (!map) return;
+
+        const setInteraction = isLocked ? "disable" : "enable";
+        map.dragging[setInteraction]();
+        map.scrollWheelZoom[setInteraction]();
+        map.touchZoom[setInteraction]();
+      }, [isLocked]);
+
+      return <div ref={containerRef} className="w-full h-full" />;
     }
 
     return LeafletMapComponent;
@@ -276,11 +305,6 @@ export default function ApplicationFormPage() {
   const [isLocked, setIsLocked] = useState(false);
 
   // State untuk memastikan peta siap dirender dengan aman saat pindah halaman
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
   function revalidate(nextValues: Values, nextTenants: Tenant[]) {
     if (attempted) setErrors(validate(nextValues, nextTenants));
   }
@@ -539,17 +563,11 @@ export default function ApplicationFormPage() {
               </div>
             )}
             
-            {isMounted ? (
-              <MapWithLeaflet
-                position={mapPosition}
-                isLocked={isLocked}
-                onMapClick={handleMapClick}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-slate-100 text-sm text-slate-500">
-                Memuat peta...
-              </div>
-            )}
+            <MapWithLeaflet
+              position={mapPosition}
+              isLocked={isLocked}
+              onMapClick={handleMapClick}
+            />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -611,7 +629,7 @@ export default function ApplicationFormPage() {
           role="alert"
           className="rounded-card border border-danger bg-danger-bg px-3 py-2 text-sm text-danger"
         >
-          Please fix the highlighted fields before submitting.
+          Please fix the highlighted fields before submitting. 
         </div>
       )}
       {notice && (
