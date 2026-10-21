@@ -41,15 +41,11 @@ function normalizeRole(input: Role): UserRole {
 
 interface AuthContextValue {
   user: AuthUser;
-  role: "Normal User" | "Web Manager" | "Super Admin";
+  role: AuthUser["roleLabel"];
   setRole: (role: Role) => void;
 }
 
-const AuthContext = createContext<AuthContextValue>({
-  user: ROLE_MAP.USER,
-  role: "Normal User",
-  setRole: () => {},
-});
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentRole, setCurrentRole] = useState<UserRole>("USER");

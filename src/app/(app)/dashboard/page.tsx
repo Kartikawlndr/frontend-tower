@@ -3,8 +3,11 @@
 import React, { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
+  Building2,
   Download,
   FileSpreadsheet,
+  Globe2,
+  MapPin,
   RotateCcw,
   Search,
   Settings2,
@@ -289,6 +292,14 @@ const YEAR_OPTIONS = Array.from(
 );
 
 export default function DashboardPage() {
+  const { role } = useAuth();
+
+  // Web Manager dan Super Admin hanya melihat Insights.
+  const canViewInsights =
+    role === "Web Manager" || role === "Super Admin";
+
+  // Normal User hanya melihat Query Data, Tower Map, dan Tower Data.
+  const canViewTowerData = role === "Normal User";
   const [draftFilters, setDraftFilters] =
     useState<QueryFilters>(DEFAULT_FILTERS);
   const [appliedFilters, setAppliedFilters] =
@@ -440,8 +451,321 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-[26px] font-bold text-[#1f2a37]">Dashboard</h1>
+    <div className="space-y-6 pb-12">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-[26px] font-bold text-[#1f2a37]">
+          Dashboard 
+        </h1>
+      </div>
+
+      {canViewInsights && (
+        <>
+      {/* ========================================================= */}
+      {/* SECTION INSIGHTS / WIDGET DARI GAMBAR DIRECTUS */}
+      {/* ========================================================= */}
+
+      {/* 1. TOP CARDS (3 METRICS) */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* Card 1 */}
+        <div className="flex items-center justify-between rounded-[12px] border border-[#e5e7eb] bg-white p-5 shadow-sm">
+          <div>
+            <div className="text-[12px] font-medium text-[#6b7280]">
+              Total Permohonan
+            </div>
+            <div className="mt-1 text-[32px] font-extrabold text-[#6366f1]">
+              83,443
+            </div>
+            <div className="mt-1 text-[12px] text-[#6b7280]">Menara terdaftar</div>
+          </div>
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f0f3ff] text-[#6366f1]">
+            <MapPin className="h-6 w-6" />
+          </div>
+        </div>
+
+        {/* Card 2 */}
+        <div className="flex items-center justify-between rounded-[12px] border border-[#e5e7eb] bg-white p-5 shadow-sm">
+          <div>
+            <div className="text-[12px] font-medium text-[#6b7280]">
+              Total Perusahaan
+            </div>
+            <div className="mt-1 text-[32px] font-extrabold text-[#3b82f6]">
+              24
+            </div>
+            <div className="mt-1 text-[12px] text-[#6b7280]">
+              Instansi pemohon aktif
+            </div>
+          </div>
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#eff6ff] text-[#3b82f6]">
+            <Building2 className="h-6 w-6" />
+          </div>
+        </div>
+
+        {/* Card 3 */}
+        <div className="flex items-center justify-between rounded-[12px] border border-[#e5e7eb] bg-white p-5 shadow-sm">
+          <div>
+            <div className="text-[12px] font-medium text-[#6b7280]">
+              Cakupan Provinsi
+            </div>
+            <div className="mt-1 text-[32px] font-extrabold text-[#10b981]">
+              34
+            </div>
+            <div className="mt-1 text-[12px] text-[#6b7280]">Provinsi terdata</div>
+          </div>
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#ecfdf5] text-[#10b981]">
+            <Globe2 className="h-6 w-6" />
+          </div>
+        </div>
+      </div>
+
+      {/* 2. CHARTS MIDDLE SECTION */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        {/* Donut Chart: Metode Pendaftaran (2 Cols) */}
+        <div className="rounded-[12px] border border-[#e5e7eb] bg-white p-5 shadow-sm lg:col-span-2">
+          <h3 className="text-[14px] font-bold text-[#1f2a37]">
+            Metode Pendaftaran
+          </h3>
+          <div className="mt-4 flex flex-col items-center justify-center sm:flex-row sm:gap-6">
+            {/* SVG Donut Chart */}
+            <div className="relative h-44 w-44">
+              <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
+                <path
+                  className="text-gray-100"
+                  strokeWidth="3.8"
+                  stroke="currentColor"
+                  fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+                {/* Segment 1: Online Mandiri (68%) */}
+                <path
+                  className="text-[#6366f1]"
+                  strokeDasharray="68, 100"
+                  strokeWidth="3.8"
+                  stroke="currentColor"
+                  fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+                {/* Segment 2: Integrasi API (22%) */}
+                <path
+                  className="text-[#f97316]"
+                  strokeDasharray="22, 100"
+                  strokeDashoffset="-68"
+                  strokeWidth="3.8"
+                  stroke="currentColor"
+                  fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+                {/* Segment 3: Manual/Fisik (10%) */}
+                <path
+                  className="text-[#10b981]"
+                  strokeDasharray="10, 100"
+                  strokeDashoffset="-90"
+                  strokeWidth="3.8"
+                  stroke="currentColor"
+                  fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                />
+              </svg>
+            </div>
+
+            {/* Legend */}
+            <div className="mt-4 space-y-2 text-[12px] sm:mt-0">
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full bg-[#6366f1]"></span>
+                <span className="font-medium text-[#1f2a37]">
+                  Online Mandiri 68%
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full bg-[#f97316]"></span>
+                <span className="font-medium text-[#1f2a37]">
+                  Integrasi API 22%
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full bg-[#10b981]"></span>
+                <span className="font-medium text-[#1f2a37]">
+                  Manual/Fisik 10%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Line Chart: Grafik Tren Pendaftar (3 Cols) */}
+        <div className="rounded-[12px] border border-[#e5e7eb] bg-white p-5 shadow-sm lg:col-span-3">
+          <h3 className="text-[14px] font-bold text-[#1f2a37]">
+            Grafik Tren Pendaftar
+          </h3>
+          <div className="mt-4 h-48 w-full">
+            <svg
+              className="h-full w-full overflow-visible"
+              viewBox="0 0 500 150"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient id="gradientLine" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#6366f1" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              {/* Grid Lines */}
+              <line x1="0" y1="30" x2="500" y2="30" stroke="#f3f4f6" strokeWidth="1" />
+              <line x1="0" y1="75" x2="500" y2="75" stroke="#f3f4f6" strokeWidth="1" />
+              <line x1="0" y1="120" x2="500" y2="120" stroke="#f3f4f6" strokeWidth="1" />
+
+              {/* Area Fill */}
+              <path
+                d="M 0 130 Q 40 80, 80 110 T 160 50 T 240 120 T 320 40 T 400 30 T 500 40 L 500 150 L 0 150 Z"
+                fill="url(#gradientLine)"
+              />
+              {/* Curve Line */}
+              <path
+                d="M 0 130 Q 40 80, 80 110 T 160 50 T 240 120 T 320 40 T 400 30 T 500 40"
+                fill="none"
+                stroke="#6366f1"
+                strokeWidth="3"
+              />
+            </svg>
+            <div className="mt-2 flex justify-between text-[10px] text-[#6b7280]">
+              <span>Jan</span>
+              <span>Feb</span>
+              <span>Mar</span>
+              <span>Abr</span>
+              <span>Jun</span>
+              <span>Jul</span>
+              <span>Aug</span>
+              <span>Sep</span>
+              <span>Okt</span>
+              <span>Nov</span>
+              <span>Des</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. BOTTOM CARDS (BAR CHART & AKTIVITAS TABEL) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Top 5 Perusahaan Pemohon (Horizontal Bar Chart) */}
+        <div className="rounded-[12px] border border-[#e5e7eb] bg-white p-5 shadow-sm">
+          <h3 className="mb-4 text-[14px] font-bold text-[#1f2a37]">
+            Top 5 Perusahaan Pemohon
+          </h3>
+          <div className="space-y-3.5 text-[12px]">
+            <div>
+              <div className="mb-1 font-medium text-[#1f2a37]">PT Telkomsel</div>
+              <div className="h-4.5 w-full rounded-full bg-[#f3f4f6]">
+                <div className="h-full w-[85%] rounded-full bg-[#6366f1]"></div>
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 font-medium text-[#1f2a37]">PT Protelindo</div>
+              <div className="h-4.5 w-full rounded-full bg-[#f3f4f6]">
+                <div className="h-full w-[70%] rounded-full bg-[#6366f1]"></div>
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 font-medium text-[#1f2a37]">PT Tower Bersama</div>
+              <div className="h-4.5 w-full rounded-full bg-[#f3f4f6]">
+                <div className="h-full w-[60%] rounded-full bg-[#6366f1]"></div>
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 font-medium text-[#1f2a37]">PT Mitratel</div>
+              <div className="h-4.5 w-full rounded-full bg-[#f3f4f6]">
+                <div className="h-full w-[50%] rounded-full bg-[#6366f1]"></div>
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 font-medium text-[#1f2a37]">
+                PT Centratama
+              </div>
+              <div className="h-4.5 w-full rounded-full bg-[#f3f4f6]">
+                <div className="h-full w-[40%] rounded-full bg-[#6366f1]"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Aktivitas Pendaftaran Terbaru */}
+        <div className="rounded-[12px] border border-[#e5e7eb] bg-white p-5 shadow-sm">
+          <h3 className="mb-4 text-[14px] font-bold text-[#1f2a37]">
+            Aktivitas Pendaftaran Terbaru
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[12px]">
+              <thead>
+                <tr className="border-b border-[#e5e7eb] text-[#6b7280]">
+                  <th className="pb-2 font-medium">Waktu</th>
+                  <th className="pb-2 font-medium">Perusahaan</th>
+                  <th className="pb-2 font-medium">Kab/Kota</th>
+                  <th className="pb-2 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#e5e7eb] text-[#1f2a37]">
+                <tr>
+                  <td className="py-2.5">2024-2021 12:18:37 PM</td>
+                  <td>PT Telkomsel</td>
+                  <td>Kab/Kota</td>
+                  <td>
+                    <span className="rounded-full bg-[#dcfce7] px-2 py-0.5 text-[11px] font-medium text-[#15803d]">
+                      Terverifikasi
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2.5">2024-2021 11:18:32 PM</td>
+                  <td>PT Protelindo</td>
+                  <td>Kab/Kota</td>
+                  <td>
+                    <span className="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[11px] font-medium text-[#b45309]">
+                      Diproses
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2.5">2024-2021 11:27:58 PM</td>
+                  <td>PT Tower Bersama</td>
+                  <td>Kab/Kota</td>
+                  <td>
+                    <span className="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[11px] font-medium text-[#b45309]">
+                      Diproses
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2.5">2024-2021 11:27:55 PM</td>
+                  <td>PT Mitratel</td>
+                  <td>Kab/Kota</td>
+                  <td>
+                    <span className="rounded-full bg-[#dcfce7] px-2 py-0.5 text-[11px] font-medium text-[#15803d]">
+                      Terverifikasi
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2.5">2024-2021 11:27:37 PM</td>
+                  <td>PT Centratama</td>
+                  <td>Kab/Kota</td>
+                  <td>
+                    <span className="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[11px] font-medium text-[#b45309]">
+                      Diproses
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+        </>
+      )}
+
+      {canViewTowerData && (
+        <>
+      {/* ========================================================= */}
+      {/* SECTION ORIGINAL CODE KAMU: QUERY DATA, MAP, & TABLE */}
+      {/* ========================================================= */}
 
       {/* 1. Query Data Card */}
       <form
@@ -958,6 +1282,12 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
+
+
+
+

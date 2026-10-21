@@ -144,7 +144,7 @@ export default function TowerRecordsPage() {
  
   return (
     <div className="mx-auto flex max-w-[1200px] flex-col gap-6">
-      <h1 className="text-page-title">Tower Records (own)</h1>
+      <h1 className="text-page-title">Tower Records</h1>
  
       <Card title="Filter">
         <CardBody className="pt-4">
