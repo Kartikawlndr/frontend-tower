@@ -11,30 +11,82 @@ import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
 
-// Dynamic import komponen react-leaflet secara aman tanpa SSR
-const MapContainer = dynamic(
-  () => import("react-leaflet").then((mod) => mod.MapContainer),
-  { ssr: false }
-);
-const TileLayer = dynamic(
-  () => import("react-leaflet").then((mod) => mod.TileLayer),
-  { ssr: false }
-);
-const Marker = dynamic(
-  () => import("react-leaflet").then((mod) => mod.Marker),
-  { ssr: false }
-);
+// Dynamic import komponen peta secara utuh agar aman dari SSR dan konflik DOM
+const MapWithLeaflet = dynamic(
+  async () => {
+    const L = await import("leaflet");
+    const ReactLeaflet = await import("react-leaflet");
 
-// Komponen helper untuk mendeteksi klik di peta
-function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
-  const { useMapEvents } = require("react-leaflet");
-  useMapEvents({
-    click(e: any) {
-      onMapClick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
+    // Fix icon marker default Leaflet
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    });
+
+    // Helper untuk menggeser peta secara otomatis saat koordinat berubah
+    function MapViewController({ center }: { center: [number, number] }) {
+      const map = ReactLeaflet.useMap();
+      useEffect(() => {
+        map.setView(center, map.getZoom(), { animate: true });
+      }, [center, map]);
+      return null;
+    }
+
+    // Helper untuk menangani klik di dalam peta
+    function MapEventsHandler({ onMapClick, isLocked }: { onMapClick: (lat: number, lng: number) => void; isLocked: boolean }) {
+      ReactLeaflet.useMapEvents({
+        click(e) {
+          if (!isLocked) {
+            onMapClick(e.latlng.lat, e.latlng.lng);
+          }
+        },
+      });
+      return null;
+    }
+
+    function LeafletMapComponent({
+      position,
+      isLocked,
+      onMapClick,
+    }: {
+      position: [number, number];
+      isLocked: boolean;
+      onMapClick: (lat: number, lng: number) => void;
+    }) {
+      return (
+        <ReactLeaflet.MapContainer
+          center={position}
+          zoom={13}
+          dragging={!isLocked}
+          scrollWheelZoom={!isLocked}
+          touchZoom={!isLocked}
+          doubleClickZoom={true}
+          className="w-full h-full"
+        >
+          <ReactLeaflet.TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <ReactLeaflet.Marker position={position} />
+          <MapViewController center={position} />
+          <MapEventsHandler onMapClick={onMapClick} isLocked={isLocked} />
+        </ReactLeaflet.MapContainer>
+      );
+    }
+
+    return LeafletMapComponent;
+  },
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full flex items-center justify-center bg-slate-100 text-sm text-slate-500">
+        Memuat peta...
+      </div>
+    ),
+  }
+);
  
 const JENIS_MENARA = [
   "Greenfield",
@@ -216,21 +268,7 @@ export default function ApplicationFormPage() {
   const [notice, setNotice] = useState("");
 
   const [mapInput, setMapInput] = useState("-6.174531, 106.826902");
-  const [isSet, setIsSet] = useState(true);
-  const [mounted, setMounted] = useState(false);
-
-  // Pastikan peta hanya dirender di sisi client setelah komponen terpasang
-  useEffect(() => {
-    setMounted(true);
-    import("leaflet").then((L) => {
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      });
-    });
-  }, []);
+  const [isLocked, setIsLocked] = useState(false);
 
   function revalidate(nextValues: Values, nextTenants: Tenant[]) {
     if (attempted) setErrors(validate(nextValues, nextTenants));
@@ -238,6 +276,7 @@ export default function ApplicationFormPage() {
  
   function change(key: keyof Values) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      if (isLocked && (key === "longitude" || key === "latitude")) return;
       const next = { ...values, [key]: e.target.value };
       setValues(next);
       setNotice("");
@@ -245,8 +284,10 @@ export default function ApplicationFormPage() {
     };
   }
 
+  // Update koordinat secara live dan geser peta otomatis
   function handleCoordChange(key: "longitude" | "latitude") {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (isLocked) return;
       const val = e.target.value;
       const next = { ...values, [key]: val };
       setValues(next);
@@ -261,26 +302,46 @@ export default function ApplicationFormPage() {
     };
   }
 
+  // Handle pengetikan di input atas maps secara live
+  const handleMapInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isLocked) return;
+    const val = e.target.value;
+    setMapInput(val);
+    const match = val.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+    if (match) {
+      const next = { ...values, latitude: match[1], longitude: match[2] };
+      setValues(next);
+      revalidate(next, tenants);
+    }
+  };
+
+  // Tombol "Pasang Titik" (untuk mengunci) atau "Ubah Titik ✎" (untuk membuka kunci)
   const handleApplyCoordinates = () => {
+    if (isLocked) {
+      setIsLocked(false);
+      return;
+    }
+
     if (!mapInput.trim()) return;
     const match = mapInput.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
     if (match) {
       const next = { ...values, latitude: match[1], longitude: match[2] };
       setValues(next);
-      setIsSet(true);
+      setIsLocked(true); // Kunci setelah pengguna mengecek dan mengklik tombol Pasang Titik
       revalidate(next, tenants);
     } else {
       alert("Format koordinat tidak valid. Contoh: -6.174531, 106.826902");
     }
   };
 
+  // Klik peta memperbarui posisi secara live tanpa langsung mengunci
   const handleMapClick = (clickedLat: number, clickedLng: number) => {
+    if (isLocked) return;
     const formattedLat = clickedLat.toFixed(6);
     const formattedLng = clickedLng.toFixed(6);
     const next = { ...values, latitude: formattedLat, longitude: formattedLng };
     setValues(next);
     setMapInput(`${formattedLat}, ${formattedLng}`);
-    setIsSet(true);
     revalidate(next, tenants);
   };
 
@@ -294,6 +355,7 @@ export default function ApplicationFormPage() {
       value: values[key],
       onChange: change(key),
       error: errors.fields[key],
+      disabled: isLocked && (key === "longitude" || key === "latitude"),
     };
   }
  
@@ -427,40 +489,43 @@ export default function ApplicationFormPage() {
               <input
                 type="text"
                 value={mapInput}
-                onChange={(e) => setMapInput(e.target.value)}
+                disabled={isLocked}
+                onChange={handleMapInputChange}
                 placeholder="-6.174531, 106.826902"
-                className="flex-1 px-3.5 py-2 border border-border bg-surface rounded-input text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="flex-1 px-3.5 py-2 border border-border bg-surface rounded-input text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:bg-slate-100 disabled:cursor-not-allowed"
               />
-              <Button
+              <button
                 type="button"
                 onClick={handleApplyCoordinates}
-                className="whitespace-nowrap"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shadow-sm ${
+                  isLocked
+                    ? "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
+                    : "bg-primary text-white hover:bg-primary/90"
+                }`}
               >
-                {isSet ? "Titik terpasang ✓" : "Pasang titik"}
-              </Button>
+                {isLocked ? "Ubah Titik ✎" : "Pasang Titik"}
+              </button>
             </div>
             <p className="text-xs text-muted">
-              Tombol Pasang titik hanya memproses nilai dari kolom ini.
+              {isLocked 
+                ? "Titik sudah terkunci. Klik 'Ubah Titik' jika ingin mengubah koordinat." 
+                : "Geser/zoom peta atau klik lokasi untuk menyesuaikan, lalu klik 'Pasang Titik' untuk mengunci."}
             </p>
           </div>
 
-          <div className="w-full h-64 sm:h-80 rounded-lg overflow-hidden border border-border z-0">
-            {mounted && (
-              <MapContainer
-                key={`${mapPosition[0]}-${mapPosition[1]}`}
-                center={mapPosition}
-                zoom={13}
-                scrollWheelZoom={false}
-                className="w-full h-full"
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <Marker position={mapPosition} />
-                <MapClickHandler onMapClick={handleMapClick} />
-              </MapContainer>
+          <div className="relative w-full h-64 sm:h-80 rounded-lg overflow-hidden border border-border z-0">
+            {isLocked && (
+              <div className="absolute inset-0 bg-slate-900/10 z-20 flex items-center justify-center pointer-events-none">
+                <span className="bg-white/95 text-slate-800 text-xs font-semibold px-3 py-1.5 rounded-full shadow border border-slate-200">
+                  🔒 Peta Terkunci
+                </span>
+              </div>
             )}
+            <MapWithLeaflet
+              position={mapPosition}
+              isLocked={isLocked}
+              onMapClick={handleMapClick}
+            />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -473,6 +538,7 @@ export default function ApplicationFormPage() {
               value={values.longitude}
               onChange={handleCoordChange("longitude")}
               error={errors.fields.longitude}
+              disabled={isLocked}
             />
             <Input
               id="latitude"
@@ -483,9 +549,16 @@ export default function ApplicationFormPage() {
               value={values.latitude}
               onChange={handleCoordChange("latitude")}
               error={errors.fields.latitude}
+              disabled={isLocked}
             />
             <div className="md:col-span-2">
-              <Input id="alamat" label="Alamat" requiredMark {...field("alamat")} />
+              <Input 
+                id="alamat" 
+                label="Alamat" 
+                requiredMark 
+                {...field("alamat")} 
+                disabled={isLocked} 
+              />
             </div>
           </div>
         </CardBody>
