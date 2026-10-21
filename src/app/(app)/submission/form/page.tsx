@@ -11,11 +11,10 @@ import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
 
-// Dynamic import komponen peta secara utuh agar aman dari SSR dan konflik DOM
 const MapWithLeaflet = dynamic(
   async () => {
     const L = await import("leaflet");
-    const ReactLeaflet = await import("react-leaflet");
+    const { MapContainer, TileLayer, Marker, useMap, useMapEvents } = await import("react-leaflet");
 
     // Fix icon marker default Leaflet
     delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -27,7 +26,7 @@ const MapWithLeaflet = dynamic(
 
     // Helper untuk menggeser peta secara otomatis saat koordinat berubah
     function MapViewController({ center }: { center: [number, number] }) {
-      const map = ReactLeaflet.useMap();
+      const map = useMap();
       useEffect(() => {
         map.setView(center, map.getZoom(), { animate: true });
       }, [center, map]);
@@ -36,7 +35,7 @@ const MapWithLeaflet = dynamic(
 
     // Helper untuk menangani klik di dalam peta
     function MapEventsHandler({ onMapClick, isLocked }: { onMapClick: (lat: number, lng: number) => void; isLocked: boolean }) {
-      ReactLeaflet.useMapEvents({
+      useMapEvents({
         click(e) {
           if (!isLocked) {
             onMapClick(e.latlng.lat, e.latlng.lng);
@@ -55,8 +54,22 @@ const MapWithLeaflet = dynamic(
       isLocked: boolean;
       onMapClick: (lat: number, lng: number) => void;
     }) {
+      const [isReady, setIsReady] = useState(false);
+
+      useEffect(() => {
+        setIsReady(true);
+      }, []);
+
+      if (!isReady) {
+        return (
+          <div className="w-full h-full flex items-center justify-center bg-slate-100 text-sm text-slate-500">
+            Memuat peta...
+          </div>
+        );
+      }
+
       return (
-        <ReactLeaflet.MapContainer
+        <MapContainer
           center={position}
           zoom={13}
           dragging={!isLocked}
@@ -65,14 +78,14 @@ const MapWithLeaflet = dynamic(
           doubleClickZoom={true}
           className="w-full h-full"
         >
-          <ReactLeaflet.TileLayer
+          <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <ReactLeaflet.Marker position={position} />
+          <Marker position={position} />
           <MapViewController center={position} />
           <MapEventsHandler onMapClick={onMapClick} isLocked={isLocked} />
-        </ReactLeaflet.MapContainer>
+        </MapContainer>
       );
     }
 
