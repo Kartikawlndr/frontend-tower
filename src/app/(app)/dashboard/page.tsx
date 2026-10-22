@@ -1115,7 +1115,7 @@ export default function DashboardPage() {
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold text-heading">
-                Query data
+                Cari Data
               </h2>
               <span className="text-xs text-muted">
                 Default bbox: Indonesia (Lon 95–141, Lat -11–6)
@@ -1156,7 +1156,7 @@ export default function DashboardPage() {
                       namaPemilik: e.target.value,
                     }))
                   }
-                  placeholder="Owner name"
+                  placeholder="Nama Pemilik"
                   className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
                 />
               </div>
@@ -1200,7 +1200,7 @@ export default function DashboardPage() {
                   }
                   className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading focus:border-primary focus:outline-none"
                 >
-                  <option value="">All</option>
+                  <option value="">Semua</option>
                   <option value="Greenfield">Greenfield</option>
                   <option value="Rooftop">Rooftop</option>
                   <option value="Monopole">Monopole</option>
@@ -1244,7 +1244,7 @@ export default function DashboardPage() {
                       alamat: e.target.value,
                     }))
                   }
-                  placeholder="Street / City"
+                  placeholder="Jalan / Kota"
                   className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
                 />
               </div>
@@ -1360,11 +1360,11 @@ export default function DashboardPage() {
             <div className="mt-5 flex items-center justify-end gap-3 border-t border-border-soft pt-4">
               <Button type="button" variant="outline" size="sm" onClick={handleReset}>
                 <RotateCcw className="h-3.5 w-3.5" />
-                <span>Reset</span>
+                <span>Atur Ulang</span>
               </Button>
               <Button type="submit" variant="primary" size="sm">
                 <Search className="h-3.5 w-3.5" />
-                <span>Apply query</span>
+                <span>Terapkan Filter</span>
               </Button>
             </div>
           </form>
@@ -1453,7 +1453,7 @@ export default function DashboardPage() {
                   title="Unduh kolom yang sedang tampil"
                 >
                   <Download className="h-3.5 w-3.5" />
-                  <span>Download</span>
+                  <span>Unduh</span>
                 </Button>
 
                 <Button
@@ -1464,7 +1464,7 @@ export default function DashboardPage() {
                   title="Ekspor seluruh data ke file CSV"
                 >
                   <FileSpreadsheet className="h-3.5 w-3.5" />
-                  <span>Export</span>
+                  <span>Ekspor</span>
                 </Button>
               </div>
             </div>
@@ -1585,7 +1585,7 @@ export default function DashboardPage() {
                   disabled={safePage <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
-                  Prev
+                  Sebelumnya
                 </Button>
                 <span className="px-2 font-medium text-heading">
                   Halaman {safePage} dari {totalPages}
@@ -1597,7 +1597,7 @@ export default function DashboardPage() {
                   disabled={safePage >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 >
-                  Next
+                  Selanjutnya
                 </Button>
               </div>
             </div>

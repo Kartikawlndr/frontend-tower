@@ -601,7 +601,6 @@ export default function ApplicationFormPage() {
                 label="Alamat" 
                 requiredMark 
                 {...field("alamat")} 
-                disabled={isLocked} 
               />
             </div>
           </div>
