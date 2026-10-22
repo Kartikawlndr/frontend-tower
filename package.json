@@ -19,11 +19,11 @@
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-<<<<<<< Updated upstream
-=======
+
+    "react-hot-toast": "^2.4.1",
     "react-leaflet": "^5.0.0",
     "recharts": "^3.10.1",
->>>>>>> Stashed changes
+
     "tailwind-merge": "^3.7.0",
     "xlsx": "^0.18.5"
   },
