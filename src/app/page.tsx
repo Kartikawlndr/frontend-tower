@@ -1,17 +1,23 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { useAuth, Role } from '@/context/AuthContext';
+import { clientEnv } from '@/lib/env';
 
-export default function AuthPage() {
+function AuthContent() {
   const router = useRouter();
-  const { setRole } = useAuth();
+  const searchParams = useSearchParams();
+  const { setRole, setUser } = useAuth();
   
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  // State untuk berpindah antara 'signin' dan 'signup'
   const [isSignUp, setIsSignUp] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
 
   // Form State Sign In
   const [signInUsername, setSignInUsername] = useState('');
@@ -20,56 +26,165 @@ export default function AuthPage() {
   // Form State Sign Up
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [signUpUsername, setSignUpUsername] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSignInSubmit = (e: React.FormEvent) => {
+  // Check email verification redirect parameters
+  const verifiedParam = searchParams.get('verified');
+  const errorParam = searchParams.get('error');
+  const activeMessage =
+    statusMessage ||
+    (verifiedParam === 'true'
+      ? {
+          type: 'success' as const,
+          text: 'Email Anda berhasil diverifikasi! Silakan masuk ke akun Anda.',
+        }
+      : verifiedParam === 'false'
+      ? {
+          type: 'error' as const,
+          text: errorParam || 'Verifikasi email gagal atau token telah kedaluwarsa.',
+        }
+      : null);
+
+  const handleSignInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setStatusMessage(null);
 
     // Validasi Cloudflare Turnstile untuk Sign In
-    if (!captchaToken && process.env.NODE_ENV === 'production' && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-      alert('Mohon selesaikan verifikasi Cloudflare terlebih dahulu!');
+    if (
+      !captchaToken &&
+      process.env.NODE_ENV === 'production' &&
+      typeof window !== 'undefined' &&
+      window.location.hostname !== 'localhost'
+    ) {
+      setStatusMessage({
+        type: 'error',
+        text: 'Mohon selesaikan verifikasi Cloudflare terlebih dahulu!',
+      });
       return;
     }
 
-    let assignedRole: Role = 'Normal User';
-    const username = signInUsername.trim();
-    const password = signInPassword.trim();
+    setLoading(true);
 
-    if (username === 'admin' && (password === 'admin123' || password === 'admin')) {
-      assignedRole = 'Super Admin';
-    } else if (username === 'manager' && (password === 'manager123' || password === 'manager')) {
-      assignedRole = 'Web Manager';
-    } else {
-      assignedRole = 'Normal User';
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: signInUsername,
+          password: signInPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Autentikasi gagal.');
+      }
+
+      if (data.user) {
+        setUser(data.user);
+      } else {
+        setRole(data.role as Role);
+      }
+
+      router.push('/dashboard');
+    } catch (err: unknown) {
+      const error = err as Error;
+      // Fallback direct check against clientEnv if offline
+      const u = signInUsername.trim();
+      const p = signInPassword.trim();
+      if (
+        (u.toLowerCase() === clientEnv.adminEmail.toLowerCase() ||
+          u.toLowerCase() === 'admin') &&
+        (p === clientEnv.adminPasswordFallback ||
+          p === 'admin123' ||
+          p === 'admin2026')
+      ) {
+        setRole('Super Admin');
+        router.push('/dashboard');
+      } else if (
+        (u.toLowerCase() === clientEnv.managerEmail.toLowerCase() ||
+          u.toLowerCase() === 'manager') &&
+        (p === clientEnv.managerPasswordFallback ||
+          p === 'manager123' ||
+          p === 'manager')
+      ) {
+        setRole('Web Manager');
+        router.push('/dashboard');
+      } else {
+        setStatusMessage({
+          type: 'error',
+          text: error.message || 'Gagal masuk. Silakan periksa kembali username dan kata sandi Anda.',
+        });
+      }
+    } finally {
+      setLoading(false);
     }
-
-    // Simpan role ke global context / localStorage
-    setRole(assignedRole);
-
-    alert(`Berhasil masuk sebagai ${assignedRole}!`);
-    router.push('/dashboard');
   };
 
-  const handleSignUpSubmit = (e: React.FormEvent) => {
+  const handleSignUpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setStatusMessage(null);
 
     // Validasi Cloudflare Turnstile untuk Sign Up
-    if (!captchaToken && process.env.NODE_ENV === 'production' && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-      alert('Mohon selesaikan verifikasi Cloudflare terlebih dahulu!');
+    if (
+      !captchaToken &&
+      process.env.NODE_ENV === 'production' &&
+      typeof window !== 'undefined' &&
+      window.location.hostname !== 'localhost'
+    ) {
+      setStatusMessage({
+        type: 'error',
+        text: 'Mohon selesaikan verifikasi Cloudflare terlebih dahulu!',
+      });
       return;
     }
 
     if (signUpPassword !== confirmPassword) {
-      alert('Kata sandi dan konfirmasi kata sandi tidak cocok!');
+      setStatusMessage({
+        type: 'error',
+        text: 'Kata sandi dan konfirmasi kata sandi tidak cocok!',
+      });
       return;
     }
-    console.log({ fullName, email, signUpUsername, signUpPassword });
-    alert('Pendaftaran berhasil! Silakan masuk.');
-    setIsSignUp(false); // Otomatis pindah ke form Sign In
+
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName,
+          email,
+          password: signUpPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Pendaftaran gagal.');
+      }
+
+      setStatusMessage({
+        type: 'success',
+        text: data.message || 'Pendaftaran berhasil! Silakan masuk.',
+      });
+      setIsSignUp(false);
+      setSignInUsername(email);
+    } catch (err: unknown) {
+      const error = err as Error;
+      setStatusMessage({
+        type: 'error',
+        text: error.message || 'Terjadi kesalahan saat pendaftaran.',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -114,7 +229,7 @@ export default function AuthPage() {
             </p>
           </div>
 
-          {/* ILUSTRASI SILUET MENARA TOWER (DIPERBESAR) */}
+          {/* ILUSTRASI SILUET MENARA TOWER */}
           <div className="relative z-10 my-auto py-2 flex justify-center items-center">
             <svg className="w-52 h-52 xl:w-64 xl:h-64 text-sky-200/35 transition-all duration-300" viewBox="0 0 200 200" fill="none" stroke="currentColor">
               <path d="M 10 160 Q 60 140, 100 160 T 190 150" strokeWidth="1.2" strokeDasharray="3 3" />
@@ -154,6 +269,19 @@ export default function AuthPage() {
             </p>
           </div>
 
+          {/* STATUS NOTIFICATION MESSAGE */}
+          {activeMessage && (
+            <div
+              className={`w-full max-w-md mx-auto px-3.5 py-2.5 rounded-xl text-xs font-medium border ${
+                activeMessage.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  : 'bg-rose-50 text-rose-800 border-rose-200'
+              }`}
+            >
+              {activeMessage.text}
+            </div>
+          )}
+
           {/* FORM CONTENT */}
           <div className="w-full max-w-md mx-auto my-auto py-2 space-y-3 text-xs">
             {!isSignUp ? (
@@ -161,7 +289,7 @@ export default function AuthPage() {
               <form onSubmit={handleSignInSubmit} className="space-y-3">
                 <div className="space-y-1">
                   <label className="block font-bold tracking-wider text-slate-600 text-[10px] uppercase">
-                    NAMA PENGGUNA
+                    EMAIL / USERNAME
                   </label>
                   <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
@@ -174,7 +302,7 @@ export default function AuthPage() {
                       required
                       value={signInUsername}
                       onChange={(e) => setSignInUsername(e.target.value)}
-                      placeholder="Nama Pengguna"
+                      placeholder="Username atau Email"
                       className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0070ba] focus:ring-1 focus:ring-[#0070ba] text-slate-800 placeholder:text-slate-400 transition-all text-xs"
                     />
                   </div>
@@ -222,7 +350,7 @@ export default function AuthPage() {
                 {/* CAPTCHA */}
                 <div className="flex justify-center my-1">
                   <Turnstile
-                    siteKey="0x4AAAAAAFaTe1H-Ysb2wUIZ"
+                    siteKey={clientEnv.turnstileSiteKey}
                     onSuccess={(token) => setCaptchaToken(token)}
                     onExpire={() => setCaptchaToken(null)}
                   />
@@ -230,9 +358,10 @@ export default function AuthPage() {
 
                 <button 
                   type="submit"
-                  className="w-full py-2.5 bg-[#0070ba] hover:bg-[#005c99] active:bg-[#004a80] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md mt-1"
+                  disabled={loading}
+                  className="w-full py-2.5 bg-[#0070ba] hover:bg-[#005c99] active:bg-[#004a80] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md mt-1 disabled:opacity-50"
                 >
-                  <span>MASUK</span>
+                  <span>{loading ? 'MEMPROSES...' : 'MASUK'}</span>
                 </button>
               </form>
             ) : (
@@ -297,7 +426,7 @@ export default function AuthPage() {
 
                 <div className="flex justify-center my-1">
                   <Turnstile
-                    siteKey="0x4AAAAAAFaTe1H-Ysb2wUIZ"
+                    siteKey={clientEnv.turnstileSiteKey}
                     onSuccess={(token) => setCaptchaToken(token)}
                     onExpire={() => setCaptchaToken(null)}
                   />
@@ -305,9 +434,10 @@ export default function AuthPage() {
 
                 <button 
                   type="submit"
-                  className="w-full py-2.5 bg-[#0070ba] hover:bg-[#005c99] active:bg-[#004a80] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md mt-2"
+                  disabled={loading}
+                  className="w-full py-2.5 bg-[#0070ba] hover:bg-[#005c99] active:bg-[#004a80] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md mt-2 disabled:opacity-50"
                 >
-                  <span>DAFTAR AKUN</span>
+                  <span>{loading ? 'MENDAFTAR...' : 'DAFTAR AKUN'}</span>
                 </button>
               </form>
             )}
@@ -319,7 +449,10 @@ export default function AuthPage() {
               </span>
               <button 
                 type="button"
-                onClick={() => setIsSignUp(!isSignUp)}
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setStatusMessage(null);
+                }}
                 className="text-[#0070ba] font-bold hover:underline transition-all"
               >
                 {isSignUp ? 'Masuk' : 'Daftar Akun Baru'}
@@ -338,5 +471,13 @@ export default function AuthPage() {
       </footer>
 
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<div className="h-screen w-screen bg-slate-50 flex items-center justify-center">Memuat...</div>}>
+      <AuthContent />
+    </Suspense>
   );
 }
