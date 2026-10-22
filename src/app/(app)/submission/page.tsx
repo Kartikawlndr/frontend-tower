@@ -1,5 +1,5 @@
 "use client";
- 
+
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,55 +9,55 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, Th, Td } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
- 
+
 const METHODS = [
   {
     value: "upload",
     href: "/submission/upload",
     title: "Unggah Excel",
-    description: "Daftarkan banyak menara sekaligus dari berkas .xlsx.",
+    description: "Daftarkan banyak data menara sekaligus dari file .xlsx.",
     icon: FileSpreadsheet,
   },
   {
     value: "form",
     href: "/submission/form",
-    title: "Formulir Pengajuan",
-    description: "Daftarkan satu menara dengan mengisi formulir.",
+    title: "Formulir Pendaftaran",
+    description: "Daftarkan satu data menara dengan mengisi formulir langsung.",
     icon: ClipboardList,
   },
 ] as const;
- 
+
 type MethodValue = (typeof METHODS)[number]["value"];
- 
+
 const RECENT = [
-  { reg: "REG-2026-000003", date: "19/10/2026", method: "Upload Excel", status: "Terdaftar" },
-  { reg: "REG-2026-000002", date: "17/10/2026", method: "Application Form", status: "Terdaftar" },
-  { reg: "REG-2026-000001", date: "15/10/2026", method: "Upload Excel", status: "Ditolak" },
+  { reg: "REG-2026-000003", date: "19/10/2026", method: "Unggah Excel", status: "Terdaftar" },
+  { reg: "REG-2026-000002", date: "17/10/2026", method: "Formulir Pendaftaran", status: "Terdaftar" },
+  { reg: "REG-2026-000001", date: "15/10/2026", method: "Unggah Excel", status: "Ditolak" },
 ] as const;
- 
+
 const STATUS_VARIANT = {
   Terdaftar: "success",
   Ditolak: "destructive",
 } as const;
- 
+
 export default function SubmissionPage() {
   const router = useRouter();
   const [method, setMethod] = useState<MethodValue>("upload");
- 
+
   const selected = METHODS.find((m) => m.value === method)!;
- 
+
   return (
     <div className="mx-auto flex max-w-240 flex-col gap-6">
-      <h1 className="text-page-title">Metode Pengajuan</h1>
- 
+      <h1 className="text-page-title">Pengajuan Data</h1>
+
       <Card title="Metode Pengajuan">
         <CardBody className="flex flex-col gap-4 pt-4">
           <p className="text-helper">
-            Pilih cara Anda mendaftarkan data menara.
+            Pilih metode untuk mendaftarkan data menara Anda.
           </p>
           <div
             role="radiogroup"
-            aria-label="Submission method"
+            aria-label="Metode Pengajuan"
             className="grid gap-4 sm:grid-cols-2"
           >
             {METHODS.map((m) => {
@@ -97,13 +97,13 @@ export default function SubmissionPage() {
           </div>
         </CardBody>
       </Card>
- 
-      <Card title="Your recent submissions">
+
+      <Card title="Pengajuan Terbaru Anda">
         <CardBody className="flex flex-col gap-4 pt-4">
           <Table>
             <thead>
               <tr>
-                <Th>No. Registration</Th>
+                <Th>No. Registrasi</Th>
                 <Th>Tanggal</Th>
                 <Th>Metode</Th>
                 <Th>Status</Th>

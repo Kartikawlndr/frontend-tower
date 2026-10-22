@@ -56,7 +56,7 @@ export function Dialog({
           </div>
           <button
             type="button"
-            aria-label="Close"
+            aria-label="Tutup"
             onClick={onClose}
             className="cursor-pointer text-muted hover:text-heading"
           >

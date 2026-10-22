@@ -4,6 +4,12 @@ import { useState } from "react";
 import { Check, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
+const ROLE_DISPLAY: Record<string, string> = {
+  "Normal User": "Pengguna",
+  "Web Manager": "Manajer Web",
+  "Super Admin": "Super Admin",
+};
+
 export default function AccountPage() {
   const { user } = useAuth();
   const [currentPassword, setCurrentPassword] = useState("");
@@ -31,15 +37,15 @@ export default function AccountPage() {
     setSuccess(false);
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setError("All password fields are required.");
+      setError("Semua kolom kata sandi wajib diisi.");
       return;
     }
     if (newPassword.length < 8) {
-      setError("New password must be at least 8 characters.");
+      setError("Kata sandi baru minimal harus 8 karakter.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("New password and confirmation do not match.");
+      setError("Kata sandi baru dan konfirmasi kata sandi tidak cocok.");
       return;
     }
 
@@ -51,17 +57,17 @@ export default function AccountPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-[26px] font-bold text-[#1f2a37]">Account</h1>
+      <h1 className="text-[26px] font-bold text-[#1f2a37]">Akun</h1>
 
       {/* Profile Card */}
       <div className="rounded-[10px] border border-[#e5e7eb] bg-white p-6">
         <h2 className="mb-4 text-[16px] font-semibold text-[#1f2a37]">
-          Profile
+          Profil Pengguna
         </h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Name
+              Nama
             </label>
             <input
               type="text"
@@ -83,12 +89,12 @@ export default function AccountPage() {
           </div>
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Role
+              Peran
             </label>
             <input
               type="text"
               disabled
-              value={user.roleLabel}
+              value={ROLE_DISPLAY[user.roleLabel] || user.roleLabel}
               className="h-9 w-full cursor-not-allowed rounded-lg border border-[#d0d5db] bg-[#f5f6f8] px-3 text-[13px] text-[#6b7280]"
             />
           </div>
@@ -101,7 +107,7 @@ export default function AccountPage() {
         className="rounded-[10px] border border-[#e5e7eb] bg-white p-6"
       >
         <h2 className="mb-4 text-[16px] font-semibold text-[#1f2a37]">
-          Change own password
+          Ubah Kata Sandi Sendiri
         </h2>
 
         {error && (
@@ -112,7 +118,7 @@ export default function AccountPage() {
 
         {success && (
           <div className="mb-4 rounded-lg border border-[#016db0] bg-[#eaf5fc] px-4 py-2.5 text-[13px] text-[#016db0]">
-            Password updated successfully (demo state).
+            Kata sandi berhasil diperbarui (status demo).
           </div>
         )}
 
@@ -120,21 +126,21 @@ export default function AccountPage() {
           {/* Current Password */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Current password <span className="text-[#8f181b]">*</span>
+              Kata sandi saat ini <span className="text-[#8f181b]">*</span>
             </label>
             <div className="relative">
               <input
                 type={showCurrent ? "text" : "password"}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
+                placeholder="Masukkan kata sandi saat ini"
                 className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white pl-3 pr-9 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => setShowCurrent((v) => !v)}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6b7280] hover:text-[#1f2a37]"
-                aria-label={showCurrent ? "Hide password" : "Show password"}
+                aria-label={showCurrent ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
               >
                 {showCurrent ? (
                   <EyeOff className="h-4 w-4" />
@@ -148,21 +154,21 @@ export default function AccountPage() {
           {/* New Password */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              New password <span className="text-[#8f181b]">*</span>
+              Kata sandi baru <span className="text-[#8f181b]">*</span>
             </label>
             <div className="relative">
               <input
                 type={showNew ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password"
+                placeholder="Masukkan kata sandi baru"
                 className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white pl-3 pr-9 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => setShowNew((v) => !v)}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6b7280] hover:text-[#1f2a37]"
-                aria-label={showNew ? "Hide password" : "Show password"}
+                aria-label={showNew ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
               >
                 {showNew ? (
                   <EyeOff className="h-4 w-4" />
@@ -176,21 +182,21 @@ export default function AccountPage() {
           {/* Confirm Password */}
           <div>
             <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Confirm password <span className="text-[#8f181b]">*</span>
+              Konfirmasi kata sandi <span className="text-[#8f181b]">*</span>
             </label>
             <div className="relative">
               <input
                 type={showConfirm ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
+                placeholder="Konfirmasi kata sandi baru"
                 className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white pl-3 pr-9 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirm((v) => !v)}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#6b7280] hover:text-[#1f2a37]"
-                aria-label={showConfirm ? "Hide password" : "Show password"}
+                aria-label={showConfirm ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
               >
                 {showConfirm ? (
                   <EyeOff className="h-4 w-4" />
@@ -208,14 +214,14 @@ export default function AccountPage() {
             onClick={handleCancel}
             className="inline-flex h-9 items-center justify-center rounded-[10px] border border-[#d0d5db] bg-white px-4 text-[13px] font-medium text-[#1f2a37] transition-colors hover:bg-[#f5f6f8]"
           >
-            Cancel
+            Batal
           </button>
           <button
             type="submit"
             className="inline-flex h-9 items-center justify-center gap-2 rounded-[10px] bg-[#016db0] px-4 text-[13px] font-medium text-white transition-colors hover:bg-[#015a92]"
           >
             <Check className="h-4 w-4" />
-            Update password
+            Perbarui Kata Sandi
           </button>
         </div>
       </form>

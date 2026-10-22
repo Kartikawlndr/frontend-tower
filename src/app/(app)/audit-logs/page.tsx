@@ -3,6 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
+const ROLE_DISPLAY: Record<string, string> = {
+  "Normal User": "Pengguna",
+  "Web Manager": "Manajer Web",
+  "Super Admin": "Super Admin",
+  USER: "Pengguna",
+  MANAGER: "Manajer Web",
+  ADMIN: "Super Admin",
+};
+
 export default function AuditLogsPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -16,16 +25,16 @@ export default function AuditLogsPage() {
             🔒
           </div>
           <h2 className="text-lg font-bold text-danger">
-            403 - Access denied
+            403 - Akses Ditolak
           </h2>
           <p className="text-xs text-muted">
-            Your role ({user.roleLabel}) cannot open: Audit Logs
+            Peran Anda ({ROLE_DISPLAY[user.roleLabel] || user.roleLabel}) tidak dapat mengakses: Log Audit
           </p>
           <button
             onClick={() => router.push("/dashboard")}
             className="px-4 py-2 bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card"
           >
-            Back to Dashboard
+            Kembali ke Dashboard
           </button>
         </div>
       </div>
@@ -34,20 +43,20 @@ export default function AuditLogsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-page-title">Audit Logs</h1>
+      <h1 className="text-page-title">Log Audit</h1>
       <section className="bg-surface p-6 rounded-card border border-border-soft shadow-card space-y-4">
         <h2 className="text-sm font-bold text-heading">
-          System activities and history logs
+          Aktivitas sistem dan catatan riwayat log
         </h2>
         <div className="overflow-x-auto border border-border-soft rounded-input">
           <table className="w-full text-left text-xs">
             <thead className="bg-table-head-bg border-b border-border-soft text-heading font-semibold">
               <tr>
-                <th className="p-3.5">Timestamp</th>
-                <th className="p-3.5">User</th>
-                <th className="p-3.5">Role</th>
-                <th className="p-3.5">Action</th>
-                <th className="p-3.5">Details</th>
+                <th className="p-3.5">Waktu</th>
+                <th className="p-3.5">Pengguna</th>
+                <th className="p-3.5">Peran</th>
+                <th className="p-3.5">Aksi</th>
+                <th className="p-3.5">Rincian</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-soft text-muted">

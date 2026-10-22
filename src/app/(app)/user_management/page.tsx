@@ -5,6 +5,15 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { clientEnv } from "@/lib/env";
 
+const ROLE_DISPLAY: Record<string, string> = {
+  "Normal User": "Pengguna",
+  "Web Manager": "Manajer Web",
+  "Super Admin": "Super Admin",
+  USER: "Pengguna",
+  MANAGER: "Manajer Web",
+  ADMIN: "Super Admin",
+};
+
 export default function UserManagement() {
   const { user } = useAuth();
   const router = useRouter();
@@ -21,17 +30,16 @@ export default function UserManagement() {
             🔒
           </div>
           <h2 className="text-lg font-bold text-danger">
-            403 - Access denied
+            403 - Akses Ditolak
           </h2>
           <p className="text-xs text-muted">
-            Your role ({user.roleLabel}) cannot open: User Management, Create
-            user accounts, Assign roles
+            Peran Anda ({ROLE_DISPLAY[user.roleLabel] || user.roleLabel}) tidak dapat mengakses: Manajemen Pengguna, Pembuatan akun pengguna, Pengaturan peran
           </p>
           <button
             onClick={() => router.push("/dashboard")}
             className="px-4 py-2 bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card"
           >
-            Back to Dashboard
+            Kembali ke Dashboard
           </button>
         </div>
       </div>
@@ -43,36 +51,36 @@ export default function UserManagement() {
       {/* VIEW 1: USER MANAGEMENT LIST */}
       {currentView === "list" && (
         <>
-          <h1 className="text-page-title">User Management</h1>
+          <h1 className="text-page-title">Manajemen Pengguna</h1>
 
           <section className="bg-surface p-6 rounded-card border border-border-soft shadow-card space-y-4">
-            <h2 className="text-sm font-bold text-heading">Users</h2>
+            <h2 className="text-sm font-bold text-heading">Daftar Pengguna</h2>
 
             {/* Filter & Search Bar */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div className="space-y-1">
-                <label className="text-field-label">Search</label>
+                <label className="text-field-label">Cari</label>
                 <input
                   type="text"
-                  placeholder="Name or email"
+                  placeholder="Nama atau email"
                   className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-field-label">Role</label>
+                <label className="text-field-label">Peran</label>
                 <select className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary">
-                  <option>All roles</option>
-                  <option>User</option>
-                  <option>Web Manager</option>
+                  <option>Semua peran</option>
+                  <option>Pengguna</option>
+                  <option>Manajer Web</option>
                   <option>Super Admin</option>
                 </select>
               </div>
               <div className="space-y-1">
                 <label className="text-field-label">Status</label>
                 <select className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary">
-                  <option>All</option>
-                  <option>Active</option>
-                  <option>Inactive</option>
+                  <option>Semua</option>
+                  <option>Aktif</option>
+                  <option>Tidak Aktif</option>
                 </select>
               </div>
               <div>
@@ -80,7 +88,7 @@ export default function UserManagement() {
                   onClick={() => setCurrentView("create")}
                   className="w-full h-[var(--height-button)] px-4 bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card flex items-center justify-center gap-2"
                 >
-                  <span>+ Create user</span>
+                  <span>+ Tambah Pengguna</span>
                 </button>
               </div>
             </div>
@@ -90,12 +98,12 @@ export default function UserManagement() {
               <table className="w-full text-left text-xs">
                 <thead className="bg-table-head-bg border-b border-border-soft text-heading font-semibold">
                   <tr>
-                    <th className="p-3.5">Name</th>
+                    <th className="p-3.5">Nama</th>
                     <th className="p-3.5">Email</th>
-                    <th className="p-3.5">Role</th>
+                    <th className="p-3.5">Peran</th>
                     <th className="p-3.5">Status</th>
-                    <th className="p-3.5">Created</th>
-                    <th className="p-3.5 text-right pr-25"> Action</th>
+                    <th className="p-3.5">Dibuat Pada</th>
+                    <th className="p-3.5 text-right pr-25">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-soft text-muted">
@@ -104,21 +112,21 @@ export default function UserManagement() {
                       name: "Super Administrator",
                       email: clientEnv.adminEmail,
                       role: "Super Admin",
-                      status: "Active",
+                      status: "Aktif",
                       created: "2026-01-01",
                     },
                     {
-                      name: "Web Manager",
+                      name: "Manajer Web",
                       email: clientEnv.managerEmail,
-                      role: "Web Manager",
-                      status: "Active",
+                      role: "Manajer Web",
+                      status: "Aktif",
                       created: "2026-01-02",
                     },
                     {
                       name: "PT Tower Bersama",
                       email: "operator@towerbersama.com",
-                      role: "Normal User",
-                      status: "Active",
+                      role: "Pengguna",
+                      status: "Aktif",
                       created: "2026-02-15",
                     },
                   ].map((row, idx) => (
@@ -141,7 +149,7 @@ export default function UserManagement() {
                           onClick={() => setCurrentView("edit")}
                           className="text-primary hover:underline"
                         >
-                          Edit
+                          Ubah
                         </button>
                       </td>
                     </tr>
@@ -152,9 +160,9 @@ export default function UserManagement() {
 
             {/* Pagination footer */}
             <div className="flex items-center justify-between pt-2 text-xs text-muted">
-              <span>Showing 1-3 of 3</span>
+              <span>Menampilkan 1-3 dari 3</span>
               <div className="flex items-center gap-2">
-                <span>Rows per page</span>
+                <span>Baris per halaman</span>
                 <select className="border border-border rounded-input px-2 py-1 bg-surface">
                   <option>10</option>
                 </select>
@@ -182,19 +190,19 @@ export default function UserManagement() {
       {/* VIEW 2: CREATE USER */}
       {currentView === "create" && (
         <>
-          <h1 className="text-page-title">User Management / Create User</h1>
+          <h1 className="text-page-title">Manajemen Pengguna / Tambah Pengguna</h1>
 
           <div className="bg-surface p-6 rounded-card border border-border-soft shadow-card space-y-6">
             <div className="border border-border-soft rounded-card p-5 space-y-4">
               <h3 className="text-xs font-bold text-heading uppercase tracking-wider">
-                Account details
+                Rincian Akun
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-field-label">Full name *</label>
+                  <label className="text-field-label">Nama lengkap *</label>
                   <input
                     type="text"
-                    placeholder="Enter name"
+                    placeholder="Masukkan nama lengkap"
                     className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary"
                   />
                 </div>
@@ -202,25 +210,25 @@ export default function UserManagement() {
                   <label className="text-field-label">Email *</label>
                   <input
                     type="email"
-                    placeholder="Enter email"
+                    placeholder="Masukkan email"
                     className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-field-label">Initial password *</label>
+                  <label className="text-field-label">Kata sandi awal *</label>
                   <input
                     type="password"
-                    placeholder="Enter password"
+                    placeholder="Masukkan kata sandi"
                     className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-field-label">
-                    Confirm password *
+                    Konfirmasi kata sandi *
                   </label>
                   <input
                     type="password"
-                    placeholder="Repeat password"
+                    placeholder="Ulangi kata sandi"
                     className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary"
                   />
                 </div>
@@ -230,7 +238,7 @@ export default function UserManagement() {
             {/* Role Selection */}
             <div className="border border-border-soft rounded-card p-5 space-y-3">
               <h3 className="text-xs font-bold text-heading uppercase tracking-wider">
-                Role
+                Peran
               </h3>
               <div className="space-y-3">
                 <label className="flex items-start gap-3 cursor-pointer">
@@ -241,9 +249,9 @@ export default function UserManagement() {
                     className="mt-0.5 accent-primary"
                   />
                   <div>
-                    <p className="text-xs font-bold text-heading">User</p>
+                    <p className="text-xs font-bold text-heading">Pengguna</p>
                     <p className="text-2xs text-muted">
-                      Upload and view own submissions and records
+                      Unggah dan lihat pengajuan serta data sendiri
                     </p>
                   </div>
                 </label>
@@ -255,10 +263,10 @@ export default function UserManagement() {
                   />
                   <div>
                     <p className="text-xs font-bold text-heading">
-                      Web Manager
+                      Manajer Web
                     </p>
                     <p className="text-2xs text-muted">
-                      View all submissions, records and audit logs
+                      Lihat semua pengajuan, data, dan log audit
                     </p>
                   </div>
                 </label>
@@ -273,7 +281,7 @@ export default function UserManagement() {
                       Super Admin
                     </p>
                     <p className="text-2xs text-muted">
-                      Full access including account management
+                      Akses penuh termasuk manajemen akun pengguna
                     </p>
                   </div>
                 </label>
@@ -288,7 +296,7 @@ export default function UserManagement() {
                 className="w-4 h-4 accent-primary rounded"
               />
               <span className="text-xs font-semibold text-heading">
-                Account active
+                Akun aktif
               </span>
             </div>
 
@@ -298,13 +306,13 @@ export default function UserManagement() {
                 onClick={() => setCurrentView("list")}
                 className="px-4 h-[var(--height-button)] border border-border text-heading rounded-card text-xs font-semibold hover:bg-canvas transition-colors"
               >
-                ✕ Cancel
+                ✕ Batal
               </button>
               <button
                 onClick={() => setCurrentView("list")}
                 className="px-4 h-[var(--height-button)] bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card"
               >
-                + Create user
+                + Tambah Pengguna
               </button>
             </div>
           </div>
@@ -314,19 +322,19 @@ export default function UserManagement() {
       {/* VIEW 3: EDIT USER */}
       {currentView === "edit" && (
         <>
-          <h1 className="text-page-title">Edit User</h1>
+          <h1 className="text-page-title">Ubah Pengguna</h1>
 
           <div className="bg-surface p-6 rounded-card border border-border-soft shadow-card space-y-6">
             <div className="border border-border-soft rounded-card p-5 space-y-4">
               <h3 className="text-xs font-bold text-heading uppercase tracking-wider">
-                User information
+                Informasi Pengguna
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-field-label">Full name</label>
+                  <label className="text-field-label">Nama lengkap</label>
                   <input
                     type="text"
-                    defaultValue="User name"
+                    defaultValue="Nama Pengguna"
                     className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-input-fill"
                   />
                 </div>
@@ -344,12 +352,12 @@ export default function UserManagement() {
             {/* Role Account Type */}
             <div className="border border-border-soft rounded-card p-5 space-y-2">
               <h3 className="text-xs font-bold text-heading uppercase tracking-wider">
-                Role
+                Peran
               </h3>
-              <label className="text-field-label">Account type</label>
+              <label className="text-field-label">Tipe akun</label>
               <select className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary">
-                <option>User</option>
-                <option>Web Manager</option>
+                <option>Pengguna</option>
+                <option>Manajer Web</option>
                 <option>Super Admin</option>
               </select>
             </div>
@@ -357,31 +365,31 @@ export default function UserManagement() {
             {/* Reset Password Section */}
             <div className="border border-border-soft rounded-card p-5 space-y-4">
               <h3 className="text-xs font-bold text-heading uppercase tracking-wider">
-                Reset password
+                Atur Ulang Kata Sandi
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-field-label">New password</label>
+                  <label className="text-field-label">Kata sandi baru</label>
                   <input
                     type="password"
-                    placeholder="Enter new password"
+                    placeholder="Masukkan kata sandi baru"
                     className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-field-label">
-                    Confirm new password
+                    Konfirmasi kata sandi baru
                   </label>
                   <input
                     type="password"
-                    placeholder="Repeat new password"
+                    placeholder="Ulangi kata sandi baru"
                     className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary"
                   />
                 </div>
               </div>
               <div className="flex justify-end pt-2">
                 <button className="px-4 h-[var(--height-button)] bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card flex items-center gap-2">
-                  <span>Reset password</span>
+                  <span>Atur Ulang Kata Sandi</span>
                 </button>
               </div>
             </div>
@@ -389,7 +397,7 @@ export default function UserManagement() {
             {/* Account Status */}
             <div className="border border-border-soft rounded-card p-5 space-y-3">
               <h3 className="text-xs font-bold text-heading uppercase tracking-wider">
-                Account status
+                Status Akun
               </h3>
               <div className="flex items-center gap-3">
                 <input
@@ -398,19 +406,19 @@ export default function UserManagement() {
                   className="w-4 h-4 accent-primary rounded"
                 />
                 <span className="text-xs font-semibold text-heading">
-                  Account active
+                  Akun aktif
                 </span>
               </div>
               <p className="text-2xs text-faint">
-                Deactivate to block login. Reactivate to restore access.
+                Nonaktifkan untuk memblokir akses masuk. Aktifkan kembali untuk memulihkan akses.
               </p>
 
               <div className="flex items-center gap-3 pt-2">
                 <button className="px-4 h-[var(--height-button)] bg-danger text-on-primary rounded-card text-xs font-semibold hover:bg-danger-hover transition-colors shadow-card">
-                  ✕ Deactivate account
+                  ✕ Nonaktifkan Akun
                 </button>
                 <button className="px-4 h-[var(--height-button)] bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card">
-                  ✓ Reactivate account
+                  ✓ Aktifkan Kembali Akun
                 </button>
               </div>
             </div>
@@ -421,13 +429,13 @@ export default function UserManagement() {
                 onClick={() => setCurrentView("list")}
                 className="px-4 h-[var(--height-button)] border border-border text-heading rounded-card text-xs font-semibold hover:bg-canvas transition-colors"
               >
-                ✕ Cancel
+                ✕ Batal
               </button>
               <button
                 onClick={() => setCurrentView("list")}
                 className="px-4 h-[var(--height-button)] bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card"
               >
-                Save changes
+                Simpan Perubahan
               </button>
             </div>
           </div>

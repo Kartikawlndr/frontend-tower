@@ -121,7 +121,7 @@ const MapWithLeaflet = dynamic(
     ),
   }
 );
- 
+
 const JENIS_MENARA = [
   "Greenfield",
   "Rooftop",
@@ -129,7 +129,7 @@ const JENIS_MENARA = [
   "Guyed",
   "Self-supporting (SST)",
 ];
- 
+
 type Values = {
   kode: string;
   pemilik: string;
@@ -143,14 +143,14 @@ type Values = {
   kapSewa: string;
   kapSendiri: string;
 };
- 
+
 type Tenant = { id: number; name: string };
- 
+
 type Errors = {
   fields: Partial<Record<keyof Values, string>>;
   tenants: Record<number, string>;
 };
- 
+
 const EMPTY: Values = {
   kode: "",
   pemilik: "",
@@ -164,54 +164,54 @@ const EMPTY: Values = {
   kapSewa: "",
   kapSendiri: "",
 };
- 
+
 function textError(value: string) {
   const v = value.trim();
-  if (!v) return "Required";
-  if (v.length > 50) return "Max 50 characters";
+  if (!v) return "Wajib diisi";
+  if (v.length > 50) return "Maksimal 50 karakter";
   return undefined;
 }
- 
+
 function coordError(value: string, min: number, max: number) {
   const v = value.trim();
-  if (!v) return "Required";
-  if (!/^-?\d+(\.\d{1,6})?$/.test(v)) return "Enter a number with up to 6 decimals";
+  if (!v) return "Wajib diisi";
+  if (!/^-?\d+(\.\d{1,6})?$/.test(v)) return "Masukkan angka hingga 6 desimal";
   const n = Number(v);
-  if (n < min || n > max) return `Must be between ${min} and ${max}`;
+  if (n < min || n > max) return `Harus antara ${min} dan ${max}`;
   return undefined;
 }
- 
+
 function validate(values: Values, tenants: Tenant[]): Errors {
   const fields: Errors["fields"] = {};
   const set = (key: keyof Values, message: string | undefined) => {
     if (message) fields[key] = message;
   };
- 
+
   set("kode", textError(values.kode));
   set("pemilik", textError(values.pemilik));
-  set("jenis", values.jenis ? undefined : "Required");
+  set("jenis", values.jenis ? undefined : "Wajib diisi");
   set("longitude", coordError(values.longitude, 95, 141));
   set("latitude", coordError(values.latitude, -11, 6));
   set("alamat", textError(values.alamat));
   set("kapMaks", textError(values.kapMaks));
   set("kapSewa", textError(values.kapSewa));
   set("kapSendiri", textError(values.kapSendiri));
- 
+
   const year = new Date().getFullYear();
   const tahun = values.tahun.trim();
   if (!tahun) {
-    set("tahun", "Required");
+    set("tahun", "Wajib diisi");
   } else if (!/^\d{4}$/.test(tahun) || Number(tahun) < 1900 || Number(tahun) > year) {
-    set("tahun", `Enter a 4-digit year from 1900 to ${year}`);
+    set("tahun", `Masukkan 4 digit tahun dari 1900 hingga ${year}`);
   }
- 
+
   const tinggi = values.tinggi.trim();
   if (!tinggi) {
-    set("tinggi", "Required");
+    set("tinggi", "Wajib diisi");
   } else if (!/^\d{1,3}$/.test(tinggi) || Number(tinggi) < 1) {
-    set("tinggi", "Enter a whole number from 1 to 999 (meters)");
+    set("tinggi", "Masukkan bilangan bulat dari 1 sampai 999 (meter)");
   }
- 
+
   const tenantErrors: Record<number, string> = {};
   const seen = new Set<string>();
   tenants.forEach((t) => {
@@ -221,17 +221,17 @@ function validate(values: Values, tenants: Tenant[]): Errors {
       return;
     }
     const key = t.name.trim().toLowerCase();
-    if (seen.has(key)) tenantErrors[t.id] = "Duplicate tenant";
+    if (seen.has(key)) tenantErrors[t.id] = "Penyelenggara duplikat";
     else seen.add(key);
   });
- 
+
   return { fields, tenants: tenantErrors };
 }
- 
+
 function hasErrors(e: Errors) {
   return Object.keys(e.fields).length > 0 || Object.keys(e.tenants).length > 0;
 }
- 
+
 function YearField({
   value,
   onChange,
@@ -243,54 +243,54 @@ function YearField({
 }) {
   return (
     <div className="flex w-full flex-col gap-1">
-    <label htmlFor="tahun-pembangunan" className="text-field-label">
-      Tahun Pembangunan
-      <span className="ml-0.5 text-danger">*</span>
-    </label>
-    <div className="relative">
-      <select
-        id="tahun-pembangunan"
-        value={value}
-        onChange={onChange}
-        aria-invalid={error ? "true" : "false"}
-        aria-describedby="tahun-pembangunan-note"
-        className={cn(
-          "h-9 w-full rounded-input border border-border bg-surface pl-2.5 pr-9 text-sm text-text transition-colors duration-150 focus:border-primary focus:outline-none appearance-none cursor-pointer",
-          error && "border-danger"
-        )}
-      >
-        <option value="" disabled>Pilih tahun pembangunan</option>
-        {Array.from({ length: 2026 - 1900 + 1 }, (_, index) => 1900 + index)
-          .reverse()
-          .map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
-      </select>
-      
-      <svg
-        className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-      </svg>
+      <label htmlFor="tahun-pembangunan" className="text-field-label">
+        Tahun Pembangunan
+        <span className="ml-0.5 text-danger">*</span>
+      </label>
+      <div className="relative">
+        <select
+          id="tahun-pembangunan"
+          value={value}
+          onChange={onChange}
+          aria-invalid={error ? "true" : "false"}
+          aria-describedby="tahun-pembangunan-note"
+          className={cn(
+            "h-9 w-full rounded-input border border-border bg-surface pl-2.5 pr-9 text-sm text-text transition-colors duration-150 focus:border-primary focus:outline-none appearance-none cursor-pointer",
+            error && "border-danger"
+          )}
+        >
+          <option value="" disabled>Pilih tahun pembangunan</option>
+          {Array.from({ length: 2026 - 1900 + 1 }, (_, index) => 1900 + index)
+            .reverse()
+            .map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+        </select>
+        
+        <svg
+          className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+      {error ? (
+        <p id="tahun-pembangunan-note" className="text-helper text-danger" role="alert">
+          {error}
+        </p>
+      ) : (
+        <p id="tahun-pembangunan-note" className="text-helper">
+          Tahun 1900 hingga tahun ini
+        </p>
+      )}
     </div>
-    {error ? (
-      <p id="tahun-pembangunan-note" className="text-helper text-danger" role="alert">
-        {error}
-      </p>
-    ) : (
-      <p id="tahun-pembangunan-note" className="text-helper">
-        Tahun 1900 hingga tahun ini
-      </p>
-    )}
-  </div>
   );
 }
- 
+
 export default function ApplicationFormPage() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -304,11 +304,10 @@ export default function ApplicationFormPage() {
   const [mapInput, setMapInput] = useState("");
   const [isLocked, setIsLocked] = useState(false);
 
-  // State untuk memastikan peta siap dirender dengan aman saat pindah halaman
   function revalidate(nextValues: Values, nextTenants: Tenant[]) {
     if (attempted) setErrors(validate(nextValues, nextTenants));
   }
- 
+
   function change(key: keyof Values) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       if (isLocked && (key === "longitude" || key === "latitude")) return;
@@ -390,7 +389,7 @@ export default function ApplicationFormPage() {
     parseFloat(values.latitude) || -6.174531,
     parseFloat(values.longitude) || 106.826902,
   ];
- 
+
   function field(key: keyof Values) {
     return {
       value: values[key],
@@ -399,24 +398,24 @@ export default function ApplicationFormPage() {
       disabled: isLocked && (key === "longitude" || key === "latitude"),
     };
   }
- 
+
   function setTenantName(id: number, name: string) {
     const next = tenants.map((t) => (t.id === id ? { ...t, name } : t));
     setTenants(next);
     setNotice("");
     revalidate(values, next);
   }
- 
+
   function addTenant() {
     setTenants([...tenants, { id: nextId.current++, name: "" }]);
   }
- 
+
   function removeTenant(id: number) {
     const next = tenants.filter((t) => t.id !== id);
     setTenants(next);
     revalidate(values, next);
   }
- 
+
   function focusFirstInvalid() {
     requestAnimationFrame(() => {
       formRef.current
@@ -424,7 +423,7 @@ export default function ApplicationFormPage() {
         ?.focus();
     });
   }
- 
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setAttempted(true);
@@ -437,13 +436,13 @@ export default function ApplicationFormPage() {
     }
     router.push("/submission/result/registered");
   }
- 
+
   function handleDraft() {
-    setNotice("Drafts will be stored once the database is connected.");
+    setNotice("Draf akan disimpan setelah database terhubung.");
   }
- 
+
   const invalid = attempted && hasErrors(errors);
- 
+
   return (
     <form
       ref={formRef}
@@ -451,21 +450,21 @@ export default function ApplicationFormPage() {
       noValidate
       className="mx-auto flex max-w-[960px] flex-col gap-6"
     >
-      <h1 className="text-page-title">Application Form</h1>
- 
-      <Card title="Tower identity">
+      <h1 className="text-page-title">Formulir Pendaftaran</h1>
+
+      <Card title="Identitas Menara">
         <CardBody className="grid gap-4 pt-4 md:grid-cols-2">
           <Input 
             id="kode-menara" 
             label="Kode/ID Menara" 
-            placeholder="e.g. TOW-JKT-001" 
+            placeholder="Contoh: TOW-JKT-001" 
             requiredMark 
             {...field("kode")} 
           />
           <Input 
             id="nama-pemilik" 
             label="Nama Pemilik Menara" 
-            placeholder="Owner name" 
+            placeholder="Nama pemilik menara" 
             requiredMark 
             {...field("pemilik")} 
           />
@@ -475,7 +474,7 @@ export default function ApplicationFormPage() {
             error={errors.fields.tahun}
           />
           <Select id="jenis-menara" label="Jenis Menara" requiredMark {...field("jenis")}>
-            <option value="">Select type</option>
+            <option value="">Pilih jenis menara</option>
             {JENIS_MENARA.map((j) => (
               <option key={j} value={j}>
                 {j}
@@ -484,8 +483,8 @@ export default function ApplicationFormPage() {
           </Select>
         </CardBody>
       </Card>
- 
-      <Card title="Penyelenggara">
+
+      <Card title="Penyelenggara Jaringan (Tenant)">
         <CardBody className="flex flex-col gap-4 pt-4">
           <p className="text-helper">
             Setiap baris mewakili satu data penyewa
@@ -507,20 +506,20 @@ export default function ApplicationFormPage() {
                 disabled={tenants.length === 1}
                 onClick={() => removeTenant(t.id)}
               >
-                Remove
+                Hapus
               </Button>
             </div>
           ))}
           <div>
             <Button type="button" variant="outline" onClick={addTenant}>
               <Plus className="h-4 w-4" strokeWidth={2} />
-              Add Penyelenggara
+              Tambah Penyelenggara
             </Button>
           </div>
         </CardBody>
       </Card>
- 
-      <Card title="Location">
+
+      <Card title="Lokasi Menara">
         <CardBody className="flex flex-col gap-5 pt-4">
           <div className="space-y-1.5">
             <label className="block text-sm font-semibold text-slate-700">
@@ -532,7 +531,7 @@ export default function ApplicationFormPage() {
                 value={mapInput}
                 disabled={isLocked}
                 onChange={handleMapInputChange}
-                placeholder="e.g. -6.174531, 106.826902"
+                placeholder="Contoh: -6.174531, 106.826902"
                 className="flex-1 px-3.5 py-2 border border-border bg-surface rounded-input text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:bg-slate-100 disabled:cursor-not-allowed"
               />
               <button
@@ -576,7 +575,7 @@ export default function ApplicationFormPage() {
               label="Longitude"
               requiredMark
               inputMode="decimal"
-              placeholder="e.g. 106.826902"
+              placeholder="Contoh: 106.826902"
               hint="Antara 95 sampai 141, maks. 6 angka di belakang koma"
               value={values.longitude}
               onChange={handleCoordChange("longitude")}
@@ -588,7 +587,7 @@ export default function ApplicationFormPage() {
               label="Latitude"
               requiredMark
               inputMode="decimal"
-              placeholder="e.g. -6.174531"
+              placeholder="Contoh: -6.174531"
               hint="Antara -11 sampai 6, maks. 6 angka di belakang koma"
               value={values.latitude}
               onChange={handleCoordChange("latitude")}
@@ -606,15 +605,15 @@ export default function ApplicationFormPage() {
           </div>
         </CardBody>
       </Card>
- 
-      <Card title="Specification">
+
+      <Card title="Spesifikasi Menara">
         <CardBody className="grid gap-4 pt-4 md:grid-cols-2">
           <Input
             id="tinggi-menara"
             label="Tinggi Menara (AGL)"
             requiredMark
             inputMode="numeric"
-            hint="Meters, up to 3 digits"
+            hint="Meter, hingga 3 digit"
             {...field("tinggi")}
           />
           <Input id="kapasitas-maksimal" label="Kapasitas Maksimal" requiredMark {...field("kapMaks")} />
@@ -622,13 +621,13 @@ export default function ApplicationFormPage() {
           <Input id="kapasitas-sendiri" label="Kapasitas Digunakan Sendiri" requiredMark {...field("kapSendiri")} />
         </CardBody>
       </Card>
- 
+
       {invalid && (
         <div
           role="alert"
           className="rounded-card border border-danger bg-danger-bg px-3 py-2 text-sm text-danger"
         >
-          Please fix the highlighted fields before submitting. 
+          Mohon perbaiki kolom yang ditandai sebelum mengirimkan formulir.
         </div>
       )}
       {notice && (
@@ -639,7 +638,7 @@ export default function ApplicationFormPage() {
           {notice}
         </div>
       )}
- 
+
       <div className="flex justify-end gap-3">
         <Button
           type="button"
@@ -647,14 +646,14 @@ export default function ApplicationFormPage() {
           className="text-primary"
           onClick={() => router.push("/submission")}
         >
-          Cancel
+          Batal
         </Button>
         <Button type="button" variant="amber" onClick={handleDraft}>
-          Save as draft
+          Simpan sebagai Draf
         </Button>
         <Button type="submit">
           <Send className="h-4 w-4" strokeWidth={2} />
-          Submit
+          Kirim Pengajuan
         </Button>
       </div>
     </form>

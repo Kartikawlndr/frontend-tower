@@ -29,21 +29,21 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
-  { href: "/submission", label: "Data Submission", icon: Upload },
-  { href: "/tower-records", label: "Tower Records", icon: Database },
+  { href: "/submission", label: "Pengajuan Data", icon: Upload },
+  { href: "/tower-records", label: "Data Menara", icon: Database },
   {
     href: "/audit-logs",
-    label: "Audit Logs",
+    label: "Log Audit",
     icon: FileText,
     roles: ["MANAGER", "ADMIN"],
   },
   {
     href: "/user_management",
-    label: "User Management",
+    label: "Manajemen Pengguna",
     icon: Users,
     roles: ["ADMIN"],
   },
-  { href: "/account", label: "Account", icon: User },
+  { href: "/account", label: "Akun", icon: User },
 ];
 
 function NavItems({
@@ -99,10 +99,16 @@ function ActiveNavItems({
 }
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
-  { value: "USER", label: "Normal User" },
-  { value: "MANAGER", label: "Web Manager" },
+  { value: "USER", label: "Pengguna Standar" },
+  { value: "MANAGER", label: "Manajer Web" },
   { value: "ADMIN", label: "Super Admin" },
 ];
+
+const ROLE_DISPLAY: Record<string, string> = {
+  "Normal User": "Pengguna Standar",
+  "Web Manager": "Manajer Web",
+  "Super Admin": "Super Admin",
+};
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -117,7 +123,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
       <a href="#main-content" className="skip-link">
-        Skip to main content
+        Lewati ke konten utama
       </a>
 
       {/* ───── Header ───── */}
@@ -143,11 +149,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={() => setRoleMenuOpen(!roleMenuOpen)}
             className="flex items-center gap-2 text-on-primary"
-            aria-label="User menu"
+            aria-label="Menu pengguna"
             aria-expanded={roleMenuOpen}
           >
             <User className="h-4 w-4" strokeWidth={2} />
-            <span suppressHydrationWarning className="text-sm font-semibold">{user.roleLabel}</span>
+            <span suppressHydrationWarning className="text-sm font-semibold">
+              {ROLE_DISPLAY[user.roleLabel] || user.roleLabel}
+            </span>
             {roleMenuOpen ? (
               <ChevronUp className="h-4 w-4" strokeWidth={2} />
             ) : (
@@ -195,7 +203,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           )}
         >
           <nav
-            aria-label="Main"
+            aria-label="Navigasi Utama"
             className="flex flex-1 flex-col gap-1 px-2 py-4"
           >
             <Suspense
@@ -218,14 +226,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 logout();
                 router.push("/");
               }}
-              title={collapsed ? "Log out" : undefined}
+              title={collapsed ? "Keluar" : undefined}
               className={cn(
                 "mt-1 flex h-10 items-center gap-3 rounded-card px-3 text-base text-logout transition-colors duration-150 hover:bg-danger-bg",
                 collapsed && "justify-center"
               )}
             >
               <LogOut className="h-4 w-4 shrink-0" strokeWidth={2} />
-              {!collapsed && <span>Log out</span>}
+              {!collapsed && <span>Keluar</span>}
             </button>
           </nav>
 
@@ -242,12 +250,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 )}
                 strokeWidth={2}
               />
-              {!collapsed && <span>Collapse menu</span>}
+              {!collapsed && <span>Sembunyikan menu</span>}
             </button>
             {!collapsed && (
               <div className="mt-2 text-2xs text-faint">
-                <p>App version 0.1</p>
-                <p>Copyright</p>
+                <p>Versi Aplikasi 0.1</p>
+                <p>Hak Cipta © 2026</p>
               </div>
             )}
           </div>

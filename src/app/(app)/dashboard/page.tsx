@@ -23,6 +23,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
+const ROLE_DISPLAY: Record<string, string> = {
+  "Normal User": "Pengguna",
+  "Web Manager": "Manajer Web",
+  "Super Admin": "Super Admin",
+};
+
 // Dynamically import the Leaflet map to avoid SSR window errors
 const TowerMap = dynamic(
   () =>
@@ -33,7 +39,7 @@ const TowerMap = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex h-105 w-full items-center justify-center rounded-lg border border-[#d0d5db] bg-[#e7f3fb] text-[13px] text-[#6b7280]">
-        Loading interactive tower map...
+        Memuat peta interaktif menara...
       </div>
     ),
   }
@@ -640,7 +646,7 @@ export default function DashboardPage() {
               variant={isSuperAdmin ? "default" : isWebManager ? "info" : "outline"}
               className="text-[11px]"
             >
-              {role}
+              {ROLE_DISPLAY[role] || role}
             </Badge>
           </div>
           <p className="mt-1 text-xs text-muted">
@@ -669,7 +675,7 @@ export default function DashboardPage() {
             size="sm"
             onClick={fetchStats}
             disabled={loadingStats}
-            title="Refresh dashboard data"
+            title="Segarkan data dashboard"
           >
             <RotateCcw
               className={`h-3.5 w-3.5 text-primary ${loadingStats ? "animate-spin" : ""}`}
@@ -911,7 +917,7 @@ export default function DashboardPage() {
                     <span className="h-3.5 w-3.5 rounded-full bg-[#016db0]"></span>
                     <div>
                       <div className="font-semibold text-heading">
-                        Upload Excel ({displayMethods.excelPercent}%)
+                        Unggah Excel ({displayMethods.excelPercent}%)
                       </div>
                       <div className="text-2xs text-muted">
                         {displayMethods.excelCount} berkas massal
@@ -1079,7 +1085,13 @@ export default function DashboardPage() {
                         <td className="py-3 max-w-[150px] truncate text-muted">
                           {act.company}
                         </td>
-                        <td className="py-3 text-muted">{act.method}</td>
+                        <td className="py-3 text-muted">
+                          {act.method === "Upload Excel"
+                            ? "Unggah Excel"
+                            : act.method === "Application Form"
+                            ? "Formulir Pendaftaran"
+                            : act.method}
+                        </td>
                         <td className="py-3 text-right">
                           <span
                             className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
@@ -1090,7 +1102,11 @@ export default function DashboardPage() {
                                 : "bg-danger-bg text-danger"
                             }`}
                           >
-                            {act.status}
+                            {act.status === "Registered"
+                              ? "Terdaftar"
+                              : act.status === "Draft"
+                              ? "Draf"
+                              : "Ditolak"}
                           </span>
                         </td>
                       </tr>
@@ -1137,7 +1153,7 @@ export default function DashboardPage() {
                       kodeId: e.target.value,
                     }))
                   }
-                  placeholder="e.g. TOW-JKT-001"
+                  placeholder="Contoh: TOW-JKT-001"
                   className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
                 />
               </div>
@@ -1225,7 +1241,7 @@ export default function DashboardPage() {
                       tenant: e.target.value,
                     }))
                   }
-                  placeholder="e.g. Telkomsel"
+                  placeholder="Contoh: Telkomsel"
                   className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
                 />
               </div>
@@ -1331,7 +1347,7 @@ export default function DashboardPage() {
                       tinggiMin: e.target.value,
                     }))
                   }
-                  placeholder="e.g. 30"
+                  placeholder="Contoh: 30"
                   className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
                 />
               </div>
@@ -1350,7 +1366,7 @@ export default function DashboardPage() {
                       registrationNo: e.target.value,
                     }))
                   }
-                  placeholder="e.g. REG-2026-000101"
+                  placeholder="Contoh: REG-2026-000101"
                   className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
                 />
               </div>
