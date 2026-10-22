@@ -1,8 +1,8 @@
 "use client";
- 
+
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
- 
+
 export interface PaginationProps {
   page: number;
   pageSize: number;
@@ -11,9 +11,9 @@ export interface PaginationProps {
   onPageSizeChange?: (size: number) => void;
   pageSizeOptions?: number[];
 }
- 
+
 type Item = number | "gap-start" | "gap-end";
- 
+
 function buildItems(page: number, count: number): Item[] {
   if (count <= 7) return Array.from({ length: count }, (_, i) => i + 1);
   const items: Item[] = [1];
@@ -25,10 +25,10 @@ function buildItems(page: number, count: number): Item[] {
   items.push(count);
   return items;
 }
- 
+
 const SQUARE =
   "flex h-8 min-w-8 items-center justify-center rounded-input border px-2 text-sm transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50";
- 
+
 export function Pagination({
   page,
   pageSize,
@@ -41,13 +41,13 @@ export function Pagination({
   const current = Math.min(page, pageCount);
   const from = total === 0 ? 0 : (current - 1) * pageSize + 1;
   const to = Math.min(current * pageSize, total);
- 
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-3 text-helper">
         {onPageSizeChange && (
           <label className="flex items-center gap-2">
-            Rows per page
+            Baris per halaman
             <select
               value={pageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
@@ -62,14 +62,14 @@ export function Pagination({
           </label>
         )}
         <span>
-          Showing {from}-{to} of {total}
+          Menampilkan {from}-{to} dari {total}
         </span>
       </div>
- 
-      <nav aria-label="Pagination" className="flex items-center gap-1">
+
+      <nav aria-label="Navigasi halaman" className="flex items-center gap-1">
         <button
           type="button"
-          aria-label="Previous page"
+          aria-label="Halaman sebelumnya"
           disabled={current === 1}
           onClick={() => onPageChange(current - 1)}
           className={cn(SQUARE, "border-border bg-surface text-heading hover:bg-canvas")}
@@ -81,7 +81,7 @@ export function Pagination({
             <button
               key={item}
               type="button"
-              aria-label={`Page ${item}`}
+              aria-label={`Halaman ${item}`}
               aria-current={item === current ? "page" : undefined}
               onClick={() => onPageChange(item)}
               className={cn(
@@ -101,7 +101,7 @@ export function Pagination({
         )}
         <button
           type="button"
-          aria-label="Next page"
+          aria-label="Halaman berikutnya"
           disabled={current === pageCount}
           onClick={() => onPageChange(current + 1)}
           className={cn(SQUARE, "border-border bg-surface text-heading hover:bg-canvas")}
