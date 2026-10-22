@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "@/context/AuthContext";
 import React, { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
