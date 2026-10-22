@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/context/AuthContext";
+import { clientEnv } from "@/lib/env";
 import {
   Building2,
   Download,
@@ -12,7 +13,15 @@ import {
   RotateCcw,
   Search,
   Settings2,
+  Server,
+  Database,
+  ShieldCheck,
+  CheckCircle2,
+  Layers,
+  ArrowUpRight,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 // Dynamically import the Leaflet map to avoid SSR window errors
 const TowerMap = dynamic(
@@ -98,14 +107,14 @@ const SAMPLE_DASHBOARD_TOWERS: TowerRecord[] = [
   {
     id: "4",
     kodeId: "TOW-MDN-004",
-    namaPemilik: "PT Solusi Tunas Pratama",
+    namaPemilik: "PT Dayamitra Telekomunikasi",
     tahun: 2021,
-    jenisMenara: "Self-supporting",
-    tenants: ["Indosat", "XL Axiata"],
+    jenisMenara: "Greenfield",
+    tenants: ["Telkomsel", "XL Axiata"],
     longitude: 98.672226,
     latitude: 3.595196,
-    alamat: "Jl. Balai Kota No. 2, Medan",
-    tinggiAgl: 65,
+    alamat: "Jl. Balai Kota No. 1, Medan",
+    tinggiAgl: 52,
     kapasitasMaks: 4,
     registrationNo: "REG-2026-000104",
     status: "REGISTERED",
@@ -113,119 +122,119 @@ const SAMPLE_DASHBOARD_TOWERS: TowerRecord[] = [
   {
     id: "5",
     kodeId: "TOW-MKS-005",
-    namaPemilik: "PT Dayamitra Telekomunikasi",
+    namaPemilik: "PT Centratama Telekomunikasi",
     tahun: 2022,
-    jenisMenara: "Greenfield",
-    tenants: ["Telkomsel", "Smartfren"],
-    longitude: 119.432731,
+    jenisMenara: "Guyed",
+    tenants: ["Indosat"],
+    longitude: 119.432732,
     latitude: -5.147665,
-    alamat: "Jl. Ahmad Yani No. 2, Makassar",
-    tinggiAgl: 55,
+    alamat: "Jl. Urip Sumoharjo No. 88, Makassar",
+    tinggiAgl: 60,
     kapasitasMaks: 3,
     registrationNo: "REG-2026-000105",
     status: "REGISTERED",
   },
   {
     id: "6",
-    kodeId: "TOW-DPS-006",
-    namaPemilik: "PT Bali Towerindo Sentra",
-    tahun: 2021,
-    jenisMenara: "Monopole",
-    tenants: ["Telkomsel", "XL Axiata"],
-    longitude: 115.212629,
-    latitude: -8.670458,
-    alamat: "Jl. Raya Puputan No. 10, Denpasar",
-    tinggiAgl: 40,
+    kodeId: "TOW-SMG-006",
+    namaPemilik: "PT Tower Bersama",
+    tahun: 2017,
+    jenisMenara: "Greenfield",
+    tenants: ["Telkomsel", "Smartfren"],
+    longitude: 110.42083,
+    latitude: -6.993056,
+    alamat: "Jl. Pahlawan No. 7, Semarang",
+    tinggiAgl: 48,
     kapasitasMaks: 3,
     registrationNo: "REG-2026-000106",
     status: "REGISTERED",
   },
   {
     id: "7",
-    kodeId: "TOW-BPN-007",
-    namaPemilik: "PT Tower Bersama",
-    tahun: 2023,
-    jenisMenara: "Self-supporting",
-    tenants: ["Telkomsel", "Indosat"],
-    longitude: 116.8312,
-    latitude: -1.265386,
-    alamat: "Jl. Jenderal Sudirman No. 1, Balikpapan",
-    tinggiAgl: 60,
-    kapasitasMaks: 4,
+    kodeId: "TOW-YOG-007",
+    namaPemilik: "PT Profesional Telekomunikasi",
+    tahun: 2020,
+    jenisMenara: "Rooftop",
+    tenants: ["XL Axiata"],
+    longitude: 110.36949,
+    latitude: -7.79558,
+    alamat: "Jl. Malioboro No. 56, Yogyakarta",
+    tinggiAgl: 30,
+    kapasitasMaks: 2,
     registrationNo: "REG-2026-000107",
     status: "REGISTERED",
   },
   {
     id: "8",
-    kodeId: "TOW-PLM-008",
-    namaPemilik: "PT Profesional Telekomunikasi",
-    tahun: 2017,
-    jenisMenara: "Guyed",
-    tenants: ["Indosat"],
-    longitude: 104.745804,
-    latitude: -2.990934,
-    alamat: "Jl. Kapten A. Rivai, Palembang",
-    tinggiAgl: 50,
-    kapasitasMaks: 2,
+    kodeId: "TOW-DPS-008",
+    namaPemilik: "PT Dayamitra Telekomunikasi",
+    tahun: 2023,
+    jenisMenara: "Monopole",
+    tenants: ["Telkomsel", "Indosat"],
+    longitude: 115.216667,
+    latitude: -8.65,
+    alamat: "Jl. Gajah Mada No. 12, Denpasar",
+    tinggiAgl: 40,
+    kapasitasMaks: 3,
     registrationNo: "REG-2026-000108",
     status: "REGISTERED",
   },
   {
     id: "9",
-    kodeId: "TOW-SMG-009",
-    namaPemilik: "PT Centratama Menara Indonesia",
-    tahun: 2020,
-    jenisMenara: "Rooftop",
-    tenants: ["XL Axiata"],
-    longitude: 110.4203,
-    latitude: -6.966667,
-    alamat: "Jl. Pandanaran No. 100, Semarang",
-    tinggiAgl: 32,
-    kapasitasMaks: 2,
+    kodeId: "TOW-BJM-009",
+    namaPemilik: "PT Centratama Telekomunikasi",
+    tahun: 2019,
+    jenisMenara: "Greenfield",
+    tenants: ["Telkomsel"],
+    longitude: 114.59075,
+    latitude: -3.319389,
+    alamat: "Jl. Lambung Mangkurat No. 22, Banjarmasin",
+    tinggiAgl: 50,
+    kapasitasMaks: 3,
     registrationNo: "REG-2026-000109",
     status: "REGISTERED",
   },
   {
     id: "10",
-    kodeId: "TOW-MDO-010",
-    namaPemilik: "PT Dayamitra Telekomunikasi",
-    tahun: 2022,
-    jenisMenara: "Greenfield",
-    tenants: ["Telkomsel"],
-    longitude: 124.842079,
-    latitude: 1.47483,
-    alamat: "Jl. Piere Tendean, Manado",
-    tinggiAgl: 58,
-    kapasitasMaks: 3,
+    kodeId: "TOW-PLM-010",
+    namaPemilik: "PT Tower Bersama",
+    tahun: 2021,
+    jenisMenara: "Rooftop",
+    tenants: ["Indosat", "Smartfren"],
+    longitude: 104.756554,
+    latitude: -2.976074,
+    alamat: "Jl. Sudirman No. 100, Palembang",
+    tinggiAgl: 38,
+    kapasitasMaks: 2,
     registrationNo: "REG-2026-000110",
     status: "REGISTERED",
   },
   {
     id: "11",
-    kodeId: "TOW-AMB-011",
-    namaPemilik: "PT Tower Bersama",
-    tahun: 2024,
-    jenisMenara: "Self-supporting",
-    tenants: ["Telkomsel", "Indosat"],
-    longitude: 128.1814,
-    latitude: -3.6954,
-    alamat: "Jl. Sultan Hairun, Ambon",
-    tinggiAgl: 64,
+    kodeId: "TOW-BPN-011",
+    namaPemilik: "PT Profesional Telekomunikasi",
+    tahun: 2022,
+    jenisMenara: "Greenfield",
+    tenants: ["Telkomsel", "XL Axiata"],
+    longitude: 116.8312,
+    latitude: -1.2675,
+    alamat: "Jl. Jenderal Sudirman No. 45, Balikpapan",
+    tinggiAgl: 65,
     kapasitasMaks: 4,
     registrationNo: "REG-2026-000111",
     status: "REGISTERED",
   },
   {
     id: "12",
-    kodeId: "TOW-JYP-012",
+    kodeId: "TOW-JPR-012",
     namaPemilik: "PT Dayamitra Telekomunikasi",
-    tahun: 2023,
-    jenisMenara: "Greenfield",
+    tahun: 2024,
+    jenisMenara: "Self-supporting (SST)",
     tenants: ["Telkomsel"],
     longitude: 140.71813,
     latitude: -2.53371,
-    alamat: "Jl. Ahmad Yani, Jayapura",
-    tinggiAgl: 70,
+    alamat: "Jl. Percetakan Negara No. 3, Jayapura",
+    tinggiAgl: 72,
     kapasitasMaks: 4,
     registrationNo: "REG-2026-000112",
     status: "REGISTERED",
@@ -246,18 +255,18 @@ type ColumnKey =
 
 const ALL_COLUMNS: { key: ColumnKey; label: string }[] = [
   { key: "kodeId", label: "Kode/ID" },
-  { key: "namaPemilik", label: "Nama pemilik" },
+  { key: "namaPemilik", label: "Nama Pemilik" },
   { key: "tahun", label: "Tahun" },
-  { key: "jenisMenara", label: "Jenis menara" },
-  { key: "tenants", label: "Penyelenggara" },
+  { key: "jenisMenara", label: "Jenis Menara" },
+  { key: "tenants", label: "Penyelenggara Jaringan" },
   { key: "longitude", label: "Longitude" },
   { key: "latitude", label: "Latitude" },
   { key: "alamat", label: "Alamat" },
-  { key: "tinggiAgl", label: "Tinggi AGL (m)" },
-  { key: "registrationNo", label: "Registration No." },
+  { key: "tinggiAgl", label: "Tinggi (AGL)" },
+  { key: "registrationNo", label: "No. Registrasi" },
 ];
 
-interface QueryFilters {
+type QueryFilters = {
   kodeId: string;
   namaPemilik: string;
   tahun: string;
@@ -270,7 +279,7 @@ interface QueryFilters {
   latMax: string;
   tinggiMin: string;
   registrationNo: string;
-}
+};
 
 const DEFAULT_FILTERS: QueryFilters = {
   kodeId: "",
@@ -292,20 +301,115 @@ const YEAR_OPTIONS = Array.from(
   (_, i) => 2026 - i
 );
 
+interface DashboardStatsData {
+  system: {
+    directusUrl: string;
+    directusConnected: boolean;
+    directusStatus: string;
+    database: {
+      client: string;
+      host: string;
+      port: number;
+      database: string;
+      user: string;
+    };
+    adminEmail: string;
+    managerEmail: string;
+    smtpHost: string;
+    smtpPort: number;
+    maxPayloadSize: string;
+    userRegister: boolean;
+    userRegisterRole: string;
+  };
+  metrics: {
+    totalTowers: number;
+    totalCompanies: number;
+    totalProvinces: number;
+    totalSubmissions: number;
+    registeredSubmissions: number;
+    rejectedSubmissions: number;
+    draftSubmissions: number;
+  };
+  methodDistribution: {
+    excelCount: number;
+    formCount: number;
+    excelPercent: number;
+    formPercent: number;
+  };
+  topCompanies: {
+    name: string;
+    count: number;
+    percentage: number;
+  }[];
+  monthlyTrends: {
+    month: string;
+    submissions: number;
+    towers: number;
+  }[];
+  recentActivities: {
+    id: string;
+    regNumber: string;
+    company: string;
+    method: string;
+    rows: number;
+    timestamp: string;
+    status: "Registered" | "Rejected" | "Draft";
+  }[];
+}
+
 export default function DashboardPage() {
   const { role } = useAuth();
 
-  // Web Manager dan Super Admin hanya melihat Insights.
-  const canViewInsights =
-    role === "Web Manager" || role === "Super Admin";
+  // Role capabilities
+  const isSuperAdmin = role === "Super Admin";
+  const isWebManager = role === "Web Manager";
+  const canViewInsights = isSuperAdmin || isWebManager;
 
-  // Normal User hanya melihat Query Data, Tower Map, dan Tower Data.
-  const canViewTowerData = role === "Normal User";
-  const [draftFilters, setDraftFilters] =
-    useState<QueryFilters>(DEFAULT_FILTERS);
-  const [appliedFilters, setAppliedFilters] =
-    useState<QueryFilters>(DEFAULT_FILTERS);
+  // Active view tab (Admin can toggle between Insights and Map/Records)
+  const [activeTab, setActiveTab] = useState<"insights" | "map">(
+    canViewInsights ? "insights" : "map"
+  );
+  const currentTab = canViewInsights ? activeTab : "map";
 
+  // Dynamic Dashboard Stats from API & .env
+  const [stats, setStats] = useState<DashboardStatsData | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+
+  // Fetch dynamic stats from /api/dashboard/stats
+  const fetchStats = async () => {
+    setLoadingStats(true);
+    try {
+      const res = await fetch("/api/dashboard/stats");
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
+      }
+    } catch {
+      // Fallback already handled
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch("/api/dashboard/stats")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (isMounted && data) {
+          setStats(data);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Query and table state
+  const [draftFilters, setDraftFilters] = useState<QueryFilters>(DEFAULT_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState<QueryFilters>(DEFAULT_FILTERS);
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
 
   const [visibleCols, setVisibleCols] = useState<Record<ColumnKey, boolean>>({
@@ -391,10 +495,7 @@ export default function DashboardPage() {
     });
   }, [appliedFilters]);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredTowers.length / rowsPerPage)
-  );
+  const totalPages = Math.max(1, Math.ceil(filteredTowers.length / rowsPerPage));
   const safePage = Math.min(page, totalPages);
 
   const paginatedTowers = useMemo(() => {
@@ -451,844 +552,1057 @@ export default function DashboardPage() {
     URL.revokeObjectURL(url);
   }
 
+  // Fallback metrics if API is still loading
+  const displayMetrics = stats?.metrics || {
+    totalTowers: 83455,
+    totalCompanies: 24,
+    totalProvinces: 34,
+    totalSubmissions: 27,
+    registeredSubmissions: 20,
+    rejectedSubmissions: 4,
+    draftSubmissions: 3,
+  };
+
+  const displayMethods = stats?.methodDistribution || {
+    excelCount: 18,
+    formCount: 9,
+    excelPercent: 67,
+    formPercent: 33,
+  };
+
+  const displayTopCompanies = stats?.topCompanies || [
+    { name: "PT Telkomsel", count: 88, percentage: 85 },
+    { name: "PT Dayamitra Telekomunikasi (Mitratel)", count: 72, percentage: 70 },
+    { name: "PT Tower Bersama Infrastructure", count: 64, percentage: 60 },
+    { name: "PT Profesional Telekomunikasi Indonesia (Protelindo)", count: 52, percentage: 50 },
+    { name: "PT Centratama Telekomunikasi", count: 41, percentage: 40 },
+  ];
+
+  const displayActivities = stats?.recentActivities || [
+    {
+      id: "REG-2026-000027",
+      regNumber: "REG-2026-000027",
+      company: "PT Dayamitra Telekomunikasi",
+      method: "Upload Excel",
+      rows: 18,
+      timestamp: "2026-10-19 12:18 WIB",
+      status: "Registered" as const,
+    },
+    {
+      id: "REG-2026-000026",
+      regNumber: "REG-2026-000026",
+      company: "PT Profesional Telekomunikasi",
+      method: "Upload Excel",
+      rows: 24,
+      timestamp: "2026-10-19 11:45 WIB",
+      status: "Registered" as const,
+    },
+    {
+      id: "REG-2026-000025",
+      regNumber: "REG-2026-000025",
+      company: "PT Tower Bersama",
+      method: "Application Form",
+      rows: 1,
+      timestamp: "2026-10-18 16:30 WIB",
+      status: "Draft" as const,
+    },
+    {
+      id: "REG-2026-000024",
+      regNumber: "REG-2026-000024",
+      company: "PT Centratama Telekomunikasi",
+      method: "Upload Excel",
+      rows: 32,
+      timestamp: "2026-10-18 14:10 WIB",
+      status: "Registered" as const,
+    },
+    {
+      id: "REG-2026-000023",
+      regNumber: "REG-2026-000023",
+      company: "PT Solusi Tunas Pratama",
+      method: "Upload Excel",
+      rows: 12,
+      timestamp: "2026-10-17 09:20 WIB",
+      status: "Rejected" as const,
+    },
+  ];
+
   return (
     <div className="space-y-6 pb-12">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-[26px] font-bold text-[#1f2a37]">
-          Dashboard 
-        </h1>
+      {/* ───── DASHBOARD HEADER ───── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-bold tracking-tight text-heading">
+              Dashboard Infrastruktur Pasif
+            </h1>
+            <Badge
+              variant={isSuperAdmin ? "default" : isWebManager ? "info" : "outline"}
+              className="text-[11px]"
+            >
+              {role}
+            </Badge>
+          </div>
+          <p className="mt-1 text-xs text-muted">
+            Portal Layanan dan Pemantauan Registrasi Menara Telekomunikasi Nasional
+          </p>
+        </div>
+
+        {/* Action Controls & Backend Status */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Directus / Standalone Environment Badge */}
+          <div className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs text-heading shadow-card">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                stats?.system.directusConnected ? "bg-emerald-500" : "bg-primary animate-pulse"
+              }`}
+            />
+            <span className="font-medium text-xs">
+              {stats?.system.directusConnected
+                ? `Directus: Online (${clientEnv.directusUrl})`
+                : `Backend: ${clientEnv.directusUrl}`}
+            </span>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchStats}
+            disabled={loadingStats}
+            title="Refresh dashboard data"
+          >
+            <RotateCcw
+              className={`h-3.5 w-3.5 text-primary ${loadingStats ? "animate-spin" : ""}`}
+            />
+            <span>Segarkan</span>
+          </Button>
+        </div>
       </div>
 
+      {/* ───── TAB NAVIGATION (For Super Admin & Web Manager) ───── */}
       {canViewInsights && (
-        <>
-      {/* ========================================================= */}
-      {/* SECTION INSIGHTS / WIDGET DARI GAMBAR DIRECTUS */}
-      {/* ========================================================= */}
-
-      {/* 1. TOP CARDS (3 METRICS) */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {/* Card 1 */}
-        <div className="flex items-center justify-between rounded-[12px] border border-[#e5e7eb] bg-white p-5 shadow-sm">
-          <div>
-            <div className="text-[12px] font-medium text-[#6b7280]">
-              Total Permohonan
-            </div>
-            <div className="mt-1 text-[32px] font-extrabold text-[#6366f1]">
-              83,443
-            </div>
-            <div className="mt-1 text-[12px] text-[#6b7280]">Menara terdaftar</div>
-          </div>
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f0f3ff] text-[#6366f1]">
-            <MapPin className="h-6 w-6" />
-          </div>
-        </div>
-
-        {/* Card 2 */}
-        <div className="flex items-center justify-between rounded-[12px] border border-[#e5e7eb] bg-white p-5 shadow-sm">
-          <div>
-            <div className="text-[12px] font-medium text-[#6b7280]">
-              Total Perusahaan
-            </div>
-            <div className="mt-1 text-[32px] font-extrabold text-[#3b82f6]">
-              24
-            </div>
-            <div className="mt-1 text-[12px] text-[#6b7280]">
-              Instansi pemohon aktif
-            </div>
-          </div>
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#eff6ff] text-[#3b82f6]">
-            <Building2 className="h-6 w-6" />
-          </div>
-        </div>
-
-        {/* Card 3 */}
-        <div className="flex items-center justify-between rounded-[12px] border border-[#e5e7eb] bg-white p-5 shadow-sm">
-          <div>
-            <div className="text-[12px] font-medium text-[#6b7280]">
-              Cakupan Provinsi
-            </div>
-            <div className="mt-1 text-[32px] font-extrabold text-[#10b981]">
-              34
-            </div>
-            <div className="mt-1 text-[12px] text-[#6b7280]">Provinsi terdata</div>
-          </div>
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#ecfdf5] text-[#10b981]">
-            <Globe2 className="h-6 w-6" />
-          </div>
-        </div>
-      </div>
-
-      {/* 2. CHARTS MIDDLE SECTION */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-        {/* Donut Chart: Metode Pendaftaran (2 Cols) */}
-        <div className="rounded-[12px] border border-[#e5e7eb] bg-white p-5 shadow-sm lg:col-span-2">
-          <h3 className="text-[14px] font-bold text-[#1f2a37]">
-            Metode Pendaftaran
-          </h3>
-          <div className="mt-4 flex flex-col items-center justify-center sm:flex-row sm:gap-6">
-            {/* SVG Donut Chart */}
-            <div className="relative h-44 w-44">
-              <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
-                <path
-                  className="text-gray-100"
-                  strokeWidth="3.8"
-                  stroke="currentColor"
-                  fill="none"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-                {/* Segment 1: Online Mandiri (68%) */}
-                <path
-                  className="text-[#6366f1]"
-                  strokeDasharray="68, 100"
-                  strokeWidth="3.8"
-                  stroke="currentColor"
-                  fill="none"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-                {/* Segment 2: Integrasi API (22%) */}
-                <path
-                  className="text-[#f97316]"
-                  strokeDasharray="22, 100"
-                  strokeDashoffset="-68"
-                  strokeWidth="3.8"
-                  stroke="currentColor"
-                  fill="none"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-                {/* Segment 3: Manual/Fisik (10%) */}
-                <path
-                  className="text-[#10b981]"
-                  strokeDasharray="10, 100"
-                  strokeDashoffset="-90"
-                  strokeWidth="3.8"
-                  stroke="currentColor"
-                  fill="none"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-              </svg>
-            </div>
-
-            {/* Legend */}
-            <div className="mt-4 space-y-2 text-[12px] sm:mt-0">
-              <div className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded-full bg-[#6366f1]"></span>
-                <span className="font-medium text-[#1f2a37]">
-                  Online Mandiri 68%
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded-full bg-[#f97316]"></span>
-                <span className="font-medium text-[#1f2a37]">
-                  Integrasi API 22%
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded-full bg-[#10b981]"></span>
-                <span className="font-medium text-[#1f2a37]">
-                  Manual/Fisik 10%
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Line Chart: Grafik Tren Pendaftar (3 Cols) */}
-        <div className="rounded-[12px] border border-[#e5e7eb] bg-white p-5 shadow-sm lg:col-span-3">
-          <h3 className="text-[14px] font-bold text-[#1f2a37]">
-            Grafik Tren Pendaftar
-          </h3>
-          <div className="mt-4 h-48 w-full">
-            <svg
-              className="h-full w-full overflow-visible"
-              viewBox="0 0 500 150"
-              preserveAspectRatio="none"
-            >
-              <defs>
-                <linearGradient id="gradientLine" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#6366f1" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              {/* Grid Lines */}
-              <line x1="0" y1="30" x2="500" y2="30" stroke="#f3f4f6" strokeWidth="1" />
-              <line x1="0" y1="75" x2="500" y2="75" stroke="#f3f4f6" strokeWidth="1" />
-              <line x1="0" y1="120" x2="500" y2="120" stroke="#f3f4f6" strokeWidth="1" />
-
-              {/* Area Fill */}
-              <path
-                d="M 0 130 Q 40 80, 80 110 T 160 50 T 240 120 T 320 40 T 400 30 T 500 40 L 500 150 L 0 150 Z"
-                fill="url(#gradientLine)"
-              />
-              {/* Curve Line */}
-              <path
-                d="M 0 130 Q 40 80, 80 110 T 160 50 T 240 120 T 320 40 T 400 30 T 500 40"
-                fill="none"
-                stroke="#6366f1"
-                strokeWidth="3"
-              />
-            </svg>
-            <div className="mt-2 flex justify-between text-[10px] text-[#6b7280]">
-              <span>Jan</span>
-              <span>Feb</span>
-              <span>Mar</span>
-              <span>Abr</span>
-              <span>Jun</span>
-              <span>Jul</span>
-              <span>Aug</span>
-              <span>Sep</span>
-              <span>Okt</span>
-              <span>Nov</span>
-              <span>Des</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. BOTTOM CARDS (BAR CHART & AKTIVITAS TABEL) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Top 5 Perusahaan Pemohon (Horizontal Bar Chart) */}
-        <div className="rounded-[12px] border border-[#e5e7eb] bg-white p-5 shadow-sm">
-          <h3 className="mb-4 text-[14px] font-bold text-[#1f2a37]">
-            Top 5 Perusahaan Pemohon
-          </h3>
-          <div className="space-y-3.5 text-[12px]">
-            <div>
-              <div className="mb-1 font-medium text-[#1f2a37]">PT Telkomsel</div>
-              <div className="h-4.5 w-full rounded-full bg-[#f3f4f6]">
-                <div className="h-full w-[85%] rounded-full bg-[#6366f1]"></div>
-              </div>
-            </div>
-            <div>
-              <div className="mb-1 font-medium text-[#1f2a37]">PT Protelindo</div>
-              <div className="h-4.5 w-full rounded-full bg-[#f3f4f6]">
-                <div className="h-full w-[70%] rounded-full bg-[#6366f1]"></div>
-              </div>
-            </div>
-            <div>
-              <div className="mb-1 font-medium text-[#1f2a37]">PT Tower Bersama</div>
-              <div className="h-4.5 w-full rounded-full bg-[#f3f4f6]">
-                <div className="h-full w-[60%] rounded-full bg-[#6366f1]"></div>
-              </div>
-            </div>
-            <div>
-              <div className="mb-1 font-medium text-[#1f2a37]">PT Mitratel</div>
-              <div className="h-4.5 w-full rounded-full bg-[#f3f4f6]">
-                <div className="h-full w-[50%] rounded-full bg-[#6366f1]"></div>
-              </div>
-            </div>
-            <div>
-              <div className="mb-1 font-medium text-[#1f2a37]">
-                PT Centratama
-              </div>
-              <div className="h-4.5 w-full rounded-full bg-[#f3f4f6]">
-                <div className="h-full w-[40%] rounded-full bg-[#6366f1]"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Aktivitas Pendaftaran Terbaru */}
-        <div className="rounded-[12px] border border-[#e5e7eb] bg-white p-5 shadow-sm">
-          <h3 className="mb-4 text-[14px] font-bold text-[#1f2a37]">
-            Aktivitas Pendaftaran Terbaru
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-[12px]">
-              <thead>
-                <tr className="border-b border-[#e5e7eb] text-[#6b7280]">
-                  <th className="pb-2 font-medium">Waktu</th>
-                  <th className="pb-2 font-medium">Perusahaan</th>
-                  <th className="pb-2 font-medium">Kab/Kota</th>
-                  <th className="pb-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e5e7eb] text-[#1f2a37]">
-                <tr>
-                  <td className="py-2.5">2024-2021 12:18:37 PM</td>
-                  <td>PT Telkomsel</td>
-                  <td>Kab/Kota</td>
-                  <td>
-                    <span className="rounded-full bg-[#dcfce7] px-2 py-0.5 text-[11px] font-medium text-[#15803d]">
-                      Terverifikasi
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2.5">2024-2021 11:18:32 PM</td>
-                  <td>PT Protelindo</td>
-                  <td>Kab/Kota</td>
-                  <td>
-                    <span className="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[11px] font-medium text-[#b45309]">
-                      Diproses
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2.5">2024-2021 11:27:58 PM</td>
-                  <td>PT Tower Bersama</td>
-                  <td>Kab/Kota</td>
-                  <td>
-                    <span className="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[11px] font-medium text-[#b45309]">
-                      Diproses
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2.5">2024-2021 11:27:55 PM</td>
-                  <td>PT Mitratel</td>
-                  <td>Kab/Kota</td>
-                  <td>
-                    <span className="rounded-full bg-[#dcfce7] px-2 py-0.5 text-[11px] font-medium text-[#15803d]">
-                      Terverifikasi
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2.5">2024-2021 11:27:37 PM</td>
-                  <td>PT Centratama</td>
-                  <td>Kab/Kota</td>
-                  <td>
-                    <span className="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[11px] font-medium text-[#b45309]">
-                      Diproses
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-        </>
-      )}
-
-      {canViewTowerData && (
-        <>
-      {/* ========================================================= */}
-      {/* SECTION ORIGINAL CODE KAMU: QUERY DATA, MAP, & TABLE */}
-      {/* ========================================================= */}
-
-      {/* 1. Query Data Card */}
-      <form
-        onSubmit={handleQuerySubmit}
-        className="rounded-[10px] border border-[#e5e7eb] bg-white p-6"
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-[16px] font-semibold text-[#1f2a37]">
-            Query data
-          </h2>
-          <span className="text-[12px] text-[#6b7280]">
-            Default bbox: Indonesia (Lon 95–141, Lat -11–6)
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {/* 1. Kode/ID */}
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Kode / ID menara
-            </label>
-            <input
-              type="text"
-              value={draftFilters.kodeId}
-              onChange={(e) =>
-                setDraftFilters((p: QueryFilters) => ({
-                  ...p,
-                  kodeId: e.target.value,
-                }))
-              }
-              placeholder="e.g. TOW-JKT-001"
-              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
-            />
-          </div>
-
-          {/* 2. Nama pemilik */}
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Nama pemilik
-            </label>
-            <input
-              type="text"
-              value={draftFilters.namaPemilik}
-              onChange={(e) =>
-                setDraftFilters((p: QueryFilters) => ({
-                  ...p,
-                  namaPemilik: e.target.value,
-                }))
-              }
-              placeholder="Owner name"
-              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
-            />
-          </div>
-
-          {/* 3. Tahun pembangunan */}
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Tahun pembangunan
-            </label>
-            <select
-              value={draftFilters.tahun}
-              onChange={(e) =>
-                setDraftFilters((p: QueryFilters) => ({
-                  ...p,
-                  tahun: e.target.value,
-                }))
-              }
-              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
-            >
-              <option value="">Semua Tahun</option>
-              {YEAR_OPTIONS.map((year) => (
-                <option key={year} value={String(year)}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 4. Jenis menara */}
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Jenis menara
-            </label>
-            <select
-              value={draftFilters.jenisMenara}
-              onChange={(e) =>
-                setDraftFilters((p: QueryFilters) => ({
-                  ...p,
-                  jenisMenara: e.target.value,
-                }))
-              }
-              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
-            >
-              <option value="">All types</option>
-              <option value="Greenfield">Greenfield</option>
-              <option value="Rooftop">Rooftop</option>
-              <option value="Monopole">Monopole</option>
-              <option value="Guyed">Guyed</option>
-              <option value="Self-supporting">Self-supporting</option>
-            </select>
-          </div>
-
-          {/* 5. Penyelenggara */}
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Penyelenggara
-            </label>
-            <input
-              type="text"
-              value={draftFilters.tenant}
-              onChange={(e) =>
-                setDraftFilters((p: QueryFilters) => ({
-                  ...p,
-                  tenant: e.target.value,
-                }))
-              }
-              placeholder="e.g. Telkomsel"
-              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
-            />
-          </div>
-
-          {/* 6. Alamat */}
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Alamat
-            </label>
-            <input
-              type="text"
-              value={draftFilters.alamat}
-              onChange={(e) =>
-                setDraftFilters((p: QueryFilters) => ({
-                  ...p,
-                  alamat: e.target.value,
-                }))
-              }
-              placeholder="Street / City"
-              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
-            />
-          </div>
-
-          {/* 7. Longitude min */}
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Longitude min
-            </label>
-            <input
-              type="number"
-              step="any"
-              value={draftFilters.lonMin}
-              onChange={(e) =>
-                setDraftFilters((p: QueryFilters) => ({
-                  ...p,
-                  lonMin: e.target.value,
-                }))
-              }
-              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
-            />
-          </div>
-
-          {/* 8. Longitude max */}
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Longitude max
-            </label>
-            <input
-              type="number"
-              step="any"
-              value={draftFilters.lonMax}
-              onChange={(e) =>
-                setDraftFilters((p: QueryFilters) => ({
-                  ...p,
-                  lonMax: e.target.value,
-                }))
-              }
-              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
-            />
-          </div>
-
-          {/* 9. Latitude min */}
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Latitude min
-            </label>
-            <input
-              type="number"
-              step="any"
-              value={draftFilters.latMin}
-              onChange={(e) =>
-                setDraftFilters((p: QueryFilters) => ({
-                  ...p,
-                  latMin: e.target.value,
-                }))
-              }
-              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
-            />
-          </div>
-
-          {/* 10. Latitude max */}
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Latitude max
-            </label>
-            <input
-              type="number"
-              step="any"
-              value={draftFilters.latMax}
-              onChange={(e) =>
-                setDraftFilters((p: QueryFilters) => ({
-                  ...p,
-                  latMax: e.target.value,
-                }))
-              }
-              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] focus:border-[#016db0] focus:outline-none"
-            />
-          </div>
-
-          {/* 11. Tinggi AGL min */}
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Tinggi AGL min (m)
-            </label>
-            <input
-              type="number"
-              value={draftFilters.tinggiMin}
-              onChange={(e) =>
-                setDraftFilters((p: QueryFilters) => ({
-                  ...p,
-                  tinggiMin: e.target.value,
-                }))
-              }
-              placeholder="e.g. 40"
-              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
-            />
-          </div>
-
-          {/* 12. Registration number */}
-          <div>
-            <label className="mb-1.5 block text-[12px] font-medium text-[#1f2a37]">
-              Registration number
-            </label>
-            <input
-              type="text"
-              value={draftFilters.registrationNo}
-              onChange={(e) =>
-                setDraftFilters((p: QueryFilters) => ({
-                  ...p,
-                  registrationNo: e.target.value,
-                }))
-              }
-              placeholder="REG-2026-..."
-              className="h-9 w-full rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] placeholder:text-[#6b7280] focus:border-[#016db0] focus:outline-none"
-            />
-          </div>
-        </div>
-
-        <div className="mt-5 flex items-center justify-end gap-3">
+        <div className="flex items-center gap-1 rounded-card border border-border-soft bg-surface p-1 shadow-card">
           <button
             type="button"
-            onClick={handleReset}
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-[10px] border border-[#d0d5db] bg-white px-4 text-[13px] font-medium text-[#1f2a37] transition-colors hover:bg-[#f5f6f8]"
+            onClick={() => setActiveTab("insights")}
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all ${
+              currentTab === "insights"
+                ? "bg-primary text-on-primary shadow-sm"
+                : "text-muted hover:bg-canvas hover:text-heading"
+            }`}
           >
-            <RotateCcw className="h-4 w-4" />
-            Reset
+            <Layers className="h-4 w-4" />
+            <span>Ringkasan & Analisis Sistem</span>
           </button>
           <button
-            type="submit"
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-[10px] bg-[#016db0] px-4 text-[13px] font-medium text-white transition-colors hover:bg-[#015a92]"
+            type="button"
+            onClick={() => setActiveTab("map")}
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all ${
+              currentTab === "map"
+                ? "bg-primary text-on-primary shadow-sm"
+                : "text-muted hover:bg-canvas hover:text-heading"
+            }`}
           >
-            <Search className="h-4 w-4" />
-            Search
+            <Globe2 className="h-4 w-4" />
+            <span>Peta & Data Menara</span>
           </button>
         </div>
-      </form>
+      )}
 
-      {/* 2. Real Interactive Tower Map Card */}
-      <div className="rounded-[10px] border border-[#e5e7eb] bg-white p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-[16px] font-semibold text-[#1f2a37]">
-            Tower map
-          </h2>
-          <span className="text-[12px] text-[#6b7280]">
-            Showing {filteredTowers.length} tower pins
-          </span>
-        </div>
+      {/* ========================================================= */}
+      {/* SECTION 1: RINGKASAN & ANALISIS SISTEM (TAB 1)            */}
+      {/* ========================================================= */}
+      {canViewInsights && currentTab === "insights" && (
+        <div className="space-y-6">
+          {/* 1.1 INFRASTRUCTURE & .ENV TELEMETRY CARD */}
+          <div className="rounded-card border border-border-soft bg-gradient-to-r from-surface via-[#f0f7fc] to-surface p-5 shadow-card">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-nav-active-bg text-primary">
+                  <Server className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-bold text-heading">
+                      Konfigurasi Lingkungan Terintegrasi (.env)
+                    </h2>
+                    <Badge variant="success" className="text-[10px]">
+                      Tersinkronisasi
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted">
+                    Semua parameter frontend terhubung dengan Directus & PostgreSQL
+                  </p>
+                </div>
+              </div>
 
-        <TowerMap towers={filteredTowers} />
-      </div>
+              {/* Dynamic Parameter Badges */}
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <div className="flex items-center gap-1.5 rounded-lg border border-border-soft bg-white px-2.5 py-1.5 shadow-sm">
+                  <Database className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-muted">Database:</span>
+                  <span className="font-semibold text-heading">
+                    {stats?.system.database.client || "pg"}://
+                    {stats?.system.database.host || "localhost"}:
+                    {stats?.system.database.port || 5432}/
+                    {stats?.system.database.database || "directus"}
+                  </span>
+                </div>
 
-      {/* 3. Tower Data Card */}
-      <div className="rounded-[10px] border border-[#e5e7eb] bg-white p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <h2 className="text-[16px] font-semibold text-[#1f2a37]">
-              Tower data
-            </h2>
-            <span className="rounded-full bg-[#d6e8f7] px-2.5 py-0.5 text-[12px] font-medium text-[#016db0]">
-              Showing your own records
-            </span>
+                <div className="flex items-center gap-1.5 rounded-lg border border-border-soft bg-white px-2.5 py-1.5 shadow-sm">
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#00a8e8]" />
+                  <span className="text-muted">Admin:</span>
+                  <span className="font-semibold text-heading">
+                    {clientEnv.adminEmail}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 rounded-lg border border-border-soft bg-white px-2.5 py-1.5 shadow-sm">
+                  <Download className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-muted">Max Upload:</span>
+                  <span className="font-semibold text-heading uppercase">
+                    {clientEnv.maxPayloadSize}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowColMenu((v: boolean) => !v)}
-                className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-[#d0d5db] bg-white px-3.5 text-[13px] font-medium text-[#1f2a37] hover:bg-[#f5f6f8]"
-              >
-                <Settings2 className="h-4 w-4 text-[#6b7280]" />
-                Configure columns
-              </button>
+          {/* 1.2 TOP 4 KPI CARDS (Styled with Project Palette) */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Card 1: Total Menara */}
+            <div className="flex items-center justify-between rounded-card border border-border-soft bg-surface p-5 shadow-card transition-shadow hover:shadow-pop">
+              <div>
+                <div className="text-xs font-medium text-muted">
+                  Total Permohonan Menara
+                </div>
+                <div className="mt-1 text-2xl font-bold tracking-tight text-primary">
+                  {displayMetrics.totalTowers.toLocaleString("id-ID")}
+                </div>
+                <div className="mt-1 flex items-center gap-1 text-2xs text-muted">
+                  <span className="font-semibold text-primary">Aktif</span> dalam basis data nasional
+                </div>
+              </div>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-nav-active-bg text-primary">
+                <MapPin className="h-6 w-6" />
+              </div>
+            </div>
 
-              {showColMenu && (
-                <div className="absolute right-0 z-20 mt-1.5 w-56 rounded-[10px] border border-[#e5e7eb] bg-white p-3 shadow-lg">
-                  <div className="mb-2 text-[12px] font-semibold text-[#1f2a37]">
-                    Visible columns
-                  </div>
-                  <div className="space-y-1.5">
-                    {ALL_COLUMNS.map((col) => (
-                      <label
-                        key={col.key}
-                        className="flex cursor-pointer items-center gap-2 text-[13px] text-[#1f2a37]"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={visibleCols[col.key]}
-                          onChange={() => toggleColumn(col.key)}
-                          className="h-3.5 w-3.5 rounded border-[#d0d5db] text-[#016db0]"
-                        />
-                        {col.label}
-                      </label>
-                    ))}
+            {/* Card 2: Total Perusahaan */}
+            <div className="flex items-center justify-between rounded-card border border-border-soft bg-surface p-5 shadow-card transition-shadow hover:shadow-pop">
+              <div>
+                <div className="text-xs font-medium text-muted">
+                  Instansi / Perusahaan
+                </div>
+                <div className="mt-1 text-2xl font-bold tracking-tight text-[#00a8e8]">
+                  {displayMetrics.totalCompanies} Instansi
+                </div>
+                <div className="mt-1 text-2xs text-muted">
+                  Penyelenggara jaringan aktif
+                </div>
+              </div>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#e0f6ff] text-[#00a8e8]">
+                <Building2 className="h-6 w-6" />
+              </div>
+            </div>
+
+            {/* Card 3: Cakupan Wilayah */}
+            <div className="flex items-center justify-between rounded-card border border-border-soft bg-surface p-5 shadow-card transition-shadow hover:shadow-pop">
+              <div>
+                <div className="text-xs font-medium text-muted">
+                  Cakupan Wilayah
+                </div>
+                <div className="mt-1 text-2xl font-bold tracking-tight text-heading">
+                  {displayMetrics.totalProvinces} Provinsi
+                </div>
+                <div className="mt-1 text-2xs text-muted">
+                  514 Kabupaten / Kota
+                </div>
+              </div>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#ddeef9] text-primary">
+                <Globe2 className="h-6 w-6" />
+              </div>
+            </div>
+
+            {/* Card 4: Status Kelulusan */}
+            <div className="flex items-center justify-between rounded-card border border-border-soft bg-surface p-5 shadow-card transition-shadow hover:shadow-pop">
+              <div>
+                <div className="text-xs font-medium text-muted">
+                  Registrasi Disetujui
+                </div>
+                <div className="mt-1 text-2xl font-bold tracking-tight text-emerald-600">
+                  {displayMetrics.registeredSubmissions} Terdata
+                </div>
+                <div className="mt-1 text-2xs text-muted">
+                  {displayMetrics.rejectedSubmissions} ditolak, {displayMetrics.draftSubmissions} draf
+                </div>
+              </div>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+            </div>
+          </div>
+
+          {/* 1.3 MIDDLE ANALYTICS (Donut & Trend Charts) */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+            {/* Donut Chart: Metode Pendaftaran (2 Cols) */}
+            <div className="rounded-card border border-border-soft bg-surface p-6 shadow-card lg:col-span-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-heading">
+                    Metode Pendaftaran
+                  </h3>
+                  <p className="text-2xs text-muted">
+                    Proporsi unggah Excel vs formulir online
+                  </p>
+                </div>
+                <Badge variant="secondary" className="text-2xs">
+                  {displayMetrics.totalSubmissions} Berkas
+                </Badge>
+              </div>
+
+              <div className="mt-6 flex flex-col items-center justify-center sm:flex-row sm:gap-6">
+                {/* SVG Donut Chart with Project Colors */}
+                <div className="relative h-44 w-44">
+                  <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
+                    {/* Background Track */}
+                    <path
+                      className="text-[#e5e7eb]"
+                      strokeWidth="3.8"
+                      stroke="currentColor"
+                      fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                    {/* Segment 1: Upload Excel (#016db0) */}
+                    <path
+                      className="text-[#016db0] transition-all duration-500"
+                      strokeDasharray={`${displayMethods.excelPercent}, 100`}
+                      strokeWidth="3.8"
+                      stroke="currentColor"
+                      fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                    {/* Segment 2: Application Form (#00a8e8) */}
+                    <path
+                      className="text-[#00a8e8] transition-all duration-500"
+                      strokeDasharray={`${displayMethods.formPercent}, 100`}
+                      strokeDashoffset={`-${displayMethods.excelPercent}`}
+                      strokeWidth="3.8"
+                      stroke="currentColor"
+                      fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                  </svg>
+
+                  {/* Inner text */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <span className="text-xl font-extrabold text-heading">
+                      {displayMethods.excelPercent}%
+                    </span>
+                    <span className="text-[10px] font-medium text-muted">
+                      Unggah Excel
+                    </span>
                   </div>
                 </div>
+
+                {/* Legend with Project Palette */}
+                <div className="mt-4 space-y-3 text-xs sm:mt-0">
+                  <div className="flex items-center gap-2.5">
+                    <span className="h-3.5 w-3.5 rounded-full bg-[#016db0]"></span>
+                    <div>
+                      <div className="font-semibold text-heading">
+                        Upload Excel ({displayMethods.excelPercent}%)
+                      </div>
+                      <div className="text-2xs text-muted">
+                        {displayMethods.excelCount} berkas massal
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <span className="h-3.5 w-3.5 rounded-full bg-[#00a8e8]"></span>
+                    <div>
+                      <div className="font-semibold text-heading">
+                        Formulir Online ({displayMethods.formPercent}%)
+                      </div>
+                      <div className="text-2xs text-muted">
+                        {displayMethods.formCount} permohonan tunggal
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Line Chart: Tren Pendaftaran Bulanan (3 Cols) */}
+            <div className="rounded-card border border-border-soft bg-surface p-6 shadow-card lg:col-span-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-heading">
+                    Grafik Tren Pendaftaran Menara
+                  </h3>
+                  <p className="text-2xs text-muted">
+                    Volume pengajuan data infrastruktur pasif bulanan (2026)
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-primary font-semibold">
+                  <ArrowUpRight className="h-4 w-4" />
+                  <span>+18.4% Rata-rata</span>
+                </div>
+              </div>
+
+              <div className="mt-4 h-48 w-full">
+                <svg
+                  className="h-full w-full overflow-visible"
+                  viewBox="0 0 500 150"
+                  preserveAspectRatio="none"
+                >
+                  <defs>
+                    <linearGradient id="primaryGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#016db0" stopOpacity="0.35" />
+                      <stop offset="100%" stopColor="#016db0" stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Horizontal Grid Lines */}
+                  <line x1="0" y1="30" x2="500" y2="30" stroke="#f1f5f9" strokeWidth="1" />
+                  <line x1="0" y1="75" x2="500" y2="75" stroke="#f1f5f9" strokeWidth="1" />
+                  <line x1="0" y1="120" x2="500" y2="120" stroke="#f1f5f9" strokeWidth="1" />
+
+                  {/* Shaded Area */}
+                  <path
+                    d="M 0 130 Q 40 85, 80 110 T 160 55 T 240 115 T 320 45 T 400 35 T 500 45 L 500 150 L 0 150 Z"
+                    fill="url(#primaryGradient)"
+                  />
+
+                  {/* Curved Primary Line */}
+                  <path
+                    d="M 0 130 Q 40 85, 80 110 T 160 55 T 240 115 T 320 45 T 400 35 T 500 45"
+                    fill="none"
+                    stroke="#016db0"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                  />
+
+                  {/* Accent Cyan Line for Trend */}
+                  <path
+                    d="M 0 140 Q 40 100, 80 120 T 160 75 T 240 130 T 320 65 T 400 55 T 500 65"
+                    fill="none"
+                    stroke="#00a8e8"
+                    strokeWidth="1.5"
+                    strokeDasharray="4 4"
+                  />
+                </svg>
+
+                {/* Month labels */}
+                <div className="mt-3 flex justify-between text-[11px] font-medium text-muted">
+                  <span>Jan</span>
+                  <span>Feb</span>
+                  <span>Mar</span>
+                  <span>Apr</span>
+                  <span>Mei</span>
+                  <span>Jun</span>
+                  <span>Jul</span>
+                  <span>Agu</span>
+                  <span>Sep</span>
+                  <span>Okt</span>
+                  <span>Nov</span>
+                  <span>Des</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 1.4 BOTTOM SECTION: TOP COMPANIES & RECENT ACTIVITIES */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* Top 5 Penyelenggara Jaringan */}
+            <div className="rounded-card border border-border-soft bg-surface p-6 shadow-card">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-heading">
+                  Top Penyelenggara Jaringan (Tenants)
+                </h3>
+                <span className="text-2xs text-muted">Pangsa Menara Aktif</span>
+              </div>
+
+              <div className="space-y-4 text-xs">
+                {displayTopCompanies.map((item, idx) => (
+                  <div key={idx}>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <span className="font-semibold text-heading">{item.name}</span>
+                      <span className="text-muted font-medium">
+                        {item.count} menara ({item.percentage}%)
+                      </span>
+                    </div>
+                    <div className="h-2.5 w-full rounded-full bg-[#f1f5f9] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#016db0] to-[#00a8e8] transition-all duration-500"
+                        style={{ width: `${item.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Aktivitas Pendaftaran Terbaru */}
+            <div className="rounded-card border border-border-soft bg-surface p-6 shadow-card">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-bold text-heading">
+                    Aktivitas Pendaftaran Terbaru
+                  </h3>
+                  <p className="text-2xs text-muted">
+                    Log permohonan registrasi masuk terkini
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-2xs">
+                  Real-time
+                </Badge>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-border-soft text-muted font-semibold">
+                      <th className="pb-2.5">No. Registrasi</th>
+                      <th className="pb-2.5">Perusahaan</th>
+                      <th className="pb-2.5">Metode</th>
+                      <th className="pb-2.5 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-soft text-heading">
+                    {displayActivities.map((act) => (
+                      <tr key={act.id} className="hover:bg-canvas">
+                        <td className="py-3 font-semibold text-primary">
+                          {act.regNumber}
+                        </td>
+                        <td className="py-3 max-w-[150px] truncate text-muted">
+                          {act.company}
+                        </td>
+                        <td className="py-3 text-muted">{act.method}</td>
+                        <td className="py-3 text-right">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                              act.status === "Registered"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : act.status === "Draft"
+                                ? "bg-amber text-amber-text"
+                                : "bg-danger-bg text-danger"
+                            }`}
+                          >
+                            {act.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* SECTION 2: PETA & DATA MENARA (TAB 2 OR NORMAL USER)      */}
+      {/* ========================================================= */}
+      {(!canViewInsights || currentTab === "map") && (
+        <div className="space-y-6">
+          {/* 2.1 Query Data Card */}
+          <form
+            onSubmit={handleQuerySubmit}
+            className="rounded-card border border-border-soft bg-surface p-6 shadow-card"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-heading">
+                Query data
+              </h2>
+              <span className="text-xs text-muted">
+                Default bbox: Indonesia (Lon 95–141, Lat -11–6)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {/* 1. Kode/ID */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-heading">
+                  Kode / ID menara
+                </label>
+                <input
+                  type="text"
+                  value={draftFilters.kodeId}
+                  onChange={(e) =>
+                    setDraftFilters((p: QueryFilters) => ({
+                      ...p,
+                      kodeId: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g. TOW-JKT-001"
+                  className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
+                />
+              </div>
+
+              {/* 2. Nama pemilik */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-heading">
+                  Nama pemilik
+                </label>
+                <input
+                  type="text"
+                  value={draftFilters.namaPemilik}
+                  onChange={(e) =>
+                    setDraftFilters((p: QueryFilters) => ({
+                      ...p,
+                      namaPemilik: e.target.value,
+                    }))
+                  }
+                  placeholder="Owner name"
+                  className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
+                />
+              </div>
+
+              {/* 3. Tahun pembangunan */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-heading">
+                  Tahun pembangunan
+                </label>
+                <select
+                  value={draftFilters.tahun}
+                  onChange={(e) =>
+                    setDraftFilters((p: QueryFilters) => ({
+                      ...p,
+                      tahun: e.target.value,
+                    }))
+                  }
+                  className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading focus:border-primary focus:outline-none"
+                >
+                  <option value="">Semua Tahun</option>
+                  {YEAR_OPTIONS.map((year) => (
+                    <option key={year} value={String(year)}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 4. Jenis menara */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-heading">
+                  Jenis menara
+                </label>
+                <select
+                  value={draftFilters.jenisMenara}
+                  onChange={(e) =>
+                    setDraftFilters((p: QueryFilters) => ({
+                      ...p,
+                      jenisMenara: e.target.value,
+                    }))
+                  }
+                  className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading focus:border-primary focus:outline-none"
+                >
+                  <option value="">All</option>
+                  <option value="Greenfield">Greenfield</option>
+                  <option value="Rooftop">Rooftop</option>
+                  <option value="Monopole">Monopole</option>
+                  <option value="Guyed">Guyed</option>
+                  <option value="Self-supporting (SST)">
+                    Self-supporting (SST)
+                  </option>
+                </select>
+              </div>
+
+              {/* 5. Penyelenggara jaringan (Tenant) */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-heading">
+                  Penyelenggara jaringan
+                </label>
+                <input
+                  type="text"
+                  value={draftFilters.tenant}
+                  onChange={(e) =>
+                    setDraftFilters((p: QueryFilters) => ({
+                      ...p,
+                      tenant: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g. Telkomsel"
+                  className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
+                />
+              </div>
+
+              {/* 6. Alamat */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-heading">
+                  Alamat
+                </label>
+                <input
+                  type="text"
+                  value={draftFilters.alamat}
+                  onChange={(e) =>
+                    setDraftFilters((p: QueryFilters) => ({
+                      ...p,
+                      alamat: e.target.value,
+                    }))
+                  }
+                  placeholder="Street / City"
+                  className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
+                />
+              </div>
+
+              {/* 7. Longitude range */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-heading">
+                  Longitude (min – max)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="any"
+                    value={draftFilters.lonMin}
+                    onChange={(e) =>
+                      setDraftFilters((p: QueryFilters) => ({
+                        ...p,
+                        lonMin: e.target.value,
+                      }))
+                    }
+                    className="h-9 w-1/2 rounded-input border border-border bg-white px-2 text-xs text-heading focus:border-primary focus:outline-none"
+                  />
+                  <span className="text-muted">–</span>
+                  <input
+                    type="number"
+                    step="any"
+                    value={draftFilters.lonMax}
+                    onChange={(e) =>
+                      setDraftFilters((p: QueryFilters) => ({
+                        ...p,
+                        lonMax: e.target.value,
+                      }))
+                    }
+                    className="h-9 w-1/2 rounded-input border border-border bg-white px-2 text-xs text-heading focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* 8. Latitude range */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-heading">
+                  Latitude (min – max)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="any"
+                    value={draftFilters.latMin}
+                    onChange={(e) =>
+                      setDraftFilters((p: QueryFilters) => ({
+                        ...p,
+                        latMin: e.target.value,
+                      }))
+                    }
+                    className="h-9 w-1/2 rounded-input border border-border bg-white px-2 text-xs text-heading focus:border-primary focus:outline-none"
+                  />
+                  <span className="text-muted">–</span>
+                  <input
+                    type="number"
+                    step="any"
+                    value={draftFilters.latMax}
+                    onChange={(e) =>
+                      setDraftFilters((p: QueryFilters) => ({
+                        ...p,
+                        latMax: e.target.value,
+                      }))
+                    }
+                    className="h-9 w-1/2 rounded-input border border-border bg-white px-2 text-xs text-heading focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* 9. Tinggi AGL minimum */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-heading">
+                  Tinggi AGL min (meter)
+                </label>
+                <input
+                  type="number"
+                  value={draftFilters.tinggiMin}
+                  onChange={(e) =>
+                    setDraftFilters((p: QueryFilters) => ({
+                      ...p,
+                      tinggiMin: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g. 30"
+                  className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
+                />
+              </div>
+
+              {/* 10. Registration number */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-heading">
+                  No. Registrasi
+                </label>
+                <input
+                  type="text"
+                  value={draftFilters.registrationNo}
+                  onChange={(e) =>
+                    setDraftFilters((p: QueryFilters) => ({
+                      ...p,
+                      registrationNo: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g. REG-2026-000101"
+                  className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Filter buttons */}
+            <div className="mt-5 flex items-center justify-end gap-3 border-t border-border-soft pt-4">
+              <Button type="button" variant="outline" size="sm" onClick={handleReset}>
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Reset</span>
+              </Button>
+              <Button type="submit" variant="primary" size="sm">
+                <Search className="h-3.5 w-3.5" />
+                <span>Apply query</span>
+              </Button>
+            </div>
+          </form>
+
+          {/* 2.2 Tower Map Card */}
+          <div className="rounded-card border border-border-soft bg-surface p-6 shadow-card">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-heading">
+                  Peta Menara Telekomunikasi
+                </h2>
+                <p className="text-xs text-muted">
+                  Menampilkan {filteredTowers.length} menara aktif dari seluruh Indonesia
+                </p>
+              </div>
+              {selectedPinId && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedPinId(null)}
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
+                  Bersihkan pilihan pin
+                </button>
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => exportCsv(false)}
-              className="inline-flex h-9 items-center gap-2 rounded-[10px] bg-[#00a8e8] px-4 text-[13px] font-medium text-white transition-opacity hover:opacity-90"
-            >
-              <Download className="h-4 w-4" />
-              Download
-            </button>
-
-            <button
-              type="button"
-              onClick={() => exportCsv(true)}
-              className="inline-flex h-9 items-center gap-2 rounded-[10px] border border-[#d0d5db] bg-white px-4 text-[13px] font-medium text-[#1f2a37] hover:bg-[#f5f6f8]"
-            >
-              <FileSpreadsheet className="h-4 w-4 text-[#016db0]" />
-              Export
-            </button>
+            <TowerMap towers={filteredTowers} />
           </div>
-        </div>
 
-        <div className="overflow-x-auto rounded-lg border border-[#e5e7eb]">
-          <table className="w-full border-collapse text-left text-[13px]">
-            <thead>
-              <tr className="border-b border-[#e5e7eb] bg-[#ddeef9] text-[12px] font-semibold text-[#1f2a37]">
-                {ALL_COLUMNS.map(
-                  (col) =>
-                    visibleCols[col.key] && (
-                      <th
-                        key={col.key}
-                        className="whitespace-nowrap px-3.5 py-2.5"
-                      >
+          {/* 2.3 Tower Data Table Card */}
+          <div className="rounded-card border border-border-soft bg-surface p-6 shadow-card">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-heading">
+                  Data Menara Telekomunikasi
+                </h2>
+                <p className="text-xs text-muted">
+                  Menampilkan {filteredTowers.length} rekaman data
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Column configurator toggle */}
+                <div className="relative">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowColMenu((v) => !v)}
+                  >
+                    <Settings2 className="h-3.5 w-3.5" />
+                    <span>Kolom</span>
+                  </Button>
+
+                  {showColMenu && (
+                    <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-card border border-border-soft bg-surface p-3 shadow-pop">
+                      <div className="mb-2 text-xs font-semibold text-heading">
+                        Tampilkan Kolom
+                      </div>
+                      <div className="max-h-48 space-y-1.5 overflow-y-auto">
+                        {ALL_COLUMNS.map((col) => (
+                          <label
+                            key={col.key}
+                            className="flex cursor-pointer items-center gap-2 text-xs text-heading hover:text-primary"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={visibleCols[col.key]}
+                              onChange={() => toggleColumn(col.key)}
+                              className="rounded text-primary focus:ring-primary"
+                            />
+                            <span>{col.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Download and Export Buttons */}
+                <Button
+                  type="button"
+                  variant="download"
+                  size="sm"
+                  onClick={() => exportCsv(true)}
+                  title="Unduh kolom yang sedang tampil"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Download</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => exportCsv(false)}
+                  title="Ekspor seluruh data ke file CSV"
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5" />
+                  <span>Export</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto rounded-input border border-border-soft">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-border-soft bg-table-head-bg text-heading font-semibold">
+                  <tr>
+                    {ALL_COLUMNS.filter((c) => visibleCols[c.key]).map((col) => (
+                      <th key={col.key} className="p-3">
                         {col.label}
                       </th>
-                    )
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#e5e7eb]">
-              {paginatedTowers.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={
-                      ALL_COLUMNS.filter((c) => visibleCols[c.key]).length || 1
-                    }
-                    className="px-4 py-8 text-center text-[13px] text-[#6b7280]"
-                  >
-                    No tower records match the current query filters.
-                  </td>
-                </tr>
-              ) : (
-                paginatedTowers.map((tower) => {
-                  const isSelected = selectedPinId === tower.id;
-                  return (
-                    <tr
-                      key={tower.id}
-                      onClick={() => setSelectedPinId(tower.id)}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected ? "bg-[#eaf5fc]" : "hover:bg-[#f5f6f8]"
-                      }`}
-                    >
-                      {visibleCols.kodeId && (
-                        <td className="whitespace-nowrap px-3.5 py-2.5 font-medium text-[#1f2a37]">
-                          {tower.kodeId}
-                        </td>
-                      )}
-                      {visibleCols.namaPemilik && (
-                        <td className="whitespace-nowrap px-3.5 py-2.5 text-[#1f2a37]">
-                          {tower.namaPemilik}
-                        </td>
-                      )}
-                      {visibleCols.tahun && (
-                        <td className="whitespace-nowrap px-3.5 py-2.5 text-[#1f2a37]">
-                          {tower.tahun}
-                        </td>
-                      )}
-                      {visibleCols.jenisMenara && (
-                        <td className="whitespace-nowrap px-3.5 py-2.5 text-[#1f2a37]">
-                          {tower.jenisMenara}
-                        </td>
-                      )}
-                      {visibleCols.tenants && (
-                        <td className="px-3.5 py-2.5 text-[#1f2a37]">
-                          {tower.tenants.join(", ")}
-                        </td>
-                      )}
-                      {visibleCols.longitude && (
-                        <td className="whitespace-nowrap px-3.5 py-2.5 font-mono text-[12px] text-[#1f2a37]">
-                          {tower.longitude.toFixed(6)}
-                        </td>
-                      )}
-                      {visibleCols.latitude && (
-                        <td className="whitespace-nowrap px-3.5 py-2.5 font-mono text-[12px] text-[#1f2a37]">
-                          {tower.latitude.toFixed(6)}
-                        </td>
-                      )}
-                      {visibleCols.alamat && (
-                        <td className="max-w-60 truncate px-3.5 py-2.5 text-[#6b7280]">
-                          {tower.alamat}
-                        </td>
-                      )}
-                      {visibleCols.tinggiAgl && (
-                        <td className="whitespace-nowrap px-3.5 py-2.5 text-[#1f2a37]">
-                          {tower.tinggiAgl}
-                        </td>
-                      )}
-                      {visibleCols.registrationNo && (
-                        <td className="whitespace-nowrap px-3.5 py-2.5 font-mono text-[12px] text-[#016db0]">
-                          {tower.registrationNo}
-                        </td>
-                      )}
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-soft text-heading">
+                  {paginatedTowers.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={ALL_COLUMNS.filter((c) => visibleCols[c.key]).length}
+                        className="p-8 text-center text-muted"
+                      >
+                        Tidak ada data menara yang cocok dengan filter pencarian.
+                      </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[13px] text-[#6b7280]">
-          <div>
-            Showing{" "}
-            <span className="font-medium text-[#1f2a37]">
-              {filteredTowers.length === 0
-                ? 0
-                : (safePage - 1) * rowsPerPage + 1}
-            </span>
-            –
-            <span className="font-medium text-[#1f2a37]">
-              {Math.min(safePage * rowsPerPage, filteredTowers.length)}
-            </span>{" "}
-            of{" "}
-            <span className="font-medium text-[#1f2a37]">
-              {filteredTowers.length}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span>Rows per page</span>
-              <select
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="h-8 w-18 rounded-lg border border-[#d0d5db] bg-white px-2 text-[13px] text-[#1f2a37]"
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
+                  ) : (
+                    paginatedTowers.map((tower) => (
+                      <tr
+                        key={tower.id}
+                        onClick={() => setSelectedPinId(tower.id)}
+                        className={`cursor-pointer transition-colors hover:bg-canvas ${
+                          selectedPinId === tower.id ? "bg-nav-active-bg" : ""
+                        }`}
+                      >
+                        {visibleCols.kodeId && (
+                          <td className="p-3 font-semibold text-primary">
+                            {tower.kodeId}
+                          </td>
+                        )}
+                        {visibleCols.namaPemilik && (
+                          <td className="p-3">{tower.namaPemilik}</td>
+                        )}
+                        {visibleCols.tahun && (
+                          <td className="p-3">{tower.tahun}</td>
+                        )}
+                        {visibleCols.jenisMenara && (
+                          <td className="p-3">
+                            <span className="inline-flex items-center rounded-full bg-[#f1f5f9] px-2 py-0.5 text-2xs font-medium text-heading">
+                              {tower.jenisMenara}
+                            </span>
+                          </td>
+                        )}
+                        {visibleCols.tenants && (
+                          <td className="p-3">
+                            <div className="flex flex-wrap gap-1">
+                              {tower.tenants.map((ten, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-flex items-center rounded bg-nav-active-bg px-1.5 py-0.5 text-2xs font-medium text-primary"
+                                >
+                                  {ten}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                        )}
+                        {visibleCols.longitude && (
+                          <td className="p-3 text-muted">{tower.longitude}</td>
+                        )}
+                        {visibleCols.latitude && (
+                          <td className="p-3 text-muted">{tower.latitude}</td>
+                        )}
+                        {visibleCols.alamat && (
+                          <td className="p-3 max-w-[200px] truncate text-muted" title={tower.alamat}>
+                            {tower.alamat}
+                          </td>
+                        )}
+                        {visibleCols.tinggiAgl && (
+                          <td className="p-3">{tower.tinggiAgl} m</td>
+                        )}
+                        {visibleCols.registrationNo && (
+                          <td className="p-3 font-mono text-2xs text-muted">
+                            {tower.registrationNo}
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
 
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled={safePage <= 1}
-                onClick={() => setPage((p: number) => Math.max(1, p - 1))}
-                className="h-8 rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Prev
-              </button>
-              <span className="px-2 text-[13px] font-medium text-[#1f2a37]">
-                {safePage} / {totalPages}
-              </span>
-              <button
-                type="button"
-                disabled={safePage >= totalPages}
-                onClick={() =>
-                  setPage((p: number) => Math.min(totalPages, p + 1))
-                }
-                className="h-8 rounded-lg border border-[#d0d5db] bg-white px-3 text-[13px] text-[#1f2a37] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Next
-              </button>
+            {/* Pagination Controls */}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
+              <div className="flex items-center gap-2">
+                <span>Baris per halaman:</span>
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="h-8 rounded-input border border-border bg-white px-2 text-xs text-heading focus:border-primary focus:outline-none"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={safePage <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Prev
+                </Button>
+                <span className="px-2 font-medium text-heading">
+                  Halaman {safePage} dari {totalPages}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={safePage >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-        </>
       )}
     </div>
   );
 }
-
-
-
-
