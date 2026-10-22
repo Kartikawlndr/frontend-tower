@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import React, { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { clientEnv } from "@/lib/env";
+
 import {
   Building2,
   Download,
@@ -18,10 +19,10 @@ import {
   ShieldCheck,
   CheckCircle2,
   Layers,
-  ArrowUpRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { InsightsAnalytics } from "@/components/dashboard/insights-analytics";
 
 const ROLE_DISPLAY: Record<string, string> = {
   "Normal User": "Pengguna",
@@ -850,272 +851,13 @@ export default function DashboardPage() {
           </div>
 
           {/* 1.3 MIDDLE ANALYTICS (Donut & Trend Charts) */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-            {/* Donut Chart: Metode Pendaftaran (2 Cols) */}
-            <div className="rounded-card border border-border-soft bg-surface p-6 shadow-card lg:col-span-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-heading">
-                    Metode Pendaftaran
-                  </h3>
-                  <p className="text-2xs text-muted">
-                    Proporsi unggah Excel vs formulir online
-                  </p>
-                </div>
-                <Badge variant="secondary" className="text-2xs">
-                  {displayMetrics.totalSubmissions} Berkas
-                </Badge>
-              </div>
-
-              <div className="mt-6 flex flex-col items-center justify-center sm:flex-row sm:gap-6">
-                {/* SVG Donut Chart with Project Colors */}
-                <div className="relative h-44 w-44">
-                  <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
-                    {/* Background Track */}
-                    <path
-                      className="text-[#e5e7eb]"
-                      strokeWidth="3.8"
-                      stroke="currentColor"
-                      fill="none"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                    {/* Segment 1: Upload Excel (#016db0) */}
-                    <path
-                      className="text-[#016db0] transition-all duration-500"
-                      strokeDasharray={`${displayMethods.excelPercent}, 100`}
-                      strokeWidth="3.8"
-                      stroke="currentColor"
-                      fill="none"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                    {/* Segment 2: Application Form (#00a8e8) */}
-                    <path
-                      className="text-[#00a8e8] transition-all duration-500"
-                      strokeDasharray={`${displayMethods.formPercent}, 100`}
-                      strokeDashoffset={`-${displayMethods.excelPercent}`}
-                      strokeWidth="3.8"
-                      stroke="currentColor"
-                      fill="none"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                  </svg>
-
-                  {/* Inner text */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span className="text-xl font-extrabold text-heading">
-                      {displayMethods.excelPercent}%
-                    </span>
-                    <span className="text-[10px] font-medium text-muted">
-                      Unggah Excel
-                    </span>
-                  </div>
-                </div>
-
-                {/* Legend with Project Palette */}
-                <div className="mt-4 space-y-3 text-xs sm:mt-0">
-                  <div className="flex items-center gap-2.5">
-                    <span className="h-3.5 w-3.5 rounded-full bg-[#016db0]"></span>
-                    <div>
-                      <div className="font-semibold text-heading">
-                        Unggah Excel ({displayMethods.excelPercent}%)
-                      </div>
-                      <div className="text-2xs text-muted">
-                        {displayMethods.excelCount} berkas massal
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2.5">
-                    <span className="h-3.5 w-3.5 rounded-full bg-[#00a8e8]"></span>
-                    <div>
-                      <div className="font-semibold text-heading">
-                        Formulir Online ({displayMethods.formPercent}%)
-                      </div>
-                      <div className="text-2xs text-muted">
-                        {displayMethods.formCount} permohonan tunggal
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Line Chart: Tren Pendaftaran Bulanan (3 Cols) */}
-            <div className="rounded-card border border-border-soft bg-surface p-6 shadow-card lg:col-span-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-heading">
-                    Grafik Tren Pendaftaran Menara
-                  </h3>
-                  <p className="text-2xs text-muted">
-                    Volume pengajuan data infrastruktur pasif bulanan (2026)
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-primary font-semibold">
-                  <ArrowUpRight className="h-4 w-4" />
-                  <span>+18.4% Rata-rata</span>
-                </div>
-              </div>
-
-              <div className="mt-4 h-48 w-full">
-                <svg
-                  className="h-full w-full overflow-visible"
-                  viewBox="0 0 500 150"
-                  preserveAspectRatio="none"
-                >
-                  <defs>
-                    <linearGradient id="primaryGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#016db0" stopOpacity="0.35" />
-                      <stop offset="100%" stopColor="#016db0" stopOpacity="0.0" />
-                    </linearGradient>
-                  </defs>
-
-                  {/* Horizontal Grid Lines */}
-                  <line x1="0" y1="30" x2="500" y2="30" stroke="#f1f5f9" strokeWidth="1" />
-                  <line x1="0" y1="75" x2="500" y2="75" stroke="#f1f5f9" strokeWidth="1" />
-                  <line x1="0" y1="120" x2="500" y2="120" stroke="#f1f5f9" strokeWidth="1" />
-
-                  {/* Shaded Area */}
-                  <path
-                    d="M 0 130 Q 40 85, 80 110 T 160 55 T 240 115 T 320 45 T 400 35 T 500 45 L 500 150 L 0 150 Z"
-                    fill="url(#primaryGradient)"
-                  />
-
-                  {/* Curved Primary Line */}
-                  <path
-                    d="M 0 130 Q 40 85, 80 110 T 160 55 T 240 115 T 320 45 T 400 35 T 500 45"
-                    fill="none"
-                    stroke="#016db0"
-                    strokeWidth="3.5"
-                    strokeLinecap="round"
-                  />
-
-                  {/* Accent Cyan Line for Trend */}
-                  <path
-                    d="M 0 140 Q 40 100, 80 120 T 160 75 T 240 130 T 320 65 T 400 55 T 500 65"
-                    fill="none"
-                    stroke="#00a8e8"
-                    strokeWidth="1.5"
-                    strokeDasharray="4 4"
-                  />
-                </svg>
-
-                {/* Month labels */}
-                <div className="mt-3 flex justify-between text-[11px] font-medium text-muted">
-                  <span>Jan</span>
-                  <span>Feb</span>
-                  <span>Mar</span>
-                  <span>Apr</span>
-                  <span>Mei</span>
-                  <span>Jun</span>
-                  <span>Jul</span>
-                  <span>Agu</span>
-                  <span>Sep</span>
-                  <span>Okt</span>
-                  <span>Nov</span>
-                  <span>Des</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 1.4 BOTTOM SECTION: TOP COMPANIES & RECENT ACTIVITIES */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Top 5 Penyelenggara Jaringan */}
-            <div className="rounded-card border border-border-soft bg-surface p-6 shadow-card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-heading">
-                  Top Penyelenggara Jaringan (Tenants)
-                </h3>
-                <span className="text-2xs text-muted">Pangsa Menara Aktif</span>
-              </div>
-
-              <div className="space-y-4 text-xs">
-                {displayTopCompanies.map((item, idx) => (
-                  <div key={idx}>
-                    <div className="mb-1.5 flex items-center justify-between">
-                      <span className="font-semibold text-heading">{item.name}</span>
-                      <span className="text-muted font-medium">
-                        {item.count} menara ({item.percentage}%)
-                      </span>
-                    </div>
-                    <div className="h-2.5 w-full rounded-full bg-[#f1f5f9] overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-[#016db0] to-[#00a8e8] transition-all duration-500"
-                        style={{ width: `${item.percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Aktivitas Pendaftaran Terbaru */}
-            <div className="rounded-card border border-border-soft bg-surface p-6 shadow-card">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-sm font-bold text-heading">
-                    Aktivitas Pendaftaran Terbaru
-                  </h3>
-                  <p className="text-2xs text-muted">
-                    Log permohonan registrasi masuk terkini
-                  </p>
-                </div>
-                <Badge variant="outline" className="text-2xs">
-                  Real-time
-                </Badge>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-border-soft text-muted font-semibold">
-                      <th className="pb-2.5">No. Registrasi</th>
-                      <th className="pb-2.5">Perusahaan</th>
-                      <th className="pb-2.5">Metode</th>
-                      <th className="pb-2.5 text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border-soft text-heading">
-                    {displayActivities.map((act) => (
-                      <tr key={act.id} className="hover:bg-canvas">
-                        <td className="py-3 font-semibold text-primary">
-                          {act.regNumber}
-                        </td>
-                        <td className="py-3 max-w-[150px] truncate text-muted">
-                          {act.company}
-                        </td>
-                        <td className="py-3 text-muted">
-                          {act.method === "Upload Excel"
-                            ? "Unggah Excel"
-                            : act.method === "Application Form"
-                            ? "Formulir Pendaftaran"
-                            : act.method}
-                        </td>
-                        <td className="py-3 text-right">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                              act.status === "Registered"
-                                ? "bg-emerald-100 text-emerald-800"
-                                : act.status === "Draft"
-                                ? "bg-amber text-amber-text"
-                                : "bg-danger-bg text-danger"
-                            }`}
-                          >
-                            {act.status === "Registered"
-                              ? "Terdaftar"
-                              : act.status === "Draft"
-                              ? "Draf"
-                              : "Ditolak"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          <InsightsAnalytics
+           totalSubmissions={displayMetrics.totalSubmissions}
+           methods={displayMethods}
+           topCompanies={displayTopCompanies}
+           trends={stats?.monthlyTrends}
+           activities={displayActivities}
+          />
         </div>
       )}
 
