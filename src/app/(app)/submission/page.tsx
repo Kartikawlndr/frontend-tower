@@ -14,15 +14,15 @@ const METHODS = [
   {
     value: "upload",
     href: "/submission/upload",
-    title: "Upload Excel",
-    description: "Register many towers at once from an .xlsx file.",
+    title: "Unggah Excel",
+    description: "Daftarkan banyak menara sekaligus dari berkas .xlsx.",
     icon: FileSpreadsheet,
   },
   {
     value: "form",
     href: "/submission/form",
-    title: "Application Form",
-    description: "Register a single tower by filling in the form.",
+    title: "Formulir Pengajuan",
+    description: "Daftarkan satu menara dengan mengisi formulir.",
     icon: ClipboardList,
   },
 ] as const;
@@ -30,14 +30,14 @@ const METHODS = [
 type MethodValue = (typeof METHODS)[number]["value"];
  
 const RECENT = [
-  { reg: "REG-2026-000003", date: "19/10/2026", method: "Upload Excel", status: "Registered" },
-  { reg: "REG-2026-000002", date: "17/10/2026", method: "Application Form", status: "Registered" },
-  { reg: "REG-2026-000001", date: "15/10/2026", method: "Upload Excel", status: "Rejected" },
+  { reg: "REG-2026-000003", date: "19/10/2026", method: "Upload Excel", status: "Terdaftar" },
+  { reg: "REG-2026-000002", date: "17/10/2026", method: "Application Form", status: "Terdaftar" },
+  { reg: "REG-2026-000001", date: "15/10/2026", method: "Upload Excel", status: "Ditolak" },
 ] as const;
  
 const STATUS_VARIANT = {
-  Registered: "success",
-  Rejected: "destructive",
+  Terdaftar: "success",
+  Ditolak: "destructive",
 } as const;
  
 export default function SubmissionPage() {
@@ -48,12 +48,12 @@ export default function SubmissionPage() {
  
   return (
     <div className="mx-auto flex max-w-240 flex-col gap-6">
-      <h1 className="text-page-title">Data Submission</h1>
+      <h1 className="text-page-title">Metode Pengajuan</h1>
  
-      <Card title="Submission method">
+      <Card title="Metode Pengajuan">
         <CardBody className="flex flex-col gap-4 pt-4">
           <p className="text-helper">
-            Choose how you want to register tower data.
+            Pilih cara Anda mendaftarkan data menara.
           </p>
           <div
             role="radiogroup"
@@ -93,7 +93,7 @@ export default function SubmissionPage() {
             })}
           </div>
           <div className="flex justify-end">
-            <Button onClick={() => router.push(selected.href)}>Continue</Button>
+            <Button onClick={() => router.push(selected.href)}>Selanjutnya</Button>
           </div>
         </CardBody>
       </Card>
@@ -103,11 +103,11 @@ export default function SubmissionPage() {
           <Table>
             <thead>
               <tr>
-                <Th>Registration No.</Th>
-                <Th>Date</Th>
-                <Th>Method</Th>
+                <Th>No. Registration</Th>
+                <Th>Tanggal</Th>
+                <Th>Metode</Th>
                 <Th>Status</Th>
-                <Th>Action</Th>
+                <Th>Aksi</Th>
               </tr>
             </thead>
             <tbody>
@@ -124,7 +124,7 @@ export default function SubmissionPage() {
                       href={`/submission/${r.reg}`}
                       className="font-semibold text-primary hover:underline"
                     >
-                      View
+                      Lihat
                     </Link>
                   </Td>
                 </tr>
@@ -136,7 +136,7 @@ export default function SubmissionPage() {
               href="/submission/history"
               className="text-sm font-semibold text-primary hover:underline"
             >
-              View all history
+              Lihat Semua Riwayat
             </Link>
           </div>
         </CardBody>
