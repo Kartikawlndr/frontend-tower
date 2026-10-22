@@ -1,5 +1,5 @@
 "use client";
- 
+
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CloudUpload, Paperclip, X, Download } from "lucide-react";
@@ -8,31 +8,31 @@ import { Button } from "@/components/ui/button";
 import { Table, Th, Td } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { clientEnv, parsePayloadSize } from "@/lib/env";
- 
+
 const MAX_SIZE = parsePayloadSize(clientEnv.maxPayloadSize);
- 
-const TEXT_RULE = "Max 50 characters";
- 
+
+const TEXT_RULE = "Maksimal 50 karakter";
+
 const COLUMNS = [
-  { field: "Kode/ID Menara", type: "Text", rule: TEXT_RULE },
-  { field: "Nama Pemilik Menara", type: "Text", rule: TEXT_RULE },
-  { field: "Tahun Pembangunan", type: "Integer", rule: "4 digits, 1900 to current year" },
-  { field: "Penyelenggara Jaringan (Tenant)", type: "Text", rule: "Max 50 characters, one tenant per row" },
-  { field: "Longitude", type: "Decimal", rule: "6 decimals, 95 to 141" },
-  { field: "Latitude", type: "Decimal", rule: "6 decimals, -11 to 6" },
-  { field: "Alamat", type: "Text", rule: TEXT_RULE },
-  { field: "Jenis Menara", type: "Text", rule: TEXT_RULE },
-  { field: "Tinggi Menara (AGL)", type: "Integer", rule: "Positive, max 3 digits (meters)" },
-  { field: "Kapasitas Maksimal", type: "Text", rule: TEXT_RULE },
-  { field: "Kapasitas Disewakan", type: "Text", rule: TEXT_RULE },
-  { field: "Kapasitas Digunakan Sendiri", type: "Text", rule: TEXT_RULE },
+  { field: "Kode/ID Menara", type: "Teks", rule: TEXT_RULE },
+  { field: "Nama Pemilik Menara", type: "Teks", rule: TEXT_RULE },
+  { field: "Tahun Pembangunan", type: "Bilangan Bulat", rule: "4 digit, 1900 sampai tahun saat ini" },
+  { field: "Penyelenggara Jaringan (Tenant)", type: "Teks", rule: "Maksimal 50 karakter, satu penyewa per baris" },
+  { field: "Longitude", type: "Desimal", rule: "6 desimal, 95 sampai 141" },
+  { field: "Latitude", type: "Desimal", rule: "6 desimal, -11 sampai 6" },
+  { field: "Alamat", type: "Teks", rule: TEXT_RULE },
+  { field: "Jenis Menara", type: "Teks", rule: TEXT_RULE },
+  { field: "Tinggi Menara (AGL)", type: "Bilangan Bulat", rule: "Positif, maks 3 digit (meter)" },
+  { field: "Kapasitas Maksimal", type: "Teks", rule: TEXT_RULE },
+  { field: "Kapasitas Disewakan", type: "Teks", rule: TEXT_RULE },
+  { field: "Kapasitas Digunakan Sendiri", type: "Teks", rule: TEXT_RULE },
 ];
- 
+
 function formatSize(bytes: number) {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
- 
+
 export default function UploadExcelPage() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -40,41 +40,41 @@ export default function UploadExcelPage() {
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
   const handleDownloadTemplate = () => {
-        const link = document.createElement("a");
-        link.href = "/Template_Pendaftaran_Menara.xlsx"; // Mengarah ke folder public
-        link.download = "template-menara.xlsx"; // Nama file saat di-download oleh user
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      };
- 
+    const link = document.createElement("a");
+    link.href = "/Template_Pendaftaran_Menara.xlsx";
+    link.download = "template-menara.xlsx";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   function accept(next: File | undefined) {
     if (!next) return;
     if (!next.name.toLowerCase().endsWith(".xlsx")) {
       setFile(null);
-      setError("Only .xlsx files are accepted.");
+      setError("Hanya file .xlsx yang diterima.");
       return;
     }
     if (next.size > MAX_SIZE) {
       setFile(null);
-      setError(`The file is larger than ${formatSize(MAX_SIZE)}.`);
+      setError(`Ukuran file lebih besar dari ${formatSize(MAX_SIZE)}.`);
       return;
     }
     setError("");
     setFile(next);
   }
- 
+
   function clear() {
     setFile(null);
     setError("");
     if (inputRef.current) inputRef.current.value = "";
   }
- 
+
   return (
     <div className="mx-auto flex max-w-[960px] flex-col gap-6">
-      <h1 className="text-page-title">Upload Excel</h1>
- 
-      <Card title="Upload file">
+      <h1 className="text-page-title">Unggah Excel</h1>
+
+      <Card title="Unggah file">
         <CardBody className="flex flex-col gap-4 pt-4">
           {error && (
             <div
@@ -84,7 +84,7 @@ export default function UploadExcelPage() {
               {error}
             </div>
           )}
- 
+
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -103,24 +103,24 @@ export default function UploadExcelPage() {
           >
             <CloudUpload className="h-10 w-10 text-primary" strokeWidth={1.5} aria-hidden />
             <p className="text-sm font-semibold text-heading">
-              Drag and drop .xlsx file here
+              Tarik dan lepas file .xlsx di sini
             </p>
-            <p className="text-helper">or</p>
+            <p className="text-helper">atau</p>
             <input
               ref={inputRef}
               type="file"
               accept=".xlsx"
               className="sr-only"
-              aria-label="Choose .xlsx file"
+              aria-label="Pilih file .xlsx"
               tabIndex={-1}
               onChange={(e) => accept(e.target.files?.[0])}
             />
             <Button variant="outline" onClick={() => inputRef.current?.click()}>
               <Paperclip className="h-4 w-4" strokeWidth={2} />
-              Choose file
+              Pilih file
             </Button>
           </div>
- 
+
           {file && (
             <div className="flex items-center justify-between rounded-card border border-border-soft bg-surface px-3 py-2">
               <div className="flex min-w-0 items-center gap-2">
@@ -131,36 +131,36 @@ export default function UploadExcelPage() {
               <button
                 type="button"
                 onClick={clear}
-                aria-label="Remove file"
+                aria-label="Hapus file"
                 className="cursor-pointer text-danger"
               >
                 <X className="h-4 w-4" strokeWidth={2} />
               </button>
             </div>
           )}
- 
+
           <p className="text-helper">
             Satu baris untuk satu penyewa. Data menara diisi ulang jika lebih dari satu penyewa.
           </p>
           <div>
             <Button type="button" variant="outline" onClick={handleDownloadTemplate}>
               <Download className="h-4 w-4" strokeWidth={2} />
-              Download template
+              Unduh template
             </Button>
           </div>
         </CardBody>
       </Card>
- 
-      <Card title="Excel column guide">
+
+      <Card title="Panduan Kolom Excel">
         <CardBody className="pt-4">
           <Table>
             <thead>
               <tr>
                 <Th>No</Th>
-                <Th>Field</Th>
-                <Th>Type</Th>
-                <Th>Rule</Th>
-                <Th>Required</Th>
+                <Th>Kolom / Field</Th>
+                <Th>Tipe</Th>
+                <Th>Aturan</Th>
+                <Th>Wajib</Th>
               </tr>
             </thead>
             <tbody>
@@ -170,23 +170,23 @@ export default function UploadExcelPage() {
                   <Td>{c.field}</Td>
                   <Td>{c.type}</Td>
                   <Td>{c.rule}</Td>
-                  <Td>Yes</Td>
+                  <Td>Ya</Td>
                 </tr>
               ))}
             </tbody>
           </Table>
         </CardBody>
       </Card>
- 
+
       <div className="flex justify-end gap-3">
         <Button variant="outline" onClick={() => router.push("/submission")}>
-          Cancel
+          Batal
         </Button>
         <Button
           disabled={!file}
           onClick={() => router.push("/submission/result/rejected")}
         >
-          Upload / Submit
+          Unggah / Kirim
         </Button>
       </div>
     </div>

@@ -55,12 +55,12 @@ export function TowerRecordsTable({
   }
  
   return (
-    <Card title="Tower records in this submission">
+    <Card title="Data menara dalam pengajuan ini">
       <CardBody className="flex flex-col gap-4 pt-4">
         <div className="flex justify-end">
           <Button variant="download" disabled={rows.length === 0} onClick={download}>
             <Download className="h-4 w-4" strokeWidth={2} />
-            Download
+            Unduh
           </Button>
         </div>
         <Table>

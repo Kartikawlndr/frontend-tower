@@ -11,34 +11,45 @@ import {
   formatDate,
   makeTowerRows,
 } from "@/lib/dummy-submissions";
- 
+
 const EMPTY_MESSAGE = {
-  Registered: "No records.",
-  Rejected: "No records were saved because this submission was rejected.",
-  Draft: "This draft has not been submitted yet.",
+  Registered: "Tidak ada rekaman data.",
+  Rejected: "Tidak ada data yang disimpan karena pengajuan ini ditolak.",
+  Draft: "Draf ini belum dikirimkan.",
 } as const;
- 
+
+const STATUS_TEXT: Record<string, string> = {
+  Registered: "Terdaftar",
+  Rejected: "Ditolak",
+  Draft: "Draf",
+};
+
+const METHOD_TEXT: Record<string, string> = {
+  "Upload Excel": "Unggah Excel",
+  "Application Form": "Formulir Pendaftaran",
+};
+
 async function SubmissionDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const submission = SUBMISSIONS.find((s) => s.reg === decodeURIComponent(id));
   if (!submission) notFound();
- 
+
   const rows =
     submission.status === "Registered" ? makeTowerRows(submission.rows) : [];
- 
+
   const summary = [
-    { label: "Registration number", value: submission.reg },
-    { label: "Submitted by", value: "demo" },
-    { label: "Date", value: formatDate(submission.iso) },
-    { label: "Method", value: submission.method },
-    { label: "Total rows", value: String(submission.rows) },
+    { label: "No. Registrasi", value: submission.reg },
+    { label: "Diajukan oleh", value: "demo" },
+    { label: "Tanggal", value: formatDate(submission.iso) },
+    { label: "Metode", value: METHOD_TEXT[submission.method] || submission.method },
+    { label: "Total baris", value: String(submission.rows) },
   ];
- 
+
   return (
     <div className="mx-auto flex max-w-[1100px] flex-col gap-6">
-      <h1 className="text-page-title">Submission Detail</h1>
- 
-      <Card title="Summary">
+      <h1 className="text-page-title">Detail Pengajuan</h1>
+
+      <Card title="Ringkasan">
         <CardBody className="pt-4">
           <dl className="grid gap-4 sm:grid-cols-3">
             {summary.map((s) => (
@@ -51,40 +62,40 @@ async function SubmissionDetail({ params }: { params: Promise<{ id: string }> })
               <dt className="text-field-label">Status</dt>
               <dd>
                 <Badge variant={STATUS_VARIANT[submission.status]}>
-                  {submission.status}
+                  {STATUS_TEXT[submission.status] || submission.status}
                 </Badge>
               </dd>
             </div>
           </dl>
         </CardBody>
       </Card>
- 
+
       <TowerRecordsTable
         reg={submission.reg}
         rows={rows}
         emptyMessage={EMPTY_MESSAGE[submission.status]}
       />
- 
+
       <div>
         <Button asChild variant="outline">
-          <Link href="/submission/history">Back to history</Link>
+          <Link href="/submission/history">Kembali ke riwayat</Link>
         </Button>
       </div>
- 
+
       <p className="text-caption-note">
-        Sample data. Records will come from the database once it is connected.
+        Data contoh. Rekaman data akan diambil dari database setelah terhubung.
       </p>
     </div>
   );
 }
- 
+
 export default function SubmissionDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   return (
-    <Suspense fallback={<p className="text-helper">Loading submission...</p>}>
+    <Suspense fallback={<p className="text-helper">Memuat data pengajuan...</p>}>
       <SubmissionDetail params={params} />
     </Suspense>
   );

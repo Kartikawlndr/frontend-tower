@@ -1,5 +1,5 @@
 "use client";
- 
+
 import { useMemo, useState } from "react";
 import { Download } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/card";
@@ -16,9 +16,9 @@ import {
 } from "@/lib/dummy-towers";
 import { downloadCsv } from "@/lib/csv";
 import { cn } from "@/lib/utils";
- 
+
 type Field = { key: keyof TowerRecord; label: string };
- 
+
 const COLUMNS: Field[] = [
   { key: "kode", label: "Kode/ID Menara" },
   { key: "pemilik", label: "Nama Pemilik" },
@@ -30,9 +30,9 @@ const COLUMNS: Field[] = [
   { key: "jenis", label: "Jenis Menara" },
   { key: "tinggi", label: "Tinggi (AGL)" },
 ];
- 
+
 const ALL_FIELDS: Field[] = [
-  { key: "reg", label: "Registration number" },
+  { key: "reg", label: "Nomor Registrasi" },
   { key: "kode", label: "Kode/ID Menara" },
   { key: "pemilik", label: "Nama Pemilik Menara" },
   { key: "tahun", label: "Tahun Pembangunan" },
@@ -46,21 +46,21 @@ const ALL_FIELDS: Field[] = [
   { key: "kapSewa", label: "Kapasitas Disewakan" },
   { key: "kapSendiri", label: "Kapasitas Digunakan Sendiri" },
 ];
- 
+
 type Filters = { kode: string; pemilik: string; jenis: string; reg: string };
 type Pending = { title: string; ids: string[] } | null;
- 
+
 const NO_FILTERS: Filters = { kode: "", pemilik: "", jenis: "", reg: "" };
- 
+
 function plural(n: number) {
-  return `${n} record${n === 1 ? "" : "s"}`;
+  return `${n} data`;
 }
- 
+
 function includes(value: string, query: string) {
   const q = query.trim().toLowerCase();
   return !q || value.toLowerCase().includes(q);
 }
- 
+
 export default function TowerRecordsPage() {
   const [draft, setDraft] = useState<Filters>(NO_FILTERS);
   const [applied, setApplied] = useState<Filters>(NO_FILTERS);
@@ -71,7 +71,7 @@ export default function TowerRecordsPage() {
   const [viewing, setViewing] = useState<TowerRecord | null>(null);
   const [pending, setPending] = useState<Pending>(null);
   const [message, setMessage] = useState("");
- 
+
   const results = useMemo(
     () =>
       TOWER_RECORDS.filter(
@@ -84,14 +84,14 @@ export default function TowerRecordsPage() {
       ),
     [applied, deleted]
   );
- 
+
   const pageCount = Math.max(1, Math.ceil(results.length / pageSize));
   const current = Math.min(page, pageCount);
   const visible = results.slice((current - 1) * pageSize, current * pageSize);
- 
+
   const allOnPage = visible.length > 0 && visible.every((r) => selected.has(r.id));
   const someOnPage = visible.some((r) => selected.has(r.id));
- 
+
   function search(e: React.FormEvent) {
     e.preventDefault();
     setApplied(draft);
@@ -99,7 +99,7 @@ export default function TowerRecordsPage() {
     setSelected(new Set());
     setMessage("");
   }
- 
+
   function reset() {
     setDraft(NO_FILTERS);
     setApplied(NO_FILTERS);
@@ -107,7 +107,7 @@ export default function TowerRecordsPage() {
     setSelected(new Set());
     setMessage("");
   }
- 
+
   function toggle(id: string) {
     setSelected((s) => {
       const next = new Set(s);
@@ -116,7 +116,7 @@ export default function TowerRecordsPage() {
       return next;
     });
   }
- 
+
   function togglePage(checked: boolean) {
     setSelected((s) => {
       const next = new Set(s);
@@ -124,16 +124,16 @@ export default function TowerRecordsPage() {
       return next;
     });
   }
- 
+
   function confirmDelete() {
     if (!pending) return;
     const gone = new Set(pending.ids);
     setDeleted((d) => new Set([...Array.from(d), ...Array.from(gone)]));
     setSelected((s) => new Set(Array.from(s).filter((id) => !gone.has(id))));
-    setMessage(`${plural(pending.ids.length)} deleted.`);
+    setMessage(`${plural(pending.ids.length)} berhasil dihapus.`);
     setPending(null);
   }
- 
+
   function download() {
     downloadCsv(
       "tower-records.csv",
@@ -141,11 +141,11 @@ export default function TowerRecordsPage() {
       results.map((r) => ALL_FIELDS.map((f) => r[f.key]))
     );
   }
- 
+
   return (
     <div className="mx-auto flex max-w-[1200px] flex-col gap-6">
-      <h1 className="text-page-title">Tower Records</h1>
- 
+      <h1 className="text-page-title">Data Menara</h1>
+
       <Card title="Filter">
         <CardBody className="pt-4">
           <form onSubmit={search} className="flex flex-col gap-4">
@@ -168,7 +168,7 @@ export default function TowerRecordsPage() {
                 value={draft.jenis}
                 onChange={(e) => setDraft({ ...draft, jenis: e.target.value })}
               >
-                <option value="">All</option>
+                <option value="">Semua</option>
                 {JENIS_OPTIONS.map((j) => (
                   <option key={j} value={j}>
                     {j}
@@ -177,7 +177,7 @@ export default function TowerRecordsPage() {
               </Select>
               <Input
                 id="filter-reg"
-                label="Registration number"
+                label="Nomor Registrasi"
                 value={draft.reg}
                 onChange={(e) => setDraft({ ...draft, reg: e.target.value })}
               />
@@ -186,17 +186,17 @@ export default function TowerRecordsPage() {
               <Button type="button" variant="outline" onClick={reset}>
                 Reset
               </Button>
-              <Button type="submit">Search</Button>
+              <Button type="submit">Cari</Button>
             </div>
           </form>
         </CardBody>
       </Card>
- 
-      <Card title="Tower records">
+
+      <Card title="Daftar Data Menara">
         <CardBody className="flex flex-col gap-4 pt-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-helper">
-              {selected.size} selected / Scope: own records
+              {selected.size} dipilih / Cakupan: data sendiri
             </p>
             <div className="flex flex-wrap gap-3">
               <Button
@@ -205,35 +205,35 @@ export default function TowerRecordsPage() {
                 onClick={download}
               >
                 <Download className="h-4 w-4" strokeWidth={2} />
-                Download
+                Unduh
               </Button>
               <Button
                 variant="destructive"
                 disabled={selected.size === 0}
                 onClick={() =>
                   setPending({
-                    title: "Delete selected records",
+                    title: "Hapus data terpilih",
                     ids: Array.from(selected),
                   })
                 }
               >
-                Delete selected
+                Hapus Terpilih
               </Button>
               <Button
                 variant="danger-outline"
                 disabled={results.length === 0}
                 onClick={() =>
                   setPending({
-                    title: "Delete all matching records",
+                    title: "Hapus semua data yang cocok",
                     ids: results.map((r) => r.id),
                   })
                 }
               >
-                Bulk delete
+                Hapus Massal
               </Button>
             </div>
           </div>
- 
+
           {message && (
             <div
               role="status"
@@ -242,14 +242,14 @@ export default function TowerRecordsPage() {
               {message}
             </div>
           )}
- 
+
           <Table>
             <thead>
               <tr>
                 <Th className="w-10">
                   <input
                     type="checkbox"
-                    aria-label="Select all records on this page"
+                    aria-label="Pilih semua data pada halaman ini"
                     className="h-4 w-4 cursor-pointer accent-primary"
                     checked={allOnPage}
                     ref={(el) => {
@@ -261,14 +261,14 @@ export default function TowerRecordsPage() {
                 {COLUMNS.map((c) => (
                   <Th key={c.key}>{c.label}</Th>
                 ))}
-                <Th>Action</Th>
+                <Th>Aksi</Th>
               </tr>
             </thead>
             <tbody>
               {visible.length === 0 ? (
                 <tr>
                   <Td colSpan={COLUMNS.length + 2} className="py-8 text-center text-muted">
-                    No records found.
+                    Tidak ada data yang ditemukan.
                   </Td>
                 </tr>
               ) : (
@@ -277,7 +277,7 @@ export default function TowerRecordsPage() {
                     <Td>
                       <input
                         type="checkbox"
-                        aria-label={`Select ${r.kode}`}
+                        aria-label={`Pilih ${r.kode}`}
                         className="h-4 w-4 cursor-pointer accent-primary"
                         checked={selected.has(r.id)}
                         onChange={() => toggle(r.id)}
@@ -294,7 +294,7 @@ export default function TowerRecordsPage() {
                         onClick={() => setViewing(r)}
                         className="cursor-pointer font-semibold text-primary hover:underline"
                       >
-                        View
+                        Lihat
                       </button>
                       <span className="px-2 text-faint" aria-hidden>
                         |
@@ -302,11 +302,11 @@ export default function TowerRecordsPage() {
                       <button
                         type="button"
                         onClick={() =>
-                          setPending({ title: `Delete ${r.kode}`, ids: [r.id] })
+                          setPending({ title: `Hapus ${r.kode}`, ids: [r.id] })
                         }
                         className="cursor-pointer font-semibold text-danger hover:underline"
                       >
-                        Delete
+                        Hapus
                       </button>
                     </Td>
                   </tr>
@@ -314,7 +314,7 @@ export default function TowerRecordsPage() {
               )}
             </tbody>
           </Table>
- 
+
           <Pagination
             page={current}
             pageSize={pageSize}
@@ -325,27 +325,25 @@ export default function TowerRecordsPage() {
               setPage(1);
             }}
           />
- 
+
           <p className="text-caption-note">
-            Delete is a soft delete: the record leaves the active registry and the
-            same data can be submitted again.
+            Penghapusan bersifat soft delete: data akan dikeluarkan dari registri aktif dan data yang sama dapat diajukan kembali.
           </p>
         </CardBody>
       </Card>
- 
+
       <p className="text-caption-note">
-        Sample data. Deleted records come back on refresh until the database is
-        connected.
+        Data contoh. Data yang dihapus akan kembali saat refresh hingga database terhubung.
       </p>
- 
+
       <Dialog
         open={viewing !== null}
         onClose={() => setViewing(null)}
-        title={viewing ? `Tower ${viewing.kode}` : "Tower record"}
+        title={viewing ? `Menara ${viewing.kode}` : "Data Menara"}
         className="max-w-[640px]"
         footer={
           <Button variant="outline" onClick={() => setViewing(null)}>
-            Close
+            Tutup
           </Button>
         }
       >
@@ -360,23 +358,23 @@ export default function TowerRecordsPage() {
           </dl>
         )}
       </Dialog>
- 
+
       <Dialog
         open={pending !== null}
         onClose={() => setPending(null)}
         title={pending?.title ?? ""}
         description={
           pending
-            ? `${plural(pending.ids.length)} will leave the active registry. The same data can be submitted again.`
+            ? `${plural(pending.ids.length)} akan dikeluarkan dari registri aktif. Data yang sama dapat diajukan kembali.`
             : undefined
         }
         footer={
           <>
             <Button variant="outline" onClick={() => setPending(null)}>
-              Cancel
+              Batal
             </Button>
             <Button variant="destructive" onClick={confirmDelete}>
-              Delete
+              Hapus
             </Button>
           </>
         }
