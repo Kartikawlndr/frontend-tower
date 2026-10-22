@@ -94,7 +94,7 @@ export default function UserManagement() {
                     <th className="p-3.5">Role</th>
                     <th className="p-3.5">Status</th>
                     <th className="p-3.5">Created</th>
-                    <th className="p-3.5 text-right pr-6">Action</th>
+                    <th className="p-3.5 text-right pr-25"> Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-soft text-muted">
@@ -105,20 +105,12 @@ export default function UserManagement() {
                       <td className="p-3.5">-</td>
                       <td className="p-3.5">-</td>
                       <td className="p-3.5">-</td>
-                      <td className="p-3.5 text-right space-x-1 pr-6 font-medium">
+                      <td className="p-3.5 text-right space-x-1 pr-27 font-medium">
                         <button
                           onClick={() => setCurrentView("edit")}
                           className="text-primary hover:underline"
                         >
                           Edit
-                        </button>
-                        <span className="text-border">|</span>
-                        <button className="text-primary hover:underline">
-                          Reset password
-                        </button>
-                        <span className="text-border">|</span>
-                        <button className="text-danger hover:underline">
-                          Deactivate
                         </button>
                       </td>
                     </tr>
@@ -291,7 +283,7 @@ export default function UserManagement() {
       {/* VIEW 3: EDIT USER */}
       {currentView === "edit" && (
         <>
-          <h1 className="text-page-title">User Management / Edit User</h1>
+          <h1 className="text-page-title">Edit User</h1>
 
           <div className="bg-surface p-6 rounded-card border border-border-soft shadow-card space-y-6">
             <div className="border border-border-soft rounded-card p-5 space-y-4">
@@ -358,7 +350,7 @@ export default function UserManagement() {
               </div>
               <div className="flex justify-end pt-2">
                 <button className="px-4 h-[var(--height-button)] bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card flex items-center gap-2">
-                  <span>🔑 Reset password</span>
+                  <span>Reset password</span>
                 </button>
               </div>
             </div>
@@ -404,7 +396,7 @@ export default function UserManagement() {
                 onClick={() => setCurrentView("list")}
                 className="px-4 h-[var(--height-button)] bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card"
               >
-                💾 Save changes
+                Save changes
               </button>
             </div>
           </div>
