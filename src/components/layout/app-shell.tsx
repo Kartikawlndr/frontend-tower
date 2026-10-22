@@ -106,7 +106,7 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { user, setRole } = useAuth();
+  const { user, setRole, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
 
@@ -214,7 +214,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Suspense>
             <button
               type="button"
-              onClick={() => router.push("/")}
+              onClick={() => {
+                logout();
+                router.push("/");
+              }}
               title={collapsed ? "Log out" : undefined}
               className={cn(
                 "mt-1 flex h-10 items-center gap-3 rounded-card px-3 text-base text-logout transition-colors duration-150 hover:bg-danger-bg",
