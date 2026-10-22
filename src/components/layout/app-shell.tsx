@@ -99,13 +99,13 @@ function ActiveNavItems({
 }
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
-  { value: "USER", label: "Pengguna Standar" },
+  { value: "USER", label: "Pengguna" },
   { value: "MANAGER", label: "Manajer Web" },
   { value: "ADMIN", label: "Super Admin" },
 ];
 
 const ROLE_DISPLAY: Record<string, string> = {
-  "Normal User": "Pengguna Standar",
+  "Normal User": "Pengguna",
   "Web Manager": "Manajer Web",
   "Super Admin": "Super Admin",
 };
