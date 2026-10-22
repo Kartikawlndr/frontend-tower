@@ -636,6 +636,7 @@ export default function DashboardPage() {
               Dashboard Infrastruktur Pasif
             </h1>
             <Badge
+              suppressHydrationWarning
               variant={isSuperAdmin ? "default" : isWebManager ? "info" : "outline"}
               className="text-[11px]"
             >
