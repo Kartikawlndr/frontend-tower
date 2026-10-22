@@ -106,7 +106,7 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { user, setRole } = useAuth();
+  const { user, setRole, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
 
@@ -147,7 +147,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             aria-expanded={roleMenuOpen}
           >
             <User className="h-4 w-4" strokeWidth={2} />
-            <span className="text-sm font-semibold">{user.roleLabel}</span>
+            <span suppressHydrationWarning className="text-sm font-semibold">{user.roleLabel}</span>
             {roleMenuOpen ? (
               <ChevronUp className="h-4 w-4" strokeWidth={2} />
             ) : (
@@ -158,10 +158,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {roleMenuOpen && (
             <div className="absolute right-0 top-full mt-1 w-48 rounded-card border border-border-soft bg-surface py-1 shadow-pop">
               <div className="border-b border-border-soft px-3 py-2">
-                <p className="text-sm font-semibold text-heading">
+                <p suppressHydrationWarning className="text-sm font-semibold text-heading">
                   {user.name}
                 </p>
-                <p className="text-xs text-muted">{user.email}</p>
+                <p suppressHydrationWarning className="text-xs text-muted">{user.email}</p>
               </div>
               {ROLE_OPTIONS.map((opt) => (
                 <button
@@ -214,7 +214,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Suspense>
             <button
               type="button"
-              onClick={() => router.push("/")}
+              onClick={() => {
+                logout();
+                router.push("/");
+              }}
               title={collapsed ? "Log out" : undefined}
               className={cn(
                 "mt-1 flex h-10 items-center gap-3 rounded-card px-3 text-base text-logout transition-colors duration-150 hover:bg-danger-bg",

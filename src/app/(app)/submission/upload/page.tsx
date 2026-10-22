@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { CloudUpload, Paperclip, X, Download } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
 import { Table, Th, Td } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { clientEnv, parsePayloadSize } from "@/lib/env";
  
-const MAX_SIZE = 10 * 1024 * 1024;
+const MAX_SIZE = parsePayloadSize(clientEnv.maxPayloadSize);
  
 const TEXT_RULE = "Max 50 characters";
  
@@ -57,7 +57,7 @@ export default function UploadExcelPage() {
     }
     if (next.size > MAX_SIZE) {
       setFile(null);
-      setError("The file is larger than 10 MB.");
+      setError(`The file is larger than ${formatSize(MAX_SIZE)}.`);
       return;
     }
     setError("");

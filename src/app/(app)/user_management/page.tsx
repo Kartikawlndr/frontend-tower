@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { clientEnv } from "@/lib/env";
 
 export default function UserManagement() {
   const { user } = useAuth();
@@ -98,13 +99,43 @@ export default function UserManagement() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-soft text-muted">
-                  {[1, 2, 3, 4, 5, 6, 7].map((row) => (
-                    <tr key={row} className="hover:bg-canvas">
-                      <td className="p-3.5">-</td>
-                      <td className="p-3.5">-</td>
-                      <td className="p-3.5">-</td>
-                      <td className="p-3.5">-</td>
-                      <td className="p-3.5">-</td>
+                  {[
+                    {
+                      name: "Super Administrator",
+                      email: clientEnv.adminEmail,
+                      role: "Super Admin",
+                      status: "Active",
+                      created: "2026-01-01",
+                    },
+                    {
+                      name: "Web Manager",
+                      email: clientEnv.managerEmail,
+                      role: "Web Manager",
+                      status: "Active",
+                      created: "2026-01-02",
+                    },
+                    {
+                      name: "PT Tower Bersama",
+                      email: "operator@towerbersama.com",
+                      role: "Normal User",
+                      status: "Active",
+                      created: "2026-02-15",
+                    },
+                  ].map((row, idx) => (
+                    <tr key={idx} className="hover:bg-canvas">
+                      <td className="p-3.5 font-medium text-heading">{row.name}</td>
+                      <td className="p-3.5">{row.email}</td>
+                      <td className="p-3.5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-2xs font-semibold bg-sky-100 text-[#0070ba]">
+                          {row.role}
+                        </span>
+                      </td>
+                      <td className="p-3.5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-2xs font-semibold bg-emerald-100 text-emerald-800">
+                          {row.status}
+                        </span>
+                      </td>
+                      <td className="p-3.5">{row.created}</td>
                       <td className="p-3.5 text-right space-x-1 pr-27 font-medium">
                         <button
                           onClick={() => setCurrentView("edit")}
@@ -121,7 +152,7 @@ export default function UserManagement() {
 
             {/* Pagination footer */}
             <div className="flex items-center justify-between pt-2 text-xs text-muted">
-              <span>Showing 1-10 of 0</span>
+              <span>Showing 1-3 of 3</span>
               <div className="flex items-center gap-2">
                 <span>Rows per page</span>
                 <select className="border border-border rounded-input px-2 py-1 bg-surface">
