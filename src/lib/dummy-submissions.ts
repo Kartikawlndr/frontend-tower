@@ -31,9 +31,16 @@ const TOTAL = 27;
  
 export const SUBMISSIONS: Submission[] = Array.from({ length: TOTAL }, (_, i) => {
   const method: SubmissionMethod = i % 3 === 1 ? "Application Form" : "Upload Excel";
+  
+  // ATUR STATUS DI SINI:
   let status: SubmissionStatus = "Registered";
-  if (i % 5 === 3) status = "Rejected";
-  else if (method === "Application Form" && i % 2 === 1) status = "Draft";
+  
+  // Jika ingin REG-2026-000001 (saat i = 26) menjadi Rejected:
+  if (i === 26 || i % 5 === 3) {
+    status = "Rejected";
+  } else if (method === "Application Form" && i % 2 === 1) {
+    status = "Draft";
+  }
  
   return {
     reg: `REG-2026-${String(TOTAL - i).padStart(6, "0")}`,

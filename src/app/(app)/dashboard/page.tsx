@@ -1213,17 +1213,6 @@ export default function DashboardPage() {
                   <Download className="h-3.5 w-3.5" />
                   <span>Unduh</span>
                 </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => exportCsv(false)}
-                  title="Ekspor seluruh data ke file CSV"
-                >
-                  <FileSpreadsheet className="h-3.5 w-3.5" />
-                  <span>Ekspor</span>
-                </Button>
               </div>
             </div>
 

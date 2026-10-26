@@ -31,12 +31,13 @@ type MethodValue = (typeof METHODS)[number]["value"];
 
 const RECENT = [
   { reg: "REG-2026-000003", date: "19/10/2026", method: "Unggah Excel", status: "Terdaftar" },
-  { reg: "REG-2026-000002", date: "17/10/2026", method: "Formulir Pendaftaran", status: "Terdaftar" },
+  { reg: "REG-2026-000002", date: "17/10/2026", method: "Formulir Pendaftaran", status: "Draft" },
   { reg: "REG-2026-000001", date: "15/10/2026", method: "Unggah Excel", status: "Ditolak" },
 ] as const;
 
 const STATUS_VARIANT = {
   Terdaftar: "success",
+  Draft: "default",
   Ditolak: "destructive",
 } as const;
 
