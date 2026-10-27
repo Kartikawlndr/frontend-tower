@@ -3,13 +3,13 @@
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Turnstile } from '@marsidev/react-turnstile';
-import { useAuth, Role } from '@/context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { clientEnv } from '@/lib/env';
 
 function AuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setRole, setUser } = useAuth();
+  const { setUser } = useAuth();
   
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
@@ -54,6 +54,7 @@ function AuthContent() {
 
     // Validasi Cloudflare Turnstile untuk Sign In
     if (
+      clientEnv.turnstileSiteKey &&
       !captchaToken &&
       process.env.NODE_ENV === 'production' &&
       typeof window !== 'undefined' &&
@@ -84,42 +85,15 @@ function AuthContent() {
         throw new Error(data.error || 'Autentikasi gagal.');
       }
 
-      if (data.user) {
-        setUser(data.user);
-      } else {
-        setRole(data.role as Role);
-      }
-
+      if (!data.user) throw new Error('Profil akun tidak dapat dimuat.');
+      setUser(data.user);
       router.push('/dashboard');
     } catch (err: unknown) {
       const error = err as Error;
-      // Fallback direct check against clientEnv if offline
-      const u = signInUsername.trim();
-      const p = signInPassword.trim();
-      if (
-        (u.toLowerCase() === clientEnv.adminEmail.toLowerCase() ||
-          u.toLowerCase() === 'admin') &&
-        (p === clientEnv.adminPasswordFallback ||
-          p === 'admin123' ||
-          p === 'admin2026')
-      ) {
-        setRole('Super Admin');
-        router.push('/dashboard');
-      } else if (
-        (u.toLowerCase() === clientEnv.managerEmail.toLowerCase() ||
-          u.toLowerCase() === 'manager') &&
-        (p === clientEnv.managerPasswordFallback ||
-          p === 'manager123' ||
-          p === 'manager')
-      ) {
-        setRole('Web Manager');
-        router.push('/dashboard');
-      } else {
-        setStatusMessage({
-          type: 'error',
-          text: error.message || 'Gagal masuk. Silakan periksa kembali username dan kata sandi Anda.',
-        });
-      }
+      setStatusMessage({
+        type: 'error',
+        text: error.message || 'Gagal masuk. Silakan periksa kembali email dan kata sandi Anda.',
+      });
     } finally {
       setLoading(false);
     }
@@ -131,6 +105,7 @@ function AuthContent() {
 
     // Validasi Cloudflare Turnstile untuk Sign Up
     if (
+      clientEnv.turnstileSiteKey &&
       !captchaToken &&
       process.env.NODE_ENV === 'production' &&
       typeof window !== 'undefined' &&
@@ -166,7 +141,7 @@ function AuthContent() {
 
       const data = await res.json();
 
-      if (!res.ok) {
+      if (!res.ok || !data.success) {
         throw new Error(data.error || 'Pendaftaran gagal.');
       }
 
@@ -289,7 +264,7 @@ function AuthContent() {
               <form onSubmit={handleSignInSubmit} className="space-y-3">
                 <div className="space-y-1">
                   <label className="block font-bold tracking-wider text-slate-600 text-[10px] uppercase">
-                    EMAIL / USERNAME
+                    EMAIL
                   </label>
                   <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
@@ -302,7 +277,7 @@ function AuthContent() {
                       required
                       value={signInUsername}
                       onChange={(e) => setSignInUsername(e.target.value)}
-                      placeholder="Username atau Email"
+                      placeholder="Email akun Directus"
                       className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0070ba] focus:ring-1 focus:ring-[#0070ba] text-slate-800 placeholder:text-slate-400 transition-all text-xs"
                     />
                   </div>
@@ -348,13 +323,15 @@ function AuthContent() {
                 </div>
 
                 {/* CAPTCHA */}
-                <div className="flex justify-center my-1">
-                  <Turnstile
-                    siteKey={clientEnv.turnstileSiteKey}
-                    onSuccess={(token) => setCaptchaToken(token)}
-                    onExpire={() => setCaptchaToken(null)}
-                  />
-                </div>
+                {clientEnv.turnstileSiteKey && (
+                  <div className="flex justify-center my-1">
+                    <Turnstile
+                      siteKey={clientEnv.turnstileSiteKey}
+                      onSuccess={(token) => setCaptchaToken(token)}
+                      onExpire={() => setCaptchaToken(null)}
+                    />
+                  </div>
+                )}
 
                 <button 
                   type="submit"
@@ -424,13 +401,15 @@ function AuthContent() {
                   </div>
                 </div>
 
-                <div className="flex justify-center my-1">
-                  <Turnstile
-                    siteKey={clientEnv.turnstileSiteKey}
-                    onSuccess={(token) => setCaptchaToken(token)}
-                    onExpire={() => setCaptchaToken(null)}
-                  />
-                </div>
+                {clientEnv.turnstileSiteKey && (
+                  <div className="flex justify-center my-1">
+                    <Turnstile
+                      siteKey={clientEnv.turnstileSiteKey}
+                      onSuccess={(token) => setCaptchaToken(token)}
+                      onExpire={() => setCaptchaToken(null)}
+                    />
+                  </div>
+                )}
 
                 <button 
                   type="submit"

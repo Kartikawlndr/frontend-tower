@@ -1,41 +1,81 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
-const ROLE_DISPLAY: Record<string, string> = {
-  "Normal User": "Pengguna",
-  "Web Manager": "Manajer Web",
-  "Super Admin": "Super Admin",
-  USER: "Pengguna",
-  MANAGER: "Manajer Web",
-  ADMIN: "Super Admin",
+type AuditEntry = {
+  id: string | number;
+  action: string;
+  collection?: string;
+  item?: string;
+  timestamp?: string;
+  user?: { first_name?: string; last_name?: string } | null;
 };
+type AuditResponse = { data?: AuditEntry[]; error?: string };
+
+function parseTimestamp(value?: string) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function formatDate(value?: string) {
+  const date = parseTimestamp(value);
+  return date ? date.toLocaleDateString("id-ID") : "—";
+}
+
+function formatTime(value?: string) {
+  const date = parseTimestamp(value);
+  return date ? date.toLocaleTimeString("id-ID", { hour12: false }) : "—";
+}
+
+function actionLabel(action: string) {
+  switch (action) {
+    case "create":
+      return "Tambah";
+    case "update":
+      return "Perbarui";
+    case "delete":
+      return "Hapus";
+    default:
+      return action;
+  }
+}
 
 export default function AuditLogsPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const [entries, setEntries] = useState<AuditEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Normal Users cannot access this page — show 403
+  useEffect(() => {
+    let active = true;
+    fetch("/api/audit?limit=100", { cache: "no-store" })
+      .then(async (response) => {
+        const payload = (await response.json().catch(() => null)) as AuditResponse | null;
+        if (!response.ok) throw new Error(payload?.error || "Log audit tidak dapat dimuat.");
+        if (active) setEntries(payload?.data ?? []);
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError instanceof Error ? requestError.message : "Log audit tidak dapat dimuat.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   if (user.role === "USER") {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="bg-surface p-10 rounded-card border border-border-soft shadow-card text-center space-y-4 max-w-md w-full">
-          <div className="w-12 h-12 bg-danger-bg text-danger rounded-full flex items-center justify-center mx-auto text-xl font-bold">
-            🔒
-          </div>
-          <h2 className="text-lg font-bold text-danger">
-            403 - Akses Ditolak
-          </h2>
-          <p className="text-xs text-muted">
-            Peran Anda ({ROLE_DISPLAY[user.roleLabel] || user.roleLabel}) tidak dapat mengakses: Log Audit
-          </p>
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="px-4 py-2 bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card"
-          >
-            Kembali ke Dashboard
-          </button>
+        <div className="max-w-md space-y-4 rounded-card border border-border-soft bg-surface p-10 text-center shadow-card">
+          <h2 className="text-lg font-bold text-danger">403 - Akses Ditolak</h2>
+          <p className="text-xs text-muted">Log audit hanya dapat diakses Web Manager dan Super Admin.</p>
+          <button onClick={() => router.push("/dashboard")} className="rounded-card bg-primary px-4 py-2 text-xs font-semibold text-on-primary">Kembali ke Dashboard</button>
         </div>
       </div>
     );
@@ -44,29 +84,23 @@ export default function AuditLogsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-page-title">Log Audit</h1>
-      <section className="bg-surface p-6 rounded-card border border-border-soft shadow-card space-y-4">
-        <h2 className="text-sm font-bold text-heading">
-          Aktivitas sistem dan catatan riwayat log
-        </h2>
-        <div className="overflow-x-auto border border-border-soft rounded-input">
+      <section className="space-y-4 rounded-card border border-border-soft bg-surface p-6 shadow-card">
+        <h2 className="text-sm font-bold text-heading">Aktivitas sistem dan riwayat log</h2>
+        {error && <div role="alert" className="text-sm text-danger">{error}</div>}
+        <div className="overflow-x-auto rounded-input border border-border-soft">
           <table className="w-full text-left text-xs">
-            <thead className="bg-table-head-bg border-b border-border-soft text-heading font-semibold">
-              <tr>
-                <th className="p-3.5">Waktu</th>
-                <th className="p-3.5">Pengguna</th>
-                <th className="p-3.5">Peran</th>
-                <th className="p-3.5">Aksi</th>
-                <th className="p-3.5">Rincian</th>
-              </tr>
+            <thead className="border-b border-border-soft bg-table-head-bg font-semibold text-heading">
+              <tr><th className="p-3.5">Tanggal</th><th className="p-3.5">Waktu</th><th className="p-3.5">Pengguna</th><th className="p-3.5">Aksi</th><th className="p-3.5">Koleksi</th><th className="p-3.5">Item</th></tr>
             </thead>
             <tbody className="divide-y divide-border-soft text-muted">
-              {[1, 2, 3, 4].map((row) => (
-                <tr key={row} className="hover:bg-canvas">
-                  <td className="p-3.5">-</td>
-                  <td className="p-3.5">-</td>
-                  <td className="p-3.5">-</td>
-                  <td className="p-3.5">-</td>
-                  <td className="p-3.5">-</td>
+              {loading ? <tr><td colSpan={6} className="p-6 text-center">Memuat log...</td></tr> : entries.length === 0 ? <tr><td colSpan={6} className="p-6 text-center">Belum ada aktivitas.</td></tr> : entries.map((entry) => (
+                <tr key={entry.id}>
+                  <td className="whitespace-nowrap p-3.5">{formatDate(entry.timestamp)}</td>
+                  <td className="whitespace-nowrap p-3.5">{formatTime(entry.timestamp)}</td>
+                  <td className="p-3.5">{`${entry.user?.first_name ?? ""} ${entry.user?.last_name ?? ""}`.trim() || "—"}</td>
+                  <td className="p-3.5">{actionLabel(entry.action)}</td>
+                  <td className="p-3.5">{entry.collection || "—"}</td>
+                  <td className="p-3.5">{entry.item || "—"}</td>
                 </tr>
               ))}
             </tbody>

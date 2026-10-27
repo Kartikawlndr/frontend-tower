@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -13,8 +13,6 @@ import {
   FileText,
   LogOut,
   ChevronLeft,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth, type UserRole } from "@/context/AuthContext";
@@ -98,12 +96,6 @@ function ActiveNavItems({
   );
 }
 
-const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
-  { value: "USER", label: "Pengguna" },
-  { value: "MANAGER", label: "Manajer Web" },
-  { value: "ADMIN", label: "Super Admin" },
-];
-
 const ROLE_DISPLAY: Record<string, string> = {
   "Normal User": "Pengguna",
   "Web Manager": "Manajer Web",
@@ -112,13 +104,25 @@ const ROLE_DISPLAY: Record<string, string> = {
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { user, setRole, logout } = useAuth();
+  const { user, authenticated, loading, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
-  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
 
   const visibleItems = NAV_ITEMS.filter(
     (item) => !item.roles || item.roles.includes(user.role)
   );
+
+  useEffect(() => {
+    if (!loading && !authenticated) router.replace("/");
+  }, [authenticated, loading, router]);
+
+  if (loading || !authenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-canvas text-sm text-muted">
+        Memeriksa sesi akun...
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
@@ -143,54 +147,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </span>
         </Link>
 
-        {/* Role switcher dropdown */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setRoleMenuOpen(!roleMenuOpen)}
-            className="flex items-center gap-2 text-on-primary"
-            aria-label="Menu pengguna"
-            aria-expanded={roleMenuOpen}
-          >
+        <div className="flex items-center gap-2 text-on-primary">
             <User className="h-4 w-4" strokeWidth={2} />
-            <span suppressHydrationWarning className="text-sm font-semibold">
+            <span className="text-sm font-semibold">
               {ROLE_DISPLAY[user.roleLabel] || user.roleLabel}
             </span>
-            {roleMenuOpen ? (
-              <ChevronUp className="h-4 w-4" strokeWidth={2} />
-            ) : (
-              <ChevronDown className="h-4 w-4" strokeWidth={2} />
-            )}
-          </button>
-
-          {roleMenuOpen && (
-            <div className="absolute right-0 top-full mt-1 w-48 rounded-card border border-border-soft bg-surface py-1 shadow-pop">
-              <div className="border-b border-border-soft px-3 py-2">
-                <p suppressHydrationWarning className="text-sm font-semibold text-heading">
-                  {user.name}
-                </p>
-                <p suppressHydrationWarning className="text-xs text-muted">{user.email}</p>
-              </div>
-              {ROLE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => {
-                    setRole(opt.value);
-                    setRoleMenuOpen(false);
-                  }}
-                  className={cn(
-                    "flex w-full items-center px-3 py-2 text-sm transition-colors",
-                    user.role === opt.value
-                      ? "bg-nav-active-bg font-semibold text-primary"
-                      : "text-heading hover:bg-canvas"
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
+            <span className="hidden text-sm text-on-primary/80 sm:inline">{user.name}</span>
         </div>
       </header>
 
@@ -222,9 +184,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </Suspense>
             <button
               type="button"
-              onClick={() => {
-                logout();
-                router.push("/");
+              onClick={async () => {
+                setLogoutError("");
+                try {
+                  await logout();
+                  router.push("/");
+                } catch (error) {
+                  setLogoutError(
+                    error instanceof Error ? error.message : "Keluar dari akun gagal.",
+                  );
+                }
               }}
               title={collapsed ? "Keluar" : undefined}
               className={cn(
@@ -235,6 +204,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <LogOut className="h-4 w-4 shrink-0" strokeWidth={2} />
               {!collapsed && <span>Keluar</span>}
             </button>
+            {logoutError && <p role="alert" className="px-3 text-xs text-danger">{logoutError}</p>}
           </nav>
 
           <div className="border-t border-border-soft px-3 py-3">

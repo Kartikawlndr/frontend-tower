@@ -2,12 +2,14 @@
 
 import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Send } from "lucide-react";
+import { ChevronDown, Plus, Search, Send } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import { INDONESIAN_REGIONS } from "@/lib/indonesian-administrative-regions";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
 
@@ -138,6 +140,10 @@ type Values = {
   longitude: string;
   latitude: string;
   alamat: string;
+  provinsi: string;
+  kabKota: string;
+  kecamatan: string;
+  kelurahan: string;
   tinggi: string;
   kapMaks: string;
   kapSewa: string;
@@ -159,6 +165,10 @@ const EMPTY: Values = {
   longitude: "",
   latitude: "",
   alamat: "",
+  provinsi: "",
+  kabKota: "",
+  kecamatan: "",
+  kelurahan: "",
   tinggi: "",
   kapMaks: "",
   kapSewa: "",
@@ -193,6 +203,10 @@ function validate(values: Values, tenants: Tenant[]): Errors {
   set("longitude", coordError(values.longitude, 95, 141));
   set("latitude", coordError(values.latitude, -11, 6));
   set("alamat", textError(values.alamat));
+  set("provinsi", values.provinsi ? undefined : "Wajib dipilih");
+  set("kabKota", values.kabKota ? undefined : "Wajib dipilih");
+  set("kecamatan", values.kecamatan ? undefined : "Wajib dipilih");
+  set("kelurahan", values.kelurahan ? undefined : "Wajib dipilih");
   set("kapMaks", textError(values.kapMaks));
   set("kapSewa", textError(values.kapSewa));
   set("kapSendiri", textError(values.kapSendiri));
@@ -238,45 +252,153 @@ function YearField({
   error,
 }: {
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  onChange: (value: string) => void;
   error?: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const currentYear = new Date().getFullYear();
+  const years = Array.from(
+    { length: currentYear - 1900 + 1 },
+    (_, index) => currentYear - index,
+  ).filter((year) => year.toString().includes(search.trim()));
+  const selectedLabel = value || "Pilih tahun pembangunan";
+
+  useEffect(() => {
+    if (open) searchRef.current?.focus();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function closeOnOutsideClick(event: PointerEvent) {
+      if (
+        event.target instanceof Node &&
+        !dropdownRef.current?.contains(event.target)
+      ) {
+        setOpen(false);
+      }
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  function selectYear(year: number) {
+    onChange(String(year));
+    setOpen(false);
+    setSearch("");
+  }
+
+  function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((index) => Math.min(index + 1, years.length - 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((index) => Math.max(index - 1, 0));
+    } else if (event.key === "Enter" && open && years[activeIndex] !== undefined) {
+      event.preventDefault();
+      selectYear(years[activeIndex]);
+    }
+  }
+
   return (
     <div className="flex w-full flex-col gap-1">
       <label htmlFor="tahun-pembangunan" className="text-field-label">
         Tahun Pembangunan
         <span className="ml-0.5 text-danger">*</span>
       </label>
-      <div className="relative">
-        <select
+      <div ref={dropdownRef} className="relative">
+        <button
           id="tahun-pembangunan"
-          value={value}
-          onChange={onChange}
+          type="button"
+          role="combobox"
+          aria-label="Tahun Pembangunan"
+          aria-expanded={open}
+          aria-controls="tahun-pembangunan-options"
+          aria-haspopup="listbox"
           aria-invalid={error ? "true" : "false"}
           aria-describedby="tahun-pembangunan-note"
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown" && !open) {
+              event.preventDefault();
+              setOpen(true);
+            }
+          }}
+          onClick={() => setOpen((isOpen) => !isOpen)}
           className={cn(
-            "h-9 w-full rounded-input border border-border bg-surface pl-2.5 pr-9 text-sm text-text transition-colors duration-150 focus:border-primary focus:outline-none appearance-none cursor-pointer",
-            error && "border-danger"
+            "flex h-9 w-full cursor-pointer items-center justify-between rounded-input border border-border bg-surface px-2.5 text-left text-sm text-text transition-colors duration-150 focus:border-primary focus:outline-none",
+            error && "border-danger",
           )}
         >
-          <option value="" disabled>Pilih tahun pembangunan</option>
-          {Array.from({ length: 2026 - 1900 + 1 }, (_, index) => 1900 + index)
-            .reverse()
-            .map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-        </select>
-        
-        <svg
-          className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-        </svg>
+          <span className={cn(!value && "text-muted")}>{selectedLabel}</span>
+          <ChevronDown
+            aria-hidden
+            className={cn("h-4 w-4 text-muted transition-transform", open && "rotate-180")}
+          />
+        </button>
+        {open && (
+          <div
+            className="absolute z-30 mt-1 w-full overflow-hidden rounded-input border border-border bg-surface shadow-lg"
+          >
+            <div className="border-b border-border-soft p-2">
+              <div className="relative">
+                <Search
+                  aria-hidden
+                  className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                />
+                <input
+                  ref={searchRef}
+                  type="search"
+                  aria-label="Cari tahun pembangunan"
+                  value={search}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setActiveIndex(0);
+                  }}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder="Cari"
+                  className="h-9 w-full rounded-input border border-border bg-surface pl-9 pr-3 text-sm text-text focus:border-primary focus:outline-none"
+                />
+              </div>
+            </div>
+            <div id="tahun-pembangunan-options" role="listbox" aria-label="Tahun pembangunan" className="max-h-60 overflow-y-auto p-1">
+              {years.length > 0 ? (
+                years.map((year, index) => (
+                  <button
+                    key={year}
+                    type="button"
+                    role="option"
+                    aria-selected={value === String(year)}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onClick={() => selectYear(year)}
+                    className={cn(
+                      "flex min-h-8 w-full items-center rounded-input px-2.5 text-left text-sm text-text hover:bg-nav-active-bg",
+                      activeIndex === index && "bg-nav-active-bg",
+                      value === String(year) && "font-semibold text-primary",
+                    )}
+                  >
+                    {year}
+                  </button>
+                ))
+              ) : (
+                <p className="px-2.5 py-3 text-sm text-muted">
+                  Tahun tidak ditemukan.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        <input type="hidden" name="tahun_pembangunan" value={value} />
       </div>
       {error ? (
         <p id="tahun-pembangunan-note" className="text-helper text-danger" role="alert">
@@ -293,6 +415,7 @@ function YearField({
 
 export default function ApplicationFormPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
   const nextId = useRef(2);
   const [values, setValues] = useState<Values>(EMPTY);
@@ -300,9 +423,20 @@ export default function ApplicationFormPage() {
   const [errors, setErrors] = useState<Errors>({ fields: {}, tenants: {} });
   const [attempted, setAttempted] = useState(false);
   const [notice, setNotice] = useState("");
+  const [noticeIsError, setNoticeIsError] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [mapInput, setMapInput] = useState("");
   const [isLocked, setIsLocked] = useState(false);
+  const selectedProvince = INDONESIAN_REGIONS.find(
+    (region) => region.name === values.provinsi,
+  );
+  const selectedRegency = selectedProvince?.kabKota.find(
+    (regency) => regency.name === values.kabKota,
+  );
+  const selectedDistrict = selectedRegency?.kecamatan.find(
+    (district) => district.name === values.kecamatan,
+  );
 
   function revalidate(nextValues: Values, nextTenants: Tenant[]) {
     if (attempted) setErrors(validate(nextValues, nextTenants));
@@ -311,7 +445,21 @@ export default function ApplicationFormPage() {
   function change(key: keyof Values) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       if (isLocked && (key === "longitude" || key === "latitude")) return;
-      const next = { ...values, [key]: e.target.value };
+      const value =
+        key === "tinggi"
+          ? e.target.value.replace(/[^0-9]/g, "").slice(0, 3)
+          : e.target.value;
+      const next = {
+        ...values,
+        [key]: value,
+        ...(key === "provinsi"
+          ? { kabKota: "", kecamatan: "", kelurahan: "" }
+          : key === "kabKota"
+            ? { kecamatan: "", kelurahan: "" }
+            : key === "kecamatan"
+              ? { kelurahan: "" }
+            : {}),
+      };
       setValues(next);
       setNotice("");
       revalidate(next, tenants);
@@ -366,8 +514,11 @@ export default function ApplicationFormPage() {
     if (!mapInput.trim()) return;
     const match = mapInput.match(/(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
     if (match) {
-      const next = { ...values, latitude: match[1], longitude: match[2] };
+      const latitude = Number(match[1]).toFixed(6);
+      const longitude = Number(match[2]).toFixed(6);
+      const next = { ...values, latitude, longitude };
       setValues(next);
+      setMapInput(`${latitude}, ${longitude}`);
       setIsLocked(true);
       revalidate(next, tenants);
     } else {
@@ -424,7 +575,7 @@ export default function ApplicationFormPage() {
     });
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setAttempted(true);
     const result = validate(values, tenants);
@@ -434,11 +585,108 @@ export default function ApplicationFormPage() {
       focusFirstInvalid();
       return;
     }
-    router.push("/submission/result/registered");
+
+    setIsSubmitting(true);
+    setNotice("");
+    setNoticeIsError(false);
+    try {
+      const response = await fetch("/api/towers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_menara: values.kode,
+          nama_pemilik: values.pemilik,
+          tahun_pembangunan: Number(values.tahun),
+          penyelenggara: tenants[0].name,
+          longitude: Number(values.longitude),
+          latitude: Number(values.latitude),
+          alamat: values.alamat,
+          provinsi: values.provinsi,
+          kab_kota: values.kabKota,
+          kecamatan: values.kecamatan,
+          kelurahan: values.kelurahan,
+          jenis_menara: values.jenis,
+          tinggi_menara: Number(values.tinggi),
+          kapasitas_maksimal: values.kapMaks,
+          kapasitas_disewakan: values.kapSewa,
+          kapasitas_digunakan_sendiri: values.kapSendiri,
+          tenants: tenants.map(({ name }) => ({
+            penyelenggara: name,
+            kapasitas_disewakan: values.kapSewa,
+          })),
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: string; errors?: Array<{ message?: string }> }
+        | null;
+      if (!response.ok) {
+        const messages = payload?.errors
+          ?.map(({ message }) => message)
+          .filter(Boolean);
+        throw new Error(
+          messages?.join(" ") ||
+            payload?.error ||
+            "Pengajuan tidak dapat disimpan.",
+        );
+      }
+      router.push("/submission/history");
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Terjadi kesalahan saat menyimpan pengajuan.",
+      );
+      setNoticeIsError(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
-  function handleDraft() {
-    setNotice("Draf akan disimpan setelah database terhubung.");
+  async function handleDraft() {
+    setNotice("");
+    setNoticeIsError(false);
+    try {
+      const response = await fetch("/api/towers/drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submission_data: {
+            id_menara: values.kode,
+            nama_pemilik: values.pemilik,
+            tahun_pembangunan: values.tahun,
+            penyelenggara: tenants[0].name,
+            longitude: values.longitude,
+            latitude: values.latitude,
+            alamat: values.alamat,
+            provinsi: values.provinsi,
+            kab_kota: values.kabKota,
+            kecamatan: values.kecamatan,
+            kelurahan: values.kelurahan,
+            jenis_menara: values.jenis,
+            tinggi_menara: values.tinggi,
+            kapasitas_maksimal: values.kapMaks,
+            kapasitas_disewakan: values.kapSewa,
+            kapasitas_digunakan_sendiri: values.kapSendiri,
+            tenants: tenants.map(({ name }) => ({
+              penyelenggara: name,
+              kapasitas_disewakan: values.kapSewa,
+            })),
+          },
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      if (!response.ok) {
+        throw new Error(payload?.error || "Draf tidak dapat disimpan.");
+      }
+      setNotice("Draf berhasil disimpan.");
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "Draf tidak dapat disimpan.",
+      );
+      setNoticeIsError(true);
+    }
   }
 
   const invalid = attempted && hasErrors(errors);
@@ -457,7 +705,7 @@ export default function ApplicationFormPage() {
           <Input 
             id="kode-menara" 
             label="Kode/ID Menara" 
-            placeholder="Contoh: TOW-JKT-001" 
+            placeholder="Contoh: TWR-TAHUN-XXXX" 
             requiredMark 
             {...field("kode")} 
           />
@@ -470,7 +718,12 @@ export default function ApplicationFormPage() {
           />
           <YearField
             value={values.tahun}
-            onChange={change("tahun")}
+            onChange={(year) => {
+              const next = { ...values, tahun: year };
+              setValues(next);
+              setNotice("");
+              revalidate(next, tenants);
+            }}
             error={errors.fields.tahun}
           />
           <Select id="jenis-menara" label="Jenis Menara" requiredMark {...field("jenis")}>
@@ -594,12 +847,81 @@ export default function ApplicationFormPage() {
               error={errors.fields.latitude}
               disabled={isLocked}
             />
-            <div className="md:col-span-2">
-              <Input 
-                id="alamat" 
-                label="Alamat" 
-                requiredMark 
-                {...field("alamat")} 
+            <div className="md:col-span-2 flex flex-col gap-4">
+              <Select
+                id="provinsi"
+                label="Provinsi"
+                requiredMark
+                {...field("provinsi")}
+              >
+                <option value="">Pilih provinsi</option>
+                {INDONESIAN_REGIONS.map((region) => (
+                  <option key={region.code} value={region.name}>
+                    {region.name}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                id="kab-kota"
+                label="Kabupaten/Kota"
+                requiredMark
+                value={values.kabKota}
+                onChange={change("kabKota")}
+                error={errors.fields.kabKota}
+                disabled={!selectedProvince}
+              >
+                <option value="">
+                  {selectedProvince
+                    ? "Pilih kabupaten/kota"
+                    : "Pilih provinsi terlebih dahulu"}
+                </option>
+                {selectedProvince?.kabKota.map((kabKota) => (
+                  <option key={kabKota.code} value={kabKota.name}>
+                    {kabKota.name}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                id="kecamatan"
+                label="Kecamatan"
+                requiredMark
+                {...field("kecamatan")}
+                disabled={!selectedRegency}
+              >
+                <option value="">
+                  {selectedRegency
+                    ? "Pilih kecamatan"
+                    : "Pilih kabupaten/kota terlebih dahulu"}
+                </option>
+                {selectedRegency?.kecamatan.map((district) => (
+                  <option key={district.code} value={district.name}>
+                    {district.name}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                id="kelurahan"
+                label="Kelurahan/Desa"
+                requiredMark
+                {...field("kelurahan")}
+                disabled={!selectedDistrict}
+              >
+                <option value="">
+                  {selectedDistrict
+                    ? "Pilih kelurahan/desa"
+                    : "Pilih kecamatan terlebih dahulu"}
+                </option>
+                {selectedDistrict?.kelurahan.map((village) => (
+                  <option key={village.code} value={village.name}>
+                    {village.name}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                id="alamat"
+                label="Alamat"
+                requiredMark
+                {...field("alamat")}
               />
             </div>
           </div>
@@ -612,12 +934,15 @@ export default function ApplicationFormPage() {
             id="tinggi-menara"
             label="Tinggi Menara (AGL)"
             requiredMark
+            type="text"
             inputMode="numeric"
+            pattern="[0-9]{1,3}"
+            maxLength={3}
             hint="Meter, hingga 3 digit"
             {...field("tinggi")}
           />
           <Input id="kapasitas-maksimal" label="Kapasitas Maksimal" requiredMark {...field("kapMaks")} />
-          <Input id="kapasitas-disewakan" label="Kapasitas Disewakan" requiredMark {...field("kapSewa")} />
+          <Input id="kapasitas-disewakan" label="Kapasitas Disewakan (Total Menara)" requiredMark {...field("kapSewa")} />
           <Input id="kapasitas-sendiri" label="Kapasitas Digunakan Sendiri" requiredMark {...field("kapSendiri")} />
         </CardBody>
       </Card>
@@ -632,8 +957,12 @@ export default function ApplicationFormPage() {
       )}
       {notice && (
         <div
-          role="status"
-          className="rounded-card border border-primary bg-nav-active-bg px-3 py-2 text-sm text-primary"
+          role={noticeIsError ? "alert" : "status"}
+          className={`rounded-card border px-3 py-2 text-sm ${
+            noticeIsError
+              ? "border-danger bg-danger-bg text-danger"
+              : "border-primary bg-nav-active-bg text-primary"
+          }`}
         >
           {notice}
         </div>
@@ -648,12 +977,14 @@ export default function ApplicationFormPage() {
         >
           Batal
         </Button>
-        <Button type="button" variant="amber" onClick={handleDraft}>
-          Simpan sebagai Draf
-        </Button>
-        <Button type="submit">
+        {user.role === "USER" && (
+          <Button type="button" variant="amber" onClick={handleDraft}>
+            Simpan sebagai Draf
+          </Button>
+        )}
+        <Button type="submit" disabled={isSubmitting}>
           <Send className="h-4 w-4" strokeWidth={2} />
-          Kirim Pengajuan
+          {isSubmitting ? "Mengirim..." : "Kirim Pengajuan"}
         </Button>
       </div>
     </form>

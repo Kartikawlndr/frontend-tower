@@ -24,7 +24,11 @@ const COLUMNS = [
   { field: "Jenis Menara", type: "Teks", rule: TEXT_RULE },
   { field: "Tinggi Menara (AGL)", type: "Bilangan Bulat", rule: "Positif, maks 3 digit (meter)" },
   { field: "Kapasitas Maksimal", type: "Teks", rule: TEXT_RULE },
-  { field: "Kapasitas Disewakan", type: "Teks", rule: TEXT_RULE },
+  {
+    field: "Kapasitas Disewakan",
+    type: "Teks",
+    rule: "Total kapasitas menara; harus sama untuk semua baris dengan ID menara yang sama",
+  },
   { field: "Kapasitas Digunakan Sendiri", type: "Teks", rule: TEXT_RULE },
 ];
 
@@ -39,6 +43,7 @@ export default function UploadExcelPage() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const handleDownloadTemplate = () => {
     const link = document.createElement("a");
     link.href = "/Template_Pendaftaran_Menara.xlsx";
@@ -68,6 +73,40 @@ export default function UploadExcelPage() {
     setFile(null);
     setError("");
     if (inputRef.current) inputRef.current.value = "";
+  }
+
+  async function upload() {
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    const body = new FormData();
+    body.append("file", file);
+    try {
+      const response = await fetch("/api/towers/bulk", {
+        method: "POST",
+        body,
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: string; errors?: Array<{ message?: string }> }
+        | null;
+      if (!response.ok) {
+        const messages = payload?.errors
+          ?.map(({ message }) => message)
+          .filter(Boolean);
+        throw new Error(
+          messages?.join(" ") || payload?.error || "Impor Excel gagal.",
+        );
+      }
+      router.push("/submission/history");
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Impor Excel gagal.",
+      );
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
@@ -140,7 +179,7 @@ export default function UploadExcelPage() {
           )}
 
           <p className="text-helper">
-            Satu baris untuk satu penyewa. Data menara diisi ulang jika lebih dari satu penyewa.
+            Satu baris untuk satu penyewa. Jika ID menara sama, seluruh data menara termasuk kapasitas disewakan harus identik.
           </p>
           <div>
             <Button type="button" variant="outline" onClick={handleDownloadTemplate}>
@@ -183,10 +222,10 @@ export default function UploadExcelPage() {
           Batal
         </Button>
         <Button
-          disabled={!file}
-          onClick={() => router.push("/submission/result/rejected")}
+          disabled={!file || uploading}
+          onClick={upload}
         >
-          Unggah / Kirim
+          {uploading ? "Memproses..." : "Unggah / Kirim"}
         </Button>
       </div>
     </div>

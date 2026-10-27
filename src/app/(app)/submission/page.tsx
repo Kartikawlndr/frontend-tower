@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileSpreadsheet, ClipboardList } from "lucide-react";
@@ -29,12 +29,6 @@ const METHODS = [
 
 type MethodValue = (typeof METHODS)[number]["value"];
 
-const RECENT = [
-  { reg: "REG-2026-000003", date: "19/10/2026", method: "Unggah Excel", status: "Terdaftar" },
-  { reg: "REG-2026-000002", date: "17/10/2026", method: "Formulir Pendaftaran", status: "Terdaftar" },
-  { reg: "REG-2026-000001", date: "15/10/2026", method: "Unggah Excel", status: "Ditolak" },
-] as const;
-
 const STATUS_VARIANT = {
   Terdaftar: "success",
   Ditolak: "destructive",
@@ -43,6 +37,51 @@ const STATUS_VARIANT = {
 export default function SubmissionPage() {
   const router = useRouter();
   const [method, setMethod] = useState<MethodValue>("upload");
+  const [recent, setRecent] = useState<Array<{
+    id: string;
+    code: string;
+    date: string;
+    method: string;
+    status: string;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/towers?limit=10", { cache: "no-store" })
+      .then(async (response) => {
+        const payload = (await response.json().catch(() => null)) as {
+          data?: Array<{
+            id: string;
+            id_menara?: string;
+            date_created?: string;
+            verification_status?: string;
+            metode_pendaftaran?: string;
+          }>;
+          error?: string;
+        } | null;
+        if (!response.ok) throw new Error(payload?.error || "Pengajuan terbaru tidak dapat dimuat.");
+        if (active) {
+          setRecent((payload?.data ?? []).map((tower) => ({
+            id: tower.id,
+            code: tower.id_menara || "—",
+            date: tower.date_created ? new Date(tower.date_created).toLocaleDateString("id-ID") : "—",
+            method: tower.metode_pendaftaran || "",
+            status: tower.verification_status || "Registered",
+          })));
+        }
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError instanceof Error ? requestError.message : "Pengajuan terbaru tidak dapat dimuat.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const selected = METHODS.find((m) => m.value === method)!;
 
@@ -111,17 +150,23 @@ export default function SubmissionPage() {
               </tr>
             </thead>
             <tbody>
-              {RECENT.map((r) => (
-                <tr key={r.reg}>
-                  <Td>{r.reg}</Td>
+              {loading ? (
+                <tr><Td colSpan={5} className="py-8 text-center text-muted">Memuat pengajuan...</Td></tr>
+              ) : recent.length === 0 ? (
+                <tr><Td colSpan={5} className="py-8 text-center text-muted">{error || "Belum ada data pengajuan."}</Td></tr>
+              ) : recent.map((r) => (
+                <tr key={r.id}>
+                  <Td>{r.code}</Td>
                   <Td>{r.date}</Td>
-                  <Td>{r.method}</Td>
+                  <Td>{r.method === "Upload Excel" ? "Unggah Excel" : "Formulir Pendaftaran"}</Td>
                   <Td>
-                    <Badge variant={STATUS_VARIANT[r.status]}>{r.status}</Badge>
+                    <Badge variant={STATUS_VARIANT[r.status === "Registered" ? "Terdaftar" : "Ditolak"]}>
+                      {r.status === "Registered" ? "Terdaftar" : r.status}
+                    </Badge>
                   </Td>
                   <Td>
                     <Link
-                      href={`/submission/${r.reg}`}
+                      href={`/submission/${r.id}`}
                       className="font-semibold text-primary hover:underline"
                     >
                       Lihat

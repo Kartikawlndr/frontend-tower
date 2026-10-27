@@ -1,179 +1,100 @@
-/**
- * Directus API Client Service
- * Connects the frontend to the Directus backend configured in .env.
- */
+import "server-only";
 
-import { clientEnv } from "./env";
+import { getServerEnv } from "./server-env";
 
-export interface DirectusAuthResponse {
-  data: {
-    access_token: string;
-    expires: number;
-    refresh_token: string;
-  };
+const directusUrl = () => getServerEnv().directusUrl.replace(/\/$/, "");
+
+async function readError(response: Response, fallback: string) {
+  const payload = await response.json().catch(() => null);
+  return (
+    payload?.errors?.[0]?.message ||
+    payload?.error ||
+    `${fallback} (HTTP ${response.status})`
+  );
 }
 
-export interface DirectusUser {
-  id: string;
-  first_name: string;
-  last_name?: string;
-  email: string;
-  role?: {
-    id: string;
-    name: string;
-    admin_access?: boolean;
-  } | string;
-}
-
-const DIRECTUS_URL = clientEnv.directusUrl.replace(/\/$/, "");
-
-/**
- * Check if the Directus backend is reachable
- */
 export async function checkDirectusHealth(): Promise<{
   ok: boolean;
   status: string;
-  url: string;
 }> {
   try {
-    const res = await fetch(`${DIRECTUS_URL}/server/ping`, {
-      method: "GET",
+    const response = await fetch(`${directusUrl()}/server/ping`, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(3000),
+      cache: "no-store",
     });
-    if (res.ok) {
-      return { ok: true, status: "healthy", url: DIRECTUS_URL };
-    }
-    return { ok: false, status: `HTTP ${res.status}`, url: DIRECTUS_URL };
-  } catch (err: unknown) {
-    const error = err as Error;
-    return { ok: false, status: error.message || "offline", url: DIRECTUS_URL };
+    return {
+      ok: response.ok,
+      status: response.ok ? "healthy" : `HTTP ${response.status}`,
+    };
+  } catch {
+    return { ok: false, status: "offline" };
   }
 }
 
-/**
- * Log in to Directus
- */
-export async function directusLogin(
-  email: string,
-  password: string
-): Promise<{
-  success: boolean;
-  tokens?: DirectusAuthResponse["data"];
-  user?: DirectusUser;
-  error?: string;
-}> {
-  try {
-    const res = await fetch(`${DIRECTUS_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      const msg =
-        errData?.errors?.[0]?.message ||
-        `Login failed with status ${res.status}`;
-      return { success: false, error: msg };
-    }
-
-    const data: DirectusAuthResponse = await res.json();
-    const token = data.data.access_token;
-
-    // Fetch user details
-    const meRes = await fetch(
-      `${DIRECTUS_URL}/users/me?fields=id,first_name,last_name,email,role.id,role.name,role.admin_access`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    let user: DirectusUser | undefined;
-    if (meRes.ok) {
-      const meData = await meRes.json();
-      user = meData.data;
-    }
-
-    return { success: true, tokens: data.data, user };
-  } catch (err: unknown) {
-    const error = err as Error;
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * Register a new user in Directus
- */
 export async function directusRegister(params: {
   email: string;
   password: string;
   first_name: string;
-  role?: string;
-}): Promise<{
-  success: boolean;
-  message?: string;
-  error?: string;
-}> {
-  try {
-    const role = params.role || clientEnv.userRegisterRole;
-    const res = await fetch(`${DIRECTUS_URL}/users/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: params.email,
-        password: params.password,
-        first_name: params.first_name,
-        role: role,
-      }),
-    });
+  last_name?: string;
+  verification_url: string;
+}): Promise<{ success: boolean; message?: string; error?: string }> {
+  const response = await fetch(`${directusUrl()}/users/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: params.email,
+      password: params.password,
+      first_name: params.first_name,
+      ...(params.last_name ? { last_name: params.last_name } : {}),
+      verification_url: params.verification_url,
+    }),
+    cache: "no-store",
+  });
 
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      const msg =
-        errData?.errors?.[0]?.message ||
-        `Registration failed with status ${res.status}`;
-      return { success: false, error: msg };
-    }
-
+  if (!response.ok) {
     return {
-      success: true,
-      message:
-        "Registrasi berhasil! Tautan verifikasi telah dikirimkan ke email Anda.",
+      success: false,
+      error: await readError(response, "Registration failed"),
     };
-  } catch (err: unknown) {
-    const error = err as Error;
-    return { success: false, error: error.message };
   }
+
+  return {
+    success: true,
+    message: "Registrasi berhasil! Tautan verifikasi telah dikirimkan ke email Anda.",
+  };
 }
 
-/**
- * Verify user registration token
- */
-export async function directusVerifyEmail(token: string): Promise<{
-  success: boolean;
-  error?: string;
-}> {
-  try {
-    const res = await fetch(`${DIRECTUS_URL}/users/register/verify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
+export async function directusVerifyEmail(
+  token: string,
+): Promise<{ success: boolean; error?: string }> {
+  const verificationUrl = new URL(
+    "/users/register/verify-email",
+    `${directusUrl()}/`,
+  );
+  verificationUrl.searchParams.set("token", token);
+  const response = await fetch(verificationUrl, {
+    method: "GET",
+    redirect: "manual",
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
+  });
 
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      return {
-        success: false,
-        error: errData?.errors?.[0]?.message || "Invalid or expired token",
-      };
+  const location = response.headers.get("location");
+  if (response.status >= 300 && response.status < 400 && location) {
+    const redirectUrl = new URL(location, `${directusUrl()}/`);
+    if (/^\/admin\/users\/[^/]+\/?$/.test(redirectUrl.pathname)) {
+      return { success: true };
     }
-
+  } else if (response.ok) {
     return { success: true };
-  } catch (err: unknown) {
-    const error = err as Error;
-    return { success: false, error: error.message };
   }
+
+  if (!response.ok || !location) {
+    return {
+      success: false,
+      error: await readError(response, "Invalid or expired token"),
+    };
+  }
+  return { success: false, error: "Tautan verifikasi tidak valid atau kedaluwarsa." };
 }

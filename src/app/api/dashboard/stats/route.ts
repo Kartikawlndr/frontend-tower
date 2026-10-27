@@ -1,151 +1,104 @@
 import { NextResponse } from "next/server";
-import { getServerEnv } from "@/lib/env";
-import { checkDirectusHealth } from "@/lib/directus";
-import { SUBMISSIONS } from "@/lib/dummy-submissions";
-import { TOWER_RECORDS } from "@/lib/dummy-towers";
+import { directusFetch } from "@/lib/directus-session";
+
+type Attempt = {
+  status?: string;
+  metode_pendaftaran?: string;
+  date_created?: string;
+};
+type Tower = {
+  id: string;
+  id_menara?: string;
+  nama_pemilik?: string;
+  metode_pendaftaran?: string;
+  tenants?: Array<{ penyelenggara?: string }>;
+  registration_attempts?: Attempt[];
+};
 
 export async function GET() {
+  let response: Response;
   try {
-    const serverEnv = getServerEnv();
-    const directusHealth = await checkDirectusHealth();
-
-    // 1. Calculate dynamic metrics from records
-    const totalTowers = TOWER_RECORDS.length > 0 ? TOWER_RECORDS.length : 12;
-    
-    // Unique owners / companies
-    const ownersSet = new Set<string>();
-    TOWER_RECORDS.forEach((t) => {
-      if (t.pemilik) ownersSet.add(t.pemilik);
-    });
-    const totalCompanies = ownersSet.size > 0 ? ownersSet.size : 14;
-
-    // Unique tenants
-    const tenantCounts: Record<string, number> = {};
-    TOWER_RECORDS.forEach((t) => {
-      const tenant = t.tenant || "Telkomsel";
-      tenantCounts[tenant] = (tenantCounts[tenant] || 0) + 1;
-    });
-
-    const sortedTenants = Object.entries(tenantCounts)
-      .map(([name, count]) => ({
-        name,
-        count,
-        percentage: Math.min(100, Math.round((count / (totalTowers || 1)) * 100)),
-      }))
-      .sort((a, b) => b.count - a.count);
-
-    const topCompanies =
-      sortedTenants.length >= 3
-        ? sortedTenants.slice(0, 5)
-        : [
-            { name: "PT Telkomsel", count: 88, percentage: 85 },
-            { name: "PT Dayamitra Telekomunikasi (Mitratel)", count: 72, percentage: 70 },
-            { name: "PT Tower Bersama Infrastructure", count: 64, percentage: 60 },
-            { name: "PT Profesional Telekomunikasi Indonesia (Protelindo)", count: 52, percentage: 50 },
-            { name: "PT Centratama Telekomunikasi", count: 41, percentage: 40 },
-          ];
-
-    // Method breakdown
-    const excelSubmissions = SUBMISSIONS.filter(
-      (s) => s.method === "Upload Excel"
-    ).length;
-    const formSubmissions = SUBMISSIONS.filter(
-      (s) => s.method === "Application Form"
-    ).length;
-    const totalSub = SUBMISSIONS.length || 1;
-    const excelPercent = Math.round((excelSubmissions / totalSub) * 100);
-    const formPercent = 100 - excelPercent;
-
-    // Submissions by status
-    const registeredSubmissions = SUBMISSIONS.filter(
-      (s) => s.status === "Registered"
-    ).length;
-    const rejectedSubmissions = SUBMISSIONS.filter(
-      (s) => s.status === "Rejected"
-    ).length;
-    const draftSubmissions = SUBMISSIONS.filter(
-      (s) => s.status === "Draft"
-    ).length;
-
-    // Monthly trends (12 months)
-    const monthlyTrends = [
-      { month: "Jan", submissions: 120, towers: 840 },
-      { month: "Feb", submissions: 145, towers: 920 },
-      { month: "Mar", submissions: 190, towers: 1240 },
-      { month: "Apr", submissions: 210, towers: 1480 },
-      { month: "Mei", submissions: 240, towers: 1650 },
-      { month: "Jun", submissions: 280, towers: 1920 },
-      { month: "Jul", submissions: 310, towers: 2150 },
-      { month: "Agu", submissions: 350, towers: 2480 },
-      { month: "Sep", submissions: 390, towers: 2710 },
-      { month: "Okt", submissions: 425, towers: 3100 },
-      { month: "Nov", submissions: 380, towers: 2600 },
-      { month: "Des", submissions: 450, towers: 3350 },
-    ];
-
-    // Recent activities
-    const recentActivities = SUBMISSIONS.slice(0, 6).map((s, idx) => ({
-      id: s.reg,
-      regNumber: s.reg,
-      company:
-        idx % 2 === 0
-          ? "PT Dayamitra Telekomunikasi"
-          : idx % 3 === 0
-          ? "PT Tower Bersama"
-          : "PT Profesional Telekomunikasi",
-      method: s.method,
-      rows: s.rows,
-      timestamp: `${s.iso} 10:${String(15 + idx * 7).padStart(2, "0")} WIB`,
-      status: s.status,
-    }));
-
-    return NextResponse.json({
-      success: true,
-      system: {
-        directusUrl: serverEnv.directusUrl,
-        directusConnected: directusHealth.ok,
-        directusStatus: directusHealth.status,
-        database: {
-          client: serverEnv.db.client,
-          host: serverEnv.db.host,
-          port: serverEnv.db.port,
-          database: serverEnv.db.database,
-          user: serverEnv.db.user,
-        },
-        adminEmail: serverEnv.adminEmail,
-        managerEmail: serverEnv.managerEmail,
-        smtpHost: serverEnv.email.host,
-        smtpPort: serverEnv.email.port,
-        smtpUser: serverEnv.email.user,
-        maxPayloadSize: serverEnv.maxPayloadSize,
-        userRegister: serverEnv.userRegister,
-        userRegisterRole: serverEnv.userRegisterRole,
-        appUrl: serverEnv.appUrl,
-      },
-      metrics: {
-        totalTowers: 83443 + totalTowers,
-        totalCompanies: 24 + totalCompanies,
-        totalProvinces: 34,
-        totalSubmissions: SUBMISSIONS.length,
-        registeredSubmissions,
-        rejectedSubmissions,
-        draftSubmissions,
-      },
-      methodDistribution: {
-        excelCount: excelSubmissions,
-        formCount: formSubmissions,
-        excelPercent,
-        formPercent,
-      },
-      topCompanies,
-      monthlyTrends,
-      recentActivities,
-    });
-  } catch (err: unknown) {
-    const error = err as Error;
+    response = await directusFetch("/applicant-portal/towers?limit=100");
+  } catch {
     return NextResponse.json(
-      { error: error.message || "Failed to load dashboard metrics" },
-      { status: 500 }
+      { error: "Data dashboard tidak dapat dimuat dari Directus." },
+      { status: 502 },
     );
   }
+  if (!response.ok) {
+    return NextResponse.json(
+      { error: "Data dashboard tidak dapat dimuat dari Directus." },
+      { status: response.status },
+    );
+  }
+
+  const payload = (await response.json().catch(() => null)) as
+    | {
+        data?: Tower[];
+        meta?: { total?: number };
+        rejected_attempts?: Attempt[];
+        draft_attempt?: { id?: string | number } | null;
+      }
+    | null;
+  const towers = payload?.data ?? [];
+  const attempts = towers.flatMap((tower) => tower.registration_attempts ?? []);
+  const methodCounts = attempts.reduce(
+    (counts, attempt) => {
+      if (attempt.metode_pendaftaran === "Upload Excel") counts.excel += 1;
+      else if (attempt.metode_pendaftaran === "Input Manual") counts.manual += 1;
+      return counts;
+    },
+    { excel: 0, manual: 0 },
+  );
+  const methodTotal = methodCounts.excel + methodCounts.manual;
+  const tenantCounts = new Map<string, number>();
+  for (const tower of towers) {
+    for (const tenant of tower.tenants ?? []) {
+      if (!tenant.penyelenggara) continue;
+      tenantCounts.set(
+        tenant.penyelenggara,
+        (tenantCounts.get(tenant.penyelenggara) ?? 0) + 1,
+      );
+    }
+  }
+  const topCompanies = Array.from(tenantCounts, ([name, count]) => ({
+    name,
+    count,
+    percentage: towers.length ? Math.round((count / towers.length) * 100) : 0,
+  }))
+    .sort((left, right) => right.count - left.count)
+    .slice(0, 5);
+  const totalTowers = payload?.meta?.total ?? towers.length;
+
+  return NextResponse.json({
+    success: true,
+    system: { directusConnected: true, directusStatus: "healthy" },
+    metrics: {
+      totalTowers,
+      totalCompanies: new Set(towers.map((tower) => tower.nama_pemilik).filter(Boolean)).size,
+      totalProvinces: 0,
+      totalSubmissions: attempts.length + (payload?.rejected_attempts?.length ?? 0),
+      registeredSubmissions: attempts.filter((attempt) => attempt.status === "Registered").length,
+      rejectedSubmissions: (payload?.rejected_attempts?.length ?? 0) +
+        attempts.filter((attempt) => attempt.status === "Rejected").length,
+      draftSubmissions: payload?.draft_attempt ? 1 : 0,
+    },
+    methodDistribution: {
+      excelCount: methodCounts.excel,
+      formCount: methodCounts.manual,
+      excelPercent: methodTotal ? Math.round((methodCounts.excel / methodTotal) * 100) : 0,
+      formPercent: methodTotal ? Math.round((methodCounts.manual / methodTotal) * 100) : 0,
+    },
+    topCompanies,
+    monthlyTrends: [],
+    recentActivities: attempts.slice(0, 6).map((attempt, index) => ({
+      id: String(index),
+      regNumber: towers[index]?.id_menara || "—",
+      company: towers[index]?.nama_pemilik || "—",
+      method: attempt.metode_pendaftaran || "—",
+      rows: 1,
+      timestamp: attempt.date_created || "",
+      status: attempt.status || "—",
+    })),
+  });
 }

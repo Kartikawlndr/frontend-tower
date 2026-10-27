@@ -22,6 +22,7 @@ export default function AccountPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   function handleCancel() {
     setCurrentPassword("");
@@ -31,7 +32,7 @@ export default function AccountPage() {
     setSuccess(false);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSuccess(false);
@@ -40,8 +41,8 @@ export default function AccountPage() {
       setError("Semua kolom kata sandi wajib diisi.");
       return;
     }
-    if (newPassword.length < 8) {
-      setError("Kata sandi baru minimal harus 8 karakter.");
+    if (newPassword.length < 12) {
+      setError("Kata sandi baru minimal harus 12 karakter.");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -49,10 +50,35 @@ export default function AccountPage() {
       return;
     }
 
-    setSuccess(true);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+    setLoading(true);
+    try {
+      const response = await fetch("/api/account/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+      if (!response.ok) {
+        throw new Error(payload?.error || "Kata sandi tidak dapat diperbarui.");
+      }
+      setSuccess(true);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Kata sandi tidak dapat diperbarui.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -118,7 +144,7 @@ export default function AccountPage() {
 
         {success && (
           <div className="mb-4 rounded-lg border border-[#016db0] bg-[#eaf5fc] px-4 py-2.5 text-[13px] text-[#016db0]">
-            Kata sandi berhasil diperbarui (status demo).
+            Kata sandi berhasil diperbarui.
           </div>
         )}
 
@@ -218,10 +244,11 @@ export default function AccountPage() {
           </button>
           <button
             type="submit"
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-[10px] bg-[#016db0] px-4 text-[13px] font-medium text-white transition-colors hover:bg-[#015a92]"
+            disabled={loading}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-[10px] bg-[#016db0] px-4 text-[13px] font-medium text-white transition-colors hover:bg-[#015a92] disabled:opacity-50"
           >
             <Check className="h-4 w-4" />
-            Perbarui Kata Sandi
+            {loading ? "Memperbarui..." : "Perbarui Kata Sandi"}
           </button>
         </div>
       </form>

@@ -1,9 +1,8 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { clientEnv } from "@/lib/env";
 
 import {
   Building2,
@@ -14,9 +13,6 @@ import {
   RotateCcw,
   Search,
   Settings2,
-  Server,
-  Database,
-  ShieldCheck,
   CheckCircle2,
   Layers,
 } from "lucide-react";
@@ -57,196 +53,15 @@ export interface TowerRecord {
   latitude: number;
   alamat: string;
   provinsi?: string;
-  kabupaten?: string;
+  kab_kota?: string;
   kecamatan?: string;
+  kelurahan?: string;
+  dateCreated: string;
   tinggiAgl: number;
   kapasitasMaks?: number;
   registrationNo: string;
   status?: "REGISTERED" | "PENDING" | "REJECTED";
 }
-
-const SAMPLE_DASHBOARD_TOWERS: TowerRecord[] = [
-  {
-    id: "1",
-    kodeId: "TOW-JKT-001",
-    namaPemilik: "PT Dayamitra Telekomunikasi",
-    tahun: 2019,
-    jenisMenara: "Greenfield",
-    tenants: ["Telkomsel", "Indosat"],
-    longitude: 106.827153,
-    latitude: -6.175392,
-    alamat: "Jl. Medan Merdeka Barat No. 9, Jakarta Pusat",
-    tinggiAgl: 72,
-    kapasitasMaks: 4,
-    registrationNo: "REG-2026-000101",
-    status: "REGISTERED",
-  },
-  {
-    id: "2",
-    kodeId: "TOW-BDG-002",
-    namaPemilik: "PT Profesional Telekomunikasi",
-    tahun: 2020,
-    jenisMenara: "Rooftop",
-    tenants: ["XL Axiata", "Smartfren"],
-    longitude: 107.619123,
-    latitude: -6.917464,
-    alamat: "Jl. Asia Afrika No. 65, Bandung",
-    tinggiAgl: 45,
-    kapasitasMaks: 3,
-    registrationNo: "REG-2026-000102",
-    status: "REGISTERED",
-  },
-  {
-    id: "3",
-    kodeId: "TOW-SBY-003",
-    namaPemilik: "PT Tower Bersama",
-    tahun: 2018,
-    jenisMenara: "Monopole",
-    tenants: ["Telkomsel"],
-    longitude: 112.752088,
-    latitude: -7.257472,
-    alamat: "Jl. Pemuda No. 15, Surabaya",
-    tinggiAgl: 36,
-    kapasitasMaks: 2,
-    registrationNo: "REG-2026-000103",
-    status: "REGISTERED",
-  },
-  {
-    id: "4",
-    kodeId: "TOW-MDN-004",
-    namaPemilik: "PT Dayamitra Telekomunikasi",
-    tahun: 2021,
-    jenisMenara: "Greenfield",
-    tenants: ["Telkomsel", "XL Axiata"],
-    longitude: 98.672226,
-    latitude: 3.595196,
-    alamat: "Jl. Balai Kota No. 1, Medan",
-    tinggiAgl: 52,
-    kapasitasMaks: 4,
-    registrationNo: "REG-2026-000104",
-    status: "REGISTERED",
-  },
-  {
-    id: "5",
-    kodeId: "TOW-MKS-005",
-    namaPemilik: "PT Centratama Telekomunikasi",
-    tahun: 2022,
-    jenisMenara: "Guyed",
-    tenants: ["Indosat"],
-    longitude: 119.432732,
-    latitude: -5.147665,
-    alamat: "Jl. Urip Sumoharjo No. 88, Makassar",
-    tinggiAgl: 60,
-    kapasitasMaks: 3,
-    registrationNo: "REG-2026-000105",
-    status: "REGISTERED",
-  },
-  {
-    id: "6",
-    kodeId: "TOW-SMG-006",
-    namaPemilik: "PT Tower Bersama",
-    tahun: 2017,
-    jenisMenara: "Greenfield",
-    tenants: ["Telkomsel", "Smartfren"],
-    longitude: 110.42083,
-    latitude: -6.993056,
-    alamat: "Jl. Pahlawan No. 7, Semarang",
-    tinggiAgl: 48,
-    kapasitasMaks: 3,
-    registrationNo: "REG-2026-000106",
-    status: "REGISTERED",
-  },
-  {
-    id: "7",
-    kodeId: "TOW-YOG-007",
-    namaPemilik: "PT Profesional Telekomunikasi",
-    tahun: 2020,
-    jenisMenara: "Rooftop",
-    tenants: ["XL Axiata"],
-    longitude: 110.36949,
-    latitude: -7.79558,
-    alamat: "Jl. Malioboro No. 56, Yogyakarta",
-    tinggiAgl: 30,
-    kapasitasMaks: 2,
-    registrationNo: "REG-2026-000107",
-    status: "REGISTERED",
-  },
-  {
-    id: "8",
-    kodeId: "TOW-DPS-008",
-    namaPemilik: "PT Dayamitra Telekomunikasi",
-    tahun: 2023,
-    jenisMenara: "Monopole",
-    tenants: ["Telkomsel", "Indosat"],
-    longitude: 115.216667,
-    latitude: -8.65,
-    alamat: "Jl. Gajah Mada No. 12, Denpasar",
-    tinggiAgl: 40,
-    kapasitasMaks: 3,
-    registrationNo: "REG-2026-000108",
-    status: "REGISTERED",
-  },
-  {
-    id: "9",
-    kodeId: "TOW-BJM-009",
-    namaPemilik: "PT Centratama Telekomunikasi",
-    tahun: 2019,
-    jenisMenara: "Greenfield",
-    tenants: ["Telkomsel"],
-    longitude: 114.59075,
-    latitude: -3.319389,
-    alamat: "Jl. Lambung Mangkurat No. 22, Banjarmasin",
-    tinggiAgl: 50,
-    kapasitasMaks: 3,
-    registrationNo: "REG-2026-000109",
-    status: "REGISTERED",
-  },
-  {
-    id: "10",
-    kodeId: "TOW-PLM-010",
-    namaPemilik: "PT Tower Bersama",
-    tahun: 2021,
-    jenisMenara: "Rooftop",
-    tenants: ["Indosat", "Smartfren"],
-    longitude: 104.756554,
-    latitude: -2.976074,
-    alamat: "Jl. Sudirman No. 100, Palembang",
-    tinggiAgl: 38,
-    kapasitasMaks: 2,
-    registrationNo: "REG-2026-000110",
-    status: "REGISTERED",
-  },
-  {
-    id: "11",
-    kodeId: "TOW-BPN-011",
-    namaPemilik: "PT Profesional Telekomunikasi",
-    tahun: 2022,
-    jenisMenara: "Greenfield",
-    tenants: ["Telkomsel", "XL Axiata"],
-    longitude: 116.8312,
-    latitude: -1.2675,
-    alamat: "Jl. Jenderal Sudirman No. 45, Balikpapan",
-    tinggiAgl: 65,
-    kapasitasMaks: 4,
-    registrationNo: "REG-2026-000111",
-    status: "REGISTERED",
-  },
-  {
-    id: "12",
-    kodeId: "TOW-JPR-012",
-    namaPemilik: "PT Dayamitra Telekomunikasi",
-    tahun: 2024,
-    jenisMenara: "Self-supporting (SST)",
-    tenants: ["Telkomsel"],
-    longitude: 140.71813,
-    latitude: -2.53371,
-    alamat: "Jl. Percetakan Negara No. 3, Jayapura",
-    tinggiAgl: 72,
-    kapasitasMaks: 4,
-    registrationNo: "REG-2026-000112",
-    status: "REGISTERED",
-  },
-];
 
 type ColumnKey =
   | "kodeId"
@@ -257,6 +72,11 @@ type ColumnKey =
   | "longitude"
   | "latitude"
   | "alamat"
+  | "provinsi"
+  | "kab_kota"
+  | "kecamatan"
+  | "kelurahan"
+  | "dateCreated"
   | "tinggiAgl"
   | "registrationNo";
 
@@ -269,6 +89,11 @@ const ALL_COLUMNS: { key: ColumnKey; label: string }[] = [
   { key: "longitude", label: "Longitude" },
   { key: "latitude", label: "Latitude" },
   { key: "alamat", label: "Alamat" },
+  { key: "provinsi", label: "Provinsi" },
+  { key: "kab_kota", label: "Kabupaten/Kota" },
+  { key: "kecamatan", label: "Kecamatan" },
+  { key: "kelurahan", label: "Kelurahan/Desa" },
+  { key: "dateCreated", label: "Tanggal Pendaftaran" },
   { key: "tinggiAgl", label: "Tinggi (AGL)" },
   { key: "registrationNo", label: "No. Registrasi" },
 ];
@@ -280,10 +105,9 @@ type QueryFilters = {
   jenisMenara: string;
   tenant: string;
   alamat: string;
-  lonMin: string;
-  lonMax: string;
-  latMin: string;
-  latMax: string;
+  longitude: string;
+  latitude: string;
+  date: string;
   tinggiMin: string;
   registrationNo: string;
 };
@@ -295,10 +119,9 @@ const DEFAULT_FILTERS: QueryFilters = {
   jenisMenara: "",
   tenant: "",
   alamat: "",
-  lonMin: "95",
-  lonMax: "141",
-  latMin: "-11",
-  latMax: "6",
+  longitude: "",
+  latitude: "",
+  date: "",
   tinggiMin: "",
   registrationNo: "",
 };
@@ -308,25 +131,18 @@ const YEAR_OPTIONS = Array.from(
   (_, i) => 2026 - i
 );
 
+function localDateKey(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 interface DashboardStatsData {
   system: {
-    directusUrl: string;
     directusConnected: boolean;
     directusStatus: string;
-    database: {
-      client: string;
-      host: string;
-      port: number;
-      database: string;
-      user: string;
-    };
-    adminEmail: string;
-    managerEmail: string;
-    smtpHost: string;
-    smtpPort: number;
-    maxPayloadSize: string;
-    userRegister: boolean;
-    userRegisterRole: string;
   };
   metrics: {
     totalTowers: number;
@@ -364,6 +180,27 @@ interface DashboardStatsData {
   }[];
 }
 
+type PortalTower = {
+  id: string;
+  id_menara?: string;
+  nama_pemilik?: string;
+  tahun_pembangunan?: number | string;
+  jenis_menara?: string;
+  longitude?: number | string;
+  latitude?: number | string;
+  alamat?: string;
+  provinsi?: string;
+  kab_kota?: string;
+  kecamatan?: string;
+  kelurahan?: string;
+  date_created?: string;
+  tinggi_menara?: number | string;
+  kapasitas_maksimal?: number | string;
+  tenants?: Array<{ penyelenggara?: string }>;
+};
+
+type TowersResponse = { data?: PortalTower[]; error?: string };
+
 export default function DashboardPage() {
   const { role } = useAuth();
 
@@ -380,39 +217,106 @@ export default function DashboardPage() {
 
   // Dynamic Dashboard Stats from API & .env
   const [stats, setStats] = useState<DashboardStatsData | null>(null);
-  const [loadingStats, setLoadingStats] = useState(false);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingTowers, setLoadingTowers] = useState(true);
+  const [dashboardTowers, setDashboardTowers] = useState<TowerRecord[]>([]);
+  const [statsError, setStatsError] = useState("");
+  const [towersError, setTowersError] = useState("");
 
-  // Fetch dynamic stats from /api/dashboard/stats
-  const fetchStats = async () => {
-    setLoadingStats(true);
+  const fetchStats = useCallback(async () => {
     try {
       const res = await fetch("/api/dashboard/stats");
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.error || "Ringkasan dashboard tidak dapat dimuat.");
       }
-    } catch {
-      // Fallback already handled
+      setStats(data);
+      setStatsError("");
+    } catch (error) {
+      setStatsError(
+        error instanceof Error
+          ? error.message
+          : "Ringkasan dashboard tidak dapat dimuat.",
+      );
     } finally {
       setLoadingStats(false);
     }
-  };
+  }, []);
+
+  const fetchTowers = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const response = await fetch("/api/towers?limit=100", {
+        cache: "no-store",
+        signal,
+      });
+      const payload = (await response.json().catch(() => null)) as TowersResponse | null;
+      if (!response.ok) {
+        throw new Error(payload?.error || "Data menara tidak dapat dimuat.");
+      }
+      if (!payload || !Array.isArray(payload.data)) {
+        throw new Error("Respons daftar menara dari Directus tidak valid.");
+      }
+      setTowersError("");
+      setDashboardTowers(payload.data.map((tower) => ({
+          id: tower.id,
+          kodeId: tower.id_menara || "",
+          namaPemilik: tower.nama_pemilik || "",
+          tahun: tower.tahun_pembangunan || "",
+          jenisMenara: tower.jenis_menara || "",
+          tenants: (tower.tenants ?? []).map((tenant) => tenant.penyelenggara || ""),
+          longitude: Number(tower.longitude) || 0,
+          latitude: Number(tower.latitude) || 0,
+          alamat: tower.alamat || "",
+          provinsi: tower.provinsi || "",
+          kab_kota: tower.kab_kota || "",
+          kecamatan: tower.kecamatan || "",
+          kelurahan: tower.kelurahan || "",
+          dateCreated: tower.date_created || "",
+          tinggiAgl: Number(tower.tinggi_menara) || 0,
+          kapasitasMaks: Number(tower.kapasitas_maksimal) || 0,
+          registrationNo: tower.id_menara || "",
+          status: "REGISTERED",
+        })));
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setTowersError(
+        error instanceof Error
+          ? error.message
+          : "Data menara tidak dapat dimuat.",
+      );
+    } finally {
+      if (!signal?.aborted) setLoadingTowers(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    fetch("/api/dashboard/stats")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (isMounted && data) {
-          setStats(data);
-        }
-      })
-      .catch(() => {});
+    const controller = new AbortController();
+    void Promise.resolve().then(() => {
+      if (controller.signal.aborted) return;
+      void fetchStats();
+      void fetchTowers(controller.signal);
+    });
+    return () => controller.abort();
+  }, [fetchStats, fetchTowers]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  useEffect(() => {
+    function refreshTowersWhenVisible() {
+      if (document.visibilityState === "visible") {
+        setLoadingTowers(true);
+        void fetchTowers();
+      }
+    }
+    document.addEventListener("visibilitychange", refreshTowersWhenVisible);
+    return () => document.removeEventListener("visibilitychange", refreshTowersWhenVisible);
+  }, [fetchTowers]);
+
+  function refreshDashboard() {
+    setLoadingStats(true);
+    setLoadingTowers(true);
+    setStatsError("");
+    setTowersError("");
+    void Promise.all([fetchStats(), fetchTowers()]);
+  }
 
   // Query and table state
   const [draftFilters, setDraftFilters] = useState<QueryFilters>(DEFAULT_FILTERS);
@@ -428,6 +332,11 @@ export default function DashboardPage() {
     longitude: true,
     latitude: true,
     alamat: true,
+    provinsi: true,
+    kab_kota: true,
+    kecamatan: true,
+    kelurahan: true,
+    dateCreated: true,
     tinggiAgl: true,
     registrationNo: true,
   });
@@ -437,13 +346,11 @@ export default function DashboardPage() {
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
 
   const filteredTowers = useMemo(() => {
-    const lonMin = parseFloat(appliedFilters.lonMin);
-    const lonMax = parseFloat(appliedFilters.lonMax);
-    const latMin = parseFloat(appliedFilters.latMin);
-    const latMax = parseFloat(appliedFilters.latMax);
+    const longitude = parseFloat(appliedFilters.longitude);
+    const latitude = parseFloat(appliedFilters.latitude);
     const tinggiMin = parseFloat(appliedFilters.tinggiMin);
 
-    return SAMPLE_DASHBOARD_TOWERS.filter((t) => {
+    return dashboardTowers.filter((t) => {
       if (
         appliedFilters.kodeId &&
         !t.kodeId.toLowerCase().includes(appliedFilters.kodeId.toLowerCase())
@@ -485,10 +392,16 @@ export default function DashboardPage() {
       ) {
         return false;
       }
-      if (!Number.isNaN(lonMin) && t.longitude < lonMin) return false;
-      if (!Number.isNaN(lonMax) && t.longitude > lonMax) return false;
-      if (!Number.isNaN(latMin) && t.latitude < latMin) return false;
-      if (!Number.isNaN(latMax) && t.latitude > latMax) return false;
+      if (
+        !Number.isNaN(longitude) &&
+        Math.abs(t.longitude - longitude) > 0.0000005
+      ) return false;
+      if (
+        !Number.isNaN(latitude) &&
+        Math.abs(t.latitude - latitude) > 0.0000005
+      ) return false;
+      const registrationDate = localDateKey(t.dateCreated);
+      if (appliedFilters.date && registrationDate !== appliedFilters.date) return false;
       if (!Number.isNaN(tinggiMin) && t.tinggiAgl < tinggiMin) return false;
       if (
         appliedFilters.registrationNo &&
@@ -500,7 +413,7 @@ export default function DashboardPage() {
       }
       return true;
     });
-  }, [appliedFilters]);
+  }, [appliedFilters, dashboardTowers]);
 
   const totalPages = Math.max(1, Math.ceil(filteredTowers.length / rowsPerPage));
   const safePage = Math.min(page, totalPages);
@@ -561,81 +474,33 @@ export default function DashboardPage() {
 
   // Fallback metrics if API is still loading
   const displayMetrics = stats?.metrics || {
-    totalTowers: 83455,
-    totalCompanies: 24,
-    totalProvinces: 34,
-    totalSubmissions: 27,
-    registeredSubmissions: 20,
-    rejectedSubmissions: 4,
-    draftSubmissions: 3,
+    totalTowers: 0,
+    totalCompanies: 0,
+    totalProvinces: 0,
+    totalSubmissions: 0,
+    registeredSubmissions: 0,
+    rejectedSubmissions: 0,
+    draftSubmissions: 0,
   };
 
   const displayMethods = stats?.methodDistribution || {
-    excelCount: 18,
-    formCount: 9,
-    excelPercent: 67,
-    formPercent: 33,
+    excelCount: 0,
+    formCount: 0,
+    excelPercent: 0,
+    formPercent: 0,
   };
 
-  const displayTopCompanies = stats?.topCompanies || [
-    { name: "PT Telkomsel", count: 88, percentage: 85 },
-    { name: "PT Dayamitra Telekomunikasi (Mitratel)", count: 72, percentage: 70 },
-    { name: "PT Tower Bersama Infrastructure", count: 64, percentage: 60 },
-    { name: "PT Profesional Telekomunikasi Indonesia (Protelindo)", count: 52, percentage: 50 },
-    { name: "PT Centratama Telekomunikasi", count: 41, percentage: 40 },
-  ];
-
-  const displayActivities = stats?.recentActivities || [
-    {
-      id: "REG-2026-000027",
-      regNumber: "REG-2026-000027",
-      company: "PT Dayamitra Telekomunikasi",
-      method: "Upload Excel",
-      rows: 18,
-      timestamp: "2026-10-19 12:18 WIB",
-      status: "Registered" as const,
-    },
-    {
-      id: "REG-2026-000026",
-      regNumber: "REG-2026-000026",
-      company: "PT Profesional Telekomunikasi",
-      method: "Upload Excel",
-      rows: 24,
-      timestamp: "2026-10-19 11:45 WIB",
-      status: "Registered" as const,
-    },
-    {
-      id: "REG-2026-000025",
-      regNumber: "REG-2026-000025",
-      company: "PT Tower Bersama",
-      method: "Application Form",
-      rows: 1,
-      timestamp: "2026-10-18 16:30 WIB",
-      status: "Draft" as const,
-    },
-    {
-      id: "REG-2026-000024",
-      regNumber: "REG-2026-000024",
-      company: "PT Centratama Telekomunikasi",
-      method: "Upload Excel",
-      rows: 32,
-      timestamp: "2026-10-18 14:10 WIB",
-      status: "Registered" as const,
-    },
-    {
-      id: "REG-2026-000023",
-      regNumber: "REG-2026-000023",
-      company: "PT Solusi Tunas Pratama",
-      method: "Upload Excel",
-      rows: 12,
-      timestamp: "2026-10-17 09:20 WIB",
-      status: "Rejected" as const,
-    },
-  ];
+  const displayTopCompanies = stats?.topCompanies || [];
+  const displayActivities = stats?.recentActivities || [];
 
   return (
     <div className="space-y-6 pb-12">
       {/* ───── DASHBOARD HEADER ───── */}
+      {(statsError || towersError) && (
+        <div role="alert" className="rounded-card border border-danger bg-danger-bg px-4 py-3 text-sm text-danger">
+          {statsError || towersError}
+        </div>
+      )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2.5">
@@ -657,7 +522,7 @@ export default function DashboardPage() {
 
         {/* Action Controls & Backend Status */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Directus / Standalone Environment Badge */}
+          {/* Backend health indicator */}
           <div className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs text-heading shadow-card">
             <span
               className={`h-2 w-2 rounded-full ${
@@ -666,20 +531,20 @@ export default function DashboardPage() {
             />
             <span className="font-medium text-xs">
               {stats?.system.directusConnected
-                ? `Directus: Online (${clientEnv.directusUrl})`
-                : `Backend: ${clientEnv.directusUrl}`}
+                ? "Directus: Online"
+                : "Directus: Tidak terhubung"}
             </span>
           </div>
 
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchStats}
-            disabled={loadingStats}
-            title="Segarkan data dashboard"
+            onClick={refreshDashboard}
+            disabled={loadingStats || loadingTowers}
+            title="Segarkan statistik dan data menara"
           >
             <RotateCcw
-              className={`h-3.5 w-3.5 text-primary ${loadingStats ? "animate-spin" : ""}`}
+              className={`h-3.5 w-3.5 text-primary ${loadingStats || loadingTowers ? "animate-spin" : ""}`}
             />
             <span>Segarkan</span>
           </Button>
@@ -721,60 +586,6 @@ export default function DashboardPage() {
       {/* ========================================================= */}
       {canViewInsights && currentTab === "insights" && (
         <div className="space-y-6">
-          {/* 1.1 INFRASTRUCTURE & .ENV TELEMETRY CARD */}
-          <div className="rounded-card border border-border-soft bg-gradient-to-r from-surface via-[#f0f7fc] to-surface p-5 shadow-card">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-nav-active-bg text-primary">
-                  <Server className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-bold text-heading">
-                      Konfigurasi Lingkungan Terintegrasi (.env)
-                    </h2>
-                    <Badge variant="success" className="text-[10px]">
-                      Tersinkronisasi
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted">
-                    Semua parameter frontend terhubung dengan Directus & PostgreSQL
-                  </p>
-                </div>
-              </div>
-
-              {/* Dynamic Parameter Badges */}
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <div className="flex items-center gap-1.5 rounded-lg border border-border-soft bg-white px-2.5 py-1.5 shadow-sm">
-                  <Database className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-muted">Database:</span>
-                  <span className="font-semibold text-heading">
-                    {stats?.system.database.client || "pg"}://
-                    {stats?.system.database.host || "localhost"}:
-                    {stats?.system.database.port || 5432}/
-                    {stats?.system.database.database || "directus"}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5 rounded-lg border border-border-soft bg-white px-2.5 py-1.5 shadow-sm">
-                  <ShieldCheck className="h-3.5 w-3.5 text-[#00a8e8]" />
-                  <span className="text-muted">Admin:</span>
-                  <span className="font-semibold text-heading">
-                    {clientEnv.adminEmail}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5 rounded-lg border border-border-soft bg-white px-2.5 py-1.5 shadow-sm">
-                  <Download className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-muted">Max Upload:</span>
-                  <span className="font-semibold text-heading uppercase">
-                    {clientEnv.maxPayloadSize}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* 1.2 TOP 4 KPI CARDS (Styled with Project Palette) */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* Card 1: Total Menara */}
@@ -1007,72 +818,44 @@ export default function DashboardPage() {
                 />
               </div>
 
-              {/* 7. Longitude range */}
+              {/* 7. Longitude */}
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-heading">
-                  Longitude (min – max)
+                  Longitude
                 </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    step="any"
-                    value={draftFilters.lonMin}
-                    onChange={(e) =>
-                      setDraftFilters((p: QueryFilters) => ({
-                        ...p,
-                        lonMin: e.target.value,
-                      }))
-                    }
-                    className="h-9 w-1/2 rounded-input border border-border bg-white px-2 text-xs text-heading focus:border-primary focus:outline-none"
-                  />
-                  <span className="text-muted">–</span>
-                  <input
-                    type="number"
-                    step="any"
-                    value={draftFilters.lonMax}
-                    onChange={(e) =>
-                      setDraftFilters((p: QueryFilters) => ({
-                        ...p,
-                        lonMax: e.target.value,
-                      }))
-                    }
-                    className="h-9 w-1/2 rounded-input border border-border bg-white px-2 text-xs text-heading focus:border-primary focus:outline-none"
-                  />
-                </div>
+                <input
+                  type="number"
+                  step="any"
+                  value={draftFilters.longitude}
+                  onChange={(e) =>
+                    setDraftFilters((p: QueryFilters) => ({
+                      ...p,
+                      longitude: e.target.value,
+                    }))
+                  }
+                  placeholder="Contoh: 106.826902"
+                  className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
+                />
               </div>
 
-              {/* 8. Latitude range */}
+              {/* 8. Latitude */}
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-heading">
-                  Latitude (min – max)
+                  Latitude
                 </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    step="any"
-                    value={draftFilters.latMin}
-                    onChange={(e) =>
-                      setDraftFilters((p: QueryFilters) => ({
-                        ...p,
-                        latMin: e.target.value,
-                      }))
-                    }
-                    className="h-9 w-1/2 rounded-input border border-border bg-white px-2 text-xs text-heading focus:border-primary focus:outline-none"
-                  />
-                  <span className="text-muted">–</span>
-                  <input
-                    type="number"
-                    step="any"
-                    value={draftFilters.latMax}
-                    onChange={(e) =>
-                      setDraftFilters((p: QueryFilters) => ({
-                        ...p,
-                        latMax: e.target.value,
-                      }))
-                    }
-                    className="h-9 w-1/2 rounded-input border border-border bg-white px-2 text-xs text-heading focus:border-primary focus:outline-none"
-                  />
-                </div>
+                <input
+                  type="number"
+                  step="any"
+                  value={draftFilters.latitude}
+                  onChange={(e) =>
+                    setDraftFilters((p: QueryFilters) => ({
+                      ...p,
+                      latitude: e.target.value,
+                    }))
+                  }
+                  placeholder="Contoh: -6.174531"
+                  className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
+                />
               </div>
 
               {/* 9. Tinggi AGL minimum */}
@@ -1110,6 +893,24 @@ export default function DashboardPage() {
                   }
                   placeholder="Contoh: REG-2026-000101"
                   className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
+                />
+              </div>
+
+              {/* 11. Tanggal pendaftaran */}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-heading">
+                  Tanggal pendaftaran
+                </label>
+                <input
+                  type="date"
+                  value={draftFilters.date}
+                  onChange={(e) =>
+                    setDraftFilters((p: QueryFilters) => ({
+                      ...p,
+                      date: e.target.value,
+                    }))
+                  }
+                  className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading focus:border-primary focus:outline-none"
                 />
               </div>
             </div>
@@ -1240,13 +1041,24 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-soft text-heading">
-                  {paginatedTowers.length === 0 ? (
+                  {loadingTowers && dashboardTowers.length === 0 ? (
                     <tr>
                       <td
                         colSpan={ALL_COLUMNS.filter((c) => visibleCols[c.key]).length}
                         className="p-8 text-center text-muted"
                       >
-                        Tidak ada data menara yang cocok dengan filter pencarian.
+                        Memuat data menara...
+                      </td>
+                    </tr>
+                  ) : paginatedTowers.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={ALL_COLUMNS.filter((c) => visibleCols[c.key]).length}
+                        className="p-8 text-center text-muted"
+                      >
+                        {dashboardTowers.length === 0
+                          ? "Belum ada data menara aktif untuk akun ini."
+                          : "Tidak ada data menara yang cocok dengan filter pencarian."}
                       </td>
                     </tr>
                   ) : (
@@ -1299,6 +1111,25 @@ export default function DashboardPage() {
                         {visibleCols.alamat && (
                           <td className="p-3 max-w-[200px] truncate text-muted" title={tower.alamat}>
                             {tower.alamat}
+                          </td>
+                        )}
+                        {visibleCols.provinsi && (
+                          <td className="p-3">{tower.provinsi || "—"}</td>
+                        )}
+                        {visibleCols.kab_kota && (
+                          <td className="p-3">{tower.kab_kota || "—"}</td>
+                        )}
+                        {visibleCols.kecamatan && (
+                          <td className="p-3">{tower.kecamatan || "—"}</td>
+                        )}
+                        {visibleCols.kelurahan && (
+                          <td className="p-3">{tower.kelurahan || "—"}</td>
+                        )}
+                        {visibleCols.dateCreated && (
+                          <td className="whitespace-nowrap p-3">
+                            {tower.dateCreated
+                              ? new Date(tower.dateCreated).toLocaleDateString("id-ID")
+                              : "—"}
                           </td>
                         )}
                         {visibleCols.tinggiAgl && (

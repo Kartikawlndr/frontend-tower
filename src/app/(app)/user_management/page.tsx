@@ -1,46 +1,159 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { clientEnv } from "@/lib/env";
 
-const ROLE_DISPLAY: Record<string, string> = {
-  "Normal User": "Pengguna",
+type PortalRole = "Applicant" | "Web Manager" | "Administrator";
+type PortalUser = {
+  id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  status: string;
+  role_name: PortalRole;
+  last_access?: string | null;
+};
+type UserListResponse = {
+  data?: PortalUser[];
+  error?: string;
+};
+
+const ROLE_TEXT: Record<PortalRole, string> = {
+  Applicant: "Pengguna",
   "Web Manager": "Manajer Web",
-  "Super Admin": "Super Admin",
-  USER: "Pengguna",
-  MANAGER: "Manajer Web",
-  ADMIN: "Super Admin",
+  Administrator: "Super Admin",
 };
 
 export default function UserManagement() {
   const { user } = useAuth();
   const router = useRouter();
-  const [currentView, setCurrentView] = useState<"list" | "create" | "edit">(
-    "list"
+  const [users, setUsers] = useState<PortalUser[]>([]);
+  const [roleEdits, setRoleEdits] = useState<Record<string, PortalRole>>({});
+  const [statusEdits, setStatusEdits] = useState<Record<string, "active" | "suspended">>({});
+  const [search, setSearch] = useState("");
+  const [email, setEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<PortalRole>("Applicant");
+  const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const refresh = useCallback(async () => {
+    const response = await fetch("/api/users?limit=100", { cache: "no-store" });
+    const payload = (await response.json().catch(() => null)) as UserListResponse | null;
+    if (!response.ok) {
+      throw new Error(payload?.error || "Daftar akun tidak dapat dimuat.");
+    }
+    setUsers(payload?.data ?? []);
+    setRoleEdits({});
+    setStatusEdits({});
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/users?limit=100", { cache: "no-store" })
+      .then(async (response) => {
+        const payload = (await response.json().catch(() => null)) as UserListResponse | null;
+        if (!response.ok) throw new Error(payload?.error || "Daftar akun tidak dapat dimuat.");
+        if (active) setUsers(payload?.data ?? []);
+      })
+      .catch((requestError) => {
+        if (active) {
+          setError(requestError instanceof Error ? requestError.message : "Daftar akun tidak dapat dimuat.");
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const visibleUsers = useMemo(
+    () =>
+      users.filter((entry) =>
+        `${entry.first_name ?? ""} ${entry.last_name ?? ""} ${entry.email}`
+          .toLowerCase()
+          .includes(search.trim().toLowerCase()),
+      ),
+    [search, users],
   );
 
-  // Only Super Admin can access this page
+  async function invite(event: React.FormEvent) {
+    event.preventDefault();
+    setWorking(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, role: inviteRole }),
+      });
+      const payload = (await response.json().catch(() => null)) as { error?: string; message?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || "Undangan akun gagal dikirim.");
+      setMessage(payload?.message || "Undangan berhasil dikirim.");
+      setEmail("");
+      await refresh();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Undangan akun gagal dikirim.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function saveUser(entry: PortalUser) {
+    const role = roleEdits[entry.id] ?? entry.role_name;
+    const status = statusEdits[entry.id];
+    const changes: { role?: PortalRole; status?: "active" | "suspended" } = {};
+    if (role !== entry.role_name) changes.role = role;
+    if (status && status !== entry.status) changes.status = status;
+    if (Object.keys(changes).length === 0) return;
+    setWorking(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(`/api/users/${encodeURIComponent(entry.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(changes),
+      });
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || "Perubahan akun gagal disimpan.");
+      setMessage(`Perubahan untuk ${entry.email} berhasil disimpan.`);
+      await refresh();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Perubahan akun gagal disimpan.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function resetPassword(entry: PortalUser) {
+    setWorking(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(`/api/users/${encodeURIComponent(entry.id)}/password-reset`, { method: "POST" });
+      const payload = (await response.json().catch(() => null)) as { error?: string; message?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || "Permintaan reset password gagal.");
+      setMessage(payload?.message || `Tautan reset dikirim ke ${entry.email}.`);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Permintaan reset password gagal.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
   if (user.role !== "ADMIN") {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="bg-surface p-10 rounded-card border border-border-soft shadow-card text-center space-y-4 max-w-md w-full">
-          <div className="w-12 h-12 bg-danger-bg text-danger rounded-full flex items-center justify-center mx-auto text-xl font-bold">
-            🔒
-          </div>
-          <h2 className="text-lg font-bold text-danger">
-            403 - Akses Ditolak
-          </h2>
-          <p className="text-xs text-muted">
-            Peran Anda ({ROLE_DISPLAY[user.roleLabel] || user.roleLabel}) tidak dapat mengakses: Manajemen Pengguna, Pembuatan akun pengguna, Pengaturan peran
-          </p>
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="px-4 py-2 bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card"
-          >
-            Kembali ke Dashboard
-          </button>
+        <div className="max-w-md space-y-4 rounded-card border border-border-soft bg-surface p-10 text-center shadow-card">
+          <h2 className="text-lg font-bold text-danger">403 - Akses Ditolak</h2>
+          <p className="text-xs text-muted">Hanya Super Admin yang dapat mengelola akun dan peran.</p>
+          <button onClick={() => router.push("/dashboard")} className="rounded-card bg-primary px-4 py-2 text-xs font-semibold text-on-primary">Kembali ke Dashboard</button>
         </div>
       </div>
     );
@@ -48,399 +161,53 @@ export default function UserManagement() {
 
   return (
     <div className="space-y-6">
-      {/* VIEW 1: USER MANAGEMENT LIST */}
-      {currentView === "list" && (
-        <>
-          <h1 className="text-page-title">Manajemen Pengguna</h1>
+      <h1 className="text-page-title">Manajemen Pengguna</h1>
+      {error && <div role="alert" className="rounded-card border border-danger bg-danger-bg px-4 py-3 text-sm text-danger">{error}</div>}
+      {message && <div role="status" className="rounded-card border border-primary bg-nav-active-bg px-4 py-3 text-sm text-primary">{message}</div>}
 
-          <section className="bg-surface p-6 rounded-card border border-border-soft shadow-card space-y-4">
-            <h2 className="text-sm font-bold text-heading">Daftar Pengguna</h2>
+      <section className="space-y-4 rounded-card border border-border-soft bg-surface p-6 shadow-card">
+        <h2 className="text-sm font-bold text-heading">Undang Pengguna</h2>
+        <form onSubmit={invite} className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
+          <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email pengguna" className="h-[var(--height-input)] rounded-input border border-border bg-surface px-3 text-sm" />
+          <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value as PortalRole)} className="h-[var(--height-input)] rounded-input border border-border bg-surface px-3 text-sm">
+            <option value="Applicant">Pengguna</option>
+            <option value="Web Manager">Manajer Web</option>
+            <option value="Administrator">Super Admin</option>
+          </select>
+          <button disabled={working} className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-on-primary disabled:opacity-50">Kirim Undangan</button>
+        </form>
+      </section>
 
-            {/* Filter & Search Bar */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-              <div className="space-y-1">
-                <label className="text-field-label">Cari</label>
-                <input
-                  type="text"
-                  placeholder="Nama atau email"
-                  className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-field-label">Peran</label>
-                <select className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary">
-                  <option>Semua peran</option>
-                  <option>Pengguna</option>
-                  <option>Manajer Web</option>
-                  <option>Super Admin</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-field-label">Status</label>
-                <select className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary">
-                  <option>Semua</option>
-                  <option>Aktif</option>
-                  <option>Tidak Aktif</option>
-                </select>
-              </div>
-              <div>
-                <button
-                  onClick={() => setCurrentView("create")}
-                  className="w-full h-[var(--height-button)] px-4 bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card flex items-center justify-center gap-2"
-                >
-                  <span>+ Tambah Pengguna</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="overflow-x-auto border border-border-soft rounded-input">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-table-head-bg border-b border-border-soft text-heading font-semibold">
-                  <tr>
-                    <th className="p-3.5">Nama</th>
-                    <th className="p-3.5">Email</th>
-                    <th className="p-3.5">Peran</th>
-                    <th className="p-3.5">Status</th>
-                    <th className="p-3.5">Dibuat Pada</th>
-                    <th className="p-3.5 text-right pr-25">Aksi</th>
+      <section className="space-y-4 rounded-card border border-border-soft bg-surface p-6 shadow-card">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-bold text-heading">Daftar Pengguna</h2>
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama atau email" className="h-9 rounded-input border border-border px-3 text-sm" />
+        </div>
+        <div className="overflow-x-auto rounded-input border border-border-soft">
+          <table className="w-full text-left text-xs">
+            <thead className="border-b border-border-soft bg-table-head-bg font-semibold text-heading">
+              <tr><th className="p-3">Nama</th><th className="p-3">Email</th><th className="p-3">Peran</th><th className="p-3">Status</th><th className="p-3">Aksi</th></tr>
+            </thead>
+            <tbody className="divide-y divide-border-soft text-muted">
+              {loading ? <tr><td colSpan={5} className="p-6 text-center">Memuat akun...</td></tr> : visibleUsers.length === 0 ? <tr><td colSpan={5} className="p-6 text-center">Tidak ada akun.</td></tr> : visibleUsers.map((entry) => {
+                const isSelf = entry.id === user.id;
+                return (
+                  <tr key={entry.id}>
+                    <td className="p-3 font-medium text-heading">{`${entry.first_name ?? ""} ${entry.last_name ?? ""}`.trim() || "—"}</td>
+                    <td className="p-3">{entry.email}</td>
+                    <td className="p-3"><select disabled={isSelf || working} value={roleEdits[entry.id] ?? entry.role_name} onChange={(event) => setRoleEdits({ ...roleEdits, [entry.id]: event.target.value as PortalRole })} className="rounded-input border border-border bg-surface px-2 py-1"><option value="Applicant">{ROLE_TEXT.Applicant}</option><option value="Web Manager">{ROLE_TEXT["Web Manager"]}</option><option value="Administrator">{ROLE_TEXT.Administrator}</option></select></td>
+                    <td className="p-3"><select disabled={isSelf || working} value={statusEdits[entry.id] ?? entry.status} onChange={(event) => setStatusEdits({ ...statusEdits, [entry.id]: event.target.value as "active" | "suspended" })} className="rounded-input border border-border bg-surface px-2 py-1"><option value="active">Aktif</option><option value="suspended">Ditangguhkan</option>{!["active", "suspended"].includes(entry.status) && <option value={entry.status}>{entry.status}</option>}</select></td>
+                    <td className="space-x-3 whitespace-nowrap p-3">
+                      <button disabled={isSelf || working} onClick={() => saveUser(entry)} className="font-semibold text-primary hover:underline disabled:opacity-50">Simpan</button>
+                      <button disabled={isSelf || entry.status !== "active" || working} onClick={() => resetPassword(entry)} className="font-semibold text-primary hover:underline disabled:opacity-50">Reset password</button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border-soft text-muted">
-                  {[
-                    {
-                      name: "Super Administrator",
-                      email: clientEnv.adminEmail,
-                      role: "Super Admin",
-                      status: "Aktif",
-                      created: "2026-01-01",
-                    },
-                    {
-                      name: "Manajer Web",
-                      email: clientEnv.managerEmail,
-                      role: "Manajer Web",
-                      status: "Aktif",
-                      created: "2026-01-02",
-                    },
-                    {
-                      name: "PT Tower Bersama",
-                      email: "operator@towerbersama.com",
-                      role: "Pengguna",
-                      status: "Aktif",
-                      created: "2026-02-15",
-                    },
-                  ].map((row, idx) => (
-                    <tr key={idx} className="hover:bg-canvas">
-                      <td className="p-3.5 font-medium text-heading">{row.name}</td>
-                      <td className="p-3.5">{row.email}</td>
-                      <td className="p-3.5">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-2xs font-semibold bg-sky-100 text-[#0070ba]">
-                          {row.role}
-                        </span>
-                      </td>
-                      <td className="p-3.5">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-2xs font-semibold bg-emerald-100 text-emerald-800">
-                          {row.status}
-                        </span>
-                      </td>
-                      <td className="p-3.5">{row.created}</td>
-                      <td className="p-3.5 text-right space-x-1 pr-27 font-medium">
-                        <button
-                          onClick={() => setCurrentView("edit")}
-                          className="text-primary hover:underline"
-                        >
-                          Ubah
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination footer */}
-            <div className="flex items-center justify-between pt-2 text-xs text-muted">
-              <span>Menampilkan 1-3 dari 3</span>
-              <div className="flex items-center gap-2">
-                <span>Baris per halaman</span>
-                <select className="border border-border rounded-input px-2 py-1 bg-surface">
-                  <option>10</option>
-                </select>
-                <button className="px-2 py-1 border rounded-input bg-surface text-border">
-                  ‹
-                </button>
-                <button className="px-3 py-1 border rounded-input bg-primary text-on-primary">
-                  1
-                </button>
-                <button className="px-2.5 py-1 border rounded-input bg-surface">
-                  2
-                </button>
-                <button className="px-2.5 py-1 border rounded-input bg-surface">
-                  3
-                </button>
-                <button className="px-2.5 py-1 border rounded-input bg-surface">
-                  ›
-                </button>
-              </div>
-            </div>
-          </section>
-        </>
-      )}
-
-      {/* VIEW 2: CREATE USER */}
-      {currentView === "create" && (
-        <>
-          <h1 className="text-page-title">Manajemen Pengguna / Tambah Pengguna</h1>
-
-          <div className="bg-surface p-6 rounded-card border border-border-soft shadow-card space-y-6">
-            <div className="border border-border-soft rounded-card p-5 space-y-4">
-              <h3 className="text-xs font-bold text-heading uppercase tracking-wider">
-                Rincian Akun
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-field-label">Nama lengkap *</label>
-                  <input
-                    type="text"
-                    placeholder="Masukkan nama lengkap"
-                    className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-field-label">Email *</label>
-                  <input
-                    type="email"
-                    placeholder="Masukkan email"
-                    className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-field-label">Kata sandi awal *</label>
-                  <input
-                    type="password"
-                    placeholder="Masukkan kata sandi"
-                    className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-field-label">
-                    Konfirmasi kata sandi *
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="Ulangi kata sandi"
-                    className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Role Selection */}
-            <div className="border border-border-soft rounded-card p-5 space-y-3">
-              <h3 className="text-xs font-bold text-heading uppercase tracking-wider">
-                Peran
-              </h3>
-              <div className="space-y-3">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="role"
-                    defaultChecked
-                    className="mt-0.5 accent-primary"
-                  />
-                  <div>
-                    <p className="text-xs font-bold text-heading">Pengguna</p>
-                    <p className="text-2xs text-muted">
-                      Unggah dan lihat pengajuan serta data sendiri
-                    </p>
-                  </div>
-                </label>
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="role"
-                    className="mt-0.5 accent-primary"
-                  />
-                  <div>
-                    <p className="text-xs font-bold text-heading">
-                      Manajer Web
-                    </p>
-                    <p className="text-2xs text-muted">
-                      Lihat semua pengajuan, data, dan log audit
-                    </p>
-                  </div>
-                </label>
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="role"
-                    className="mt-0.5 accent-primary"
-                  />
-                  <div>
-                    <p className="text-xs font-bold text-heading">
-                      Super Admin
-                    </p>
-                    <p className="text-2xs text-muted">
-                      Akses penuh termasuk manajemen akun pengguna
-                    </p>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* Account Active Toggle */}
-            <div className="flex items-center gap-3 pt-2">
-              <input
-                type="checkbox"
-                defaultChecked
-                className="w-4 h-4 accent-primary rounded"
-              />
-              <span className="text-xs font-semibold text-heading">
-                Akun aktif
-              </span>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-border-soft">
-              <button
-                onClick={() => setCurrentView("list")}
-                className="px-4 h-[var(--height-button)] border border-border text-heading rounded-card text-xs font-semibold hover:bg-canvas transition-colors"
-              >
-                ✕ Batal
-              </button>
-              <button
-                onClick={() => setCurrentView("list")}
-                className="px-4 h-[var(--height-button)] bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card"
-              >
-                + Tambah Pengguna
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* VIEW 3: EDIT USER */}
-      {currentView === "edit" && (
-        <>
-          <h1 className="text-page-title">Ubah Pengguna</h1>
-
-          <div className="bg-surface p-6 rounded-card border border-border-soft shadow-card space-y-6">
-            <div className="border border-border-soft rounded-card p-5 space-y-4">
-              <h3 className="text-xs font-bold text-heading uppercase tracking-wider">
-                Informasi Pengguna
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-field-label">Nama lengkap</label>
-                  <input
-                    type="text"
-                    defaultValue="Nama Pengguna"
-                    className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-input-fill"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-field-label">Email</label>
-                  <input
-                    type="email"
-                    defaultValue="user@email.com"
-                    className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-input-fill"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Role Account Type */}
-            <div className="border border-border-soft rounded-card p-5 space-y-2">
-              <h3 className="text-xs font-bold text-heading uppercase tracking-wider">
-                Peran
-              </h3>
-              <label className="text-field-label">Tipe akun</label>
-              <select className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary">
-                <option>Pengguna</option>
-                <option>Manajer Web</option>
-                <option>Super Admin</option>
-              </select>
-            </div>
-
-            {/* Reset Password Section */}
-            <div className="border border-border-soft rounded-card p-5 space-y-4">
-              <h3 className="text-xs font-bold text-heading uppercase tracking-wider">
-                Atur Ulang Kata Sandi
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-field-label">Kata sandi baru</label>
-                  <input
-                    type="password"
-                    placeholder="Masukkan kata sandi baru"
-                    className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-field-label">
-                    Konfirmasi kata sandi baru
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="Ulangi kata sandi baru"
-                    className="w-full h-[var(--height-input)] px-3 text-xs border border-border rounded-input bg-surface focus:outline-none focus:border-primary"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end pt-2">
-                <button className="px-4 h-[var(--height-button)] bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card flex items-center gap-2">
-                  <span>Atur Ulang Kata Sandi</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Account Status */}
-            <div className="border border-border-soft rounded-card p-5 space-y-3">
-              <h3 className="text-xs font-bold text-heading uppercase tracking-wider">
-                Status Akun
-              </h3>
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  defaultChecked
-                  className="w-4 h-4 accent-primary rounded"
-                />
-                <span className="text-xs font-semibold text-heading">
-                  Akun aktif
-                </span>
-              </div>
-              <p className="text-2xs text-faint">
-                Nonaktifkan untuk memblokir akses masuk. Aktifkan kembali untuk memulihkan akses.
-              </p>
-
-              <div className="flex items-center gap-3 pt-2">
-                <button className="px-4 h-[var(--height-button)] bg-danger text-on-primary rounded-card text-xs font-semibold hover:bg-danger-hover transition-colors shadow-card">
-                  ✕ Nonaktifkan Akun
-                </button>
-                <button className="px-4 h-[var(--height-button)] bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card">
-                  ✓ Aktifkan Kembali Akun
-                </button>
-              </div>
-            </div>
-
-            {/* Bottom Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-border-soft">
-              <button
-                onClick={() => setCurrentView("list")}
-                className="px-4 h-[var(--height-button)] border border-border text-heading rounded-card text-xs font-semibold hover:bg-canvas transition-colors"
-              >
-                ✕ Batal
-              </button>
-              <button
-                onClick={() => setCurrentView("list")}
-                className="px-4 h-[var(--height-button)] bg-primary text-on-primary rounded-card text-xs font-semibold hover:bg-primary-hover transition-colors shadow-card"
-              >
-                Simpan Perubahan
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

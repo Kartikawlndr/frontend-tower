@@ -1,28 +1,46 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { directusVerifyEmail } from "@/lib/directus";
-import { clientEnv } from "@/lib/env";
+import { getServerEnv } from "@/lib/server-env";
 
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const token = searchParams.get("token");
+const INVALID_LINK_MESSAGE = "Tautan verifikasi tidak valid atau kedaluwarsa.";
 
-  if (!token) {
-    const errorUrl = new URL("/", clientEnv.appUrl);
-    errorUrl.searchParams.set("verified", "false");
-    errorUrl.searchParams.set("error", "Token verifikasi tidak ditemukan");
-    return NextResponse.redirect(errorUrl);
+export async function GET(request: Request) {
+  let redirectUrl: URL;
+
+  try {
+    redirectUrl = new URL("/", getServerEnv().appUrl);
+    if (!["http:", "https:"].includes(redirectUrl.protocol)) {
+      throw new Error("App URL must use HTTP or HTTPS.");
+    }
+  } catch (error) {
+    console.error("App URL is invalid for email verification:", error);
+    return NextResponse.json(
+      { error: "Konfigurasi layanan verifikasi tidak valid." },
+      { status: 500 },
+    );
   }
 
-  const result = await directusVerifyEmail(token);
+  const token = new URL(request.url).searchParams.get("token");
+  if (!token || token.length > 4096) {
+    redirectUrl.searchParams.set("verified", "false");
+    redirectUrl.searchParams.set("error", INVALID_LINK_MESSAGE);
+    return NextResponse.redirect(redirectUrl);
+  }
 
-  const redirectUrl = new URL("/", clientEnv.appUrl);
-  if (result.success) {
-    redirectUrl.searchParams.set("verified", "true");
-  } else {
+  try {
+    const result = await directusVerifyEmail(token);
+    redirectUrl.searchParams.set("verified", String(result.success));
+    if (!result.success) {
+      redirectUrl.searchParams.set("error", INVALID_LINK_MESSAGE);
+    }
+  } catch (error) {
+    console.error("Directus email verification request failed:", {
+      error: error instanceof Error ? error.name : "Unknown error",
+    });
     redirectUrl.searchParams.set("verified", "false");
     redirectUrl.searchParams.set(
       "error",
-      result.error || "Token verifikasi kedaluwarsa atau tidak valid"
+      "Layanan verifikasi sedang tidak tersedia. Coba lagi nanti.",
     );
   }
 
