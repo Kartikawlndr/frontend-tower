@@ -1,0 +1,65 @@
+services:
+  database:
+    image: postgis/postgis:15-3.3
+    container_name: komdigi_tower_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  directus:
+    image: directus/directus:latest
+    container_name: komdigi_tower_directus
+    restart: always
+    ports:
+      - "8055:8055"
+    environment:
+      KEY: ${KEY}
+      SECRET: ${SECRET}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8055}
+      PORTAL_URL: ${PORTAL_URL:-http://localhost:3000}
+      CORS_ENABLED: ${CORS_ENABLED:-true}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      CORS_CREDENTIALS: ${CORS_CREDENTIALS:-true}
+      USER_REGISTER: ${USER_REGISTER:-true}
+      USER_REGISTER_ROLE: ${USER_REGISTER_ROLE-Applicant}
+      USER_REGISTER_URL_ALLOW_LIST: ${USER_REGISTER_URL_ALLOW_LIST:-http://localhost:3000/api/verify-email}
+      USER_INVITE_URL_ALLOW_LIST: ${USER_INVITE_URL_ALLOW_LIST:-http://localhost:3000/set-password}
+      PASSWORD_RESET_URL_ALLOW_LIST: ${PASSWORD_RESET_URL_ALLOW_LIST:-http://localhost:3000/set-password}
+      EMAIL_TRANSPORT: ${EMAIL_TRANSPORT:-smtp}
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_SMTP_USER: ${EMAIL_SMTP_USER}
+      EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_TEMPLATES_PATH: /directus/email-templates
+      EXTENSIONS_PATH: /directus/extensions
+      DB_CLIENT: 'pg'
+      DB_HOST: 'database'
+      DB_PORT: '5432'
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      - database
+    volumes:
+      - ./uploads:/directus/uploads
+      - ./extensions/interfaces/map-latlong-picker:/directus/extensions/map-latlong-picker
+      - ./extensions/interfaces/registration-method-template:/directus/extensions/registration-method-template
+      - ./extensions/interfaces/tower-height-input:/directus/extensions/tower-height-input
+      - ./extensions/hooks/sync-tower-coordinates:/directus/extensions/sync-tower-coordinates
+      - ./extensions/hooks/applicant-tower-guard:/directus/extensions/applicant-tower-guard
+      - ./extensions/endpoints/applicant-portal:/directus/extensions/applicant-portal
+      - ./extensions/endpoints/bulk-tower-upload:/directus/extensions/bulk-tower-upload
+      - ./schema.yaml:/directus/schema.yaml:ro
+      - ./email-templates:/directus/email-templates:ro
+
+volumes:
+  postgres_data:

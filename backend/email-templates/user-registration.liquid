@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>Verifikasi email - {{ projectName }}</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f2f6fa;font-family:Arial,Helvetica,sans-serif;color:#17344d;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+      Satu langkah lagi untuk mengaktifkan akun {{ projectName }} Anda.
+    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f2f6fa;">
+      <tr>
+        <td align="center" style="padding:36px 16px;">
+          <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;background-color:#ffffff;border:1px solid #e0e8ef;border-radius:14px;">
+            <tr>
+              <td style="padding:30px 36px 22px;border-bottom:1px solid #e9eff4;">
+                <p style="margin:0;color:#0878bd;font-size:13px;font-weight:700;letter-spacing:1.2px;">INFRASTRUKTUR PASIF</p>
+                <p style="margin:5px 0 0;color:#728394;font-size:12px;">Portal layanan registrasi</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:34px 36px 12px;">
+                <p style="margin:0 0 10px;color:#0878bd;font-size:12px;font-weight:700;letter-spacing:1px;">AKTIVASI AKUN</p>
+                <h1 style="margin:0 0 18px;color:#17344d;font-size:26px;line-height:1.25;">Verifikasi email Anda</h1>
+                <p style="margin:0 0 14px;color:#4d6273;font-size:15px;line-height:1.7;">
+                  Halo{% if first_name %} {{ first_name }}{% endif %}, terima kasih telah mendaftar di {{ projectName }}. Verifikasi alamat email Anda untuk mengaktifkan akun.
+                </p>
+                <p style="margin:0;color:#4d6273;font-size:15px;line-height:1.7;">
+                  Setelah akun aktif, Anda dapat masuk dan melanjutkan pendaftaran menara.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:24px 36px 20px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td align="center" bgcolor="#0878bd" style="border-radius:7px;">
+                      <a href="{{ url }}" target="_blank" rel="noopener" style="display:inline-block;padding:14px 28px;border:1px solid #0878bd;border-radius:7px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">
+                        Verifikasi email
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 36px 26px;">
+                <p style="margin:0 0 8px;color:#718293;font-size:12px;line-height:1.6;">
+                  Jika tombol tidak bisa dibuka, salin dan buka tautan berikut di browser:
+                </p>
+                <p style="margin:0;overflow-wrap:anywhere;word-break:break-all;font-size:12px;line-height:1.6;">
+                  <a href="{{ url }}" target="_blank" rel="noopener" style="color:#0878bd;">{{ url }}</a>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:18px 36px;border-top:1px solid #e9eff4;background-color:#f8fafc;border-radius:0 0 14px 14px;">
+                <p style="margin:0 0 6px;color:#718293;font-size:12px;line-height:1.6;">
+                  Jika Anda tidak membuat akun ini, abaikan email ini. Akun tidak akan aktif tanpa verifikasi.
+                </p>
+                <p style="margin:0;color:#8795a1;font-size:11px;line-height:1.6;">{{ projectName }} · Portal registrasi infrastruktur pasif</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

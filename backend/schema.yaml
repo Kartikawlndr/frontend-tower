@@ -1,0 +1,2581 @@
+version: 1
+directus: 12.5.0
+vendor: postgres
+collections:
+  - collection: tower_infrastruktur
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: is_archived
+      archive_value: 'true'
+      autosave_revision_interval: null
+      collapse: open
+      collection: tower_infrastruktur
+      color: null
+      display_template: null
+      group: null
+      hidden: false
+      icon: null
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: 'false'
+      versioning: false
+    schema:
+      name: tower_infrastruktur
+  - collection: tower_registration_attempts
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: tower_registration_attempts
+      color: null
+      display_template: null
+      group: null
+      hidden: false
+      icon: fact_check
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: tower_registration_attempts
+  - collection: tower_tenant
+    meta:
+      accountability: all
+      archive_app_filter: true
+      archive_field: null
+      archive_value: null
+      autosave_revision_interval: null
+      collapse: open
+      collection: tower_tenant
+      color: null
+      display_template: '{{penyelenggara}}'
+      group: null
+      hidden: false
+      icon: groups
+      item_duplication_fields: null
+      note: null
+      preview_url: null
+      singleton: false
+      sort: null
+      sort_field: null
+      status: active
+      translations: null
+      unarchive_value: null
+      versioning: false
+    schema:
+      name: tower_tenant
+fields:
+  - collection: tower_infrastruktur
+    field: id
+    type: uuid
+    meta:
+      collection: tower_infrastruktur
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special:
+        - uuid
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: tower_infrastruktur
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: user_created
+    type: uuid
+    meta:
+      collection: tower_infrastruktur
+      conditions: null
+      display: user
+      display_options: null
+      field: user_created
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: '{{avatar}} {{first_name}} {{last_name}}'
+      readonly: true
+      required: false
+      searchable: true
+      sort: 2
+      special:
+        - user-created
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: user_created
+      table: tower_infrastruktur
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_users
+      foreign_key_column: id
+  - collection: tower_infrastruktur
+    field: date_created
+    type: timestamp
+    meta:
+      collection: tower_infrastruktur
+      conditions: null
+      display: datetime
+      display_options:
+        relative: true
+      field: date_created
+      group: null
+      hidden: true
+      interface: datetime
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - date-created
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: date_created
+      table: tower_infrastruktur
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: user_updated
+    type: uuid
+    meta:
+      collection: tower_infrastruktur
+      conditions: null
+      display: user
+      display_options: null
+      field: user_updated
+      group: null
+      hidden: true
+      interface: select-dropdown-m2o
+      note: null
+      options:
+        template: '{{avatar}} {{first_name}} {{last_name}}'
+      readonly: true
+      required: false
+      searchable: true
+      sort: 4
+      special:
+        - user-updated
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: user_updated
+      table: tower_infrastruktur
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_users
+      foreign_key_column: id
+  - collection: tower_infrastruktur
+    field: date_updated
+    type: timestamp
+    meta:
+      collection: tower_infrastruktur
+      conditions: null
+      display: datetime
+      display_options:
+        relative: true
+      field: date_updated
+      group: null
+      hidden: true
+      interface: datetime
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 5
+      special:
+        - date-updated
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: date_updated
+      table: tower_infrastruktur
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: metode_pendaftaran
+    type: string
+    meta:
+      collection: tower_infrastruktur
+      conditions: null
+      display: null
+      display_options: null
+      field: metode_pendaftaran
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: Input Manual
+            value: Input Manual
+          - text: Upload Document (.xlsx)
+            value: Upload Document (.xlsx)
+      readonly: false
+      required: true
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: metode_pendaftaran
+      table: tower_infrastruktur
+      data_type: character varying
+      default_value: null
+      max_length: 50
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: document
+    type: uuid
+    meta:
+      collection: tower_infrastruktur
+      conditions:
+        - hidden: false
+          name: Tampilkan saat upload
+          required: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _eq: Upload Document (.xlsx)
+        - hidden: true
+          name: Sembunyikan saat manual
+          required: false
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _neq: Upload Document (.xlsx)
+      display: null
+      display_options: null
+      field: document
+      group: null
+      hidden: false
+      interface: file
+      note: null
+      options:
+        allowedMimeTypes:
+          - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+        folder: b79a41c3-609c-4565-9f5b-ccba1af6e7e2
+      readonly: false
+      required: false
+      searchable: true
+      sort: 7
+      special:
+        - file
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: document
+      table: tower_infrastruktur
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_files
+      foreign_key_column: id
+  - collection: tower_infrastruktur
+    field: id_menara
+    type: string
+    meta:
+      collection: tower_infrastruktur
+      conditions:
+        - hidden: true
+          name: Hide if not input
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _neq: Input Manual
+        - name: Show if input
+          required: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _eq: Input Manual
+      display: null
+      display_options: null
+      field: id_menara
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 8
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id_menara
+      table: tower_infrastruktur
+      data_type: character varying
+      default_value: null
+      max_length: 50
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: true
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: nama_pemilik
+    type: string
+    meta:
+      collection: tower_infrastruktur
+      conditions:
+        - hidden: true
+          name: Hide if not input
+          options:
+            hidden: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _neq: Input Manual
+        - name: Show if input
+          required: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _eq: Input Manual
+      display: null
+      display_options: null
+      field: nama_pemilik
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 9
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: nama_pemilik
+      table: tower_infrastruktur
+      data_type: character varying
+      default_value: null
+      max_length: 50
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: tahun_pembangunan
+    type: integer
+    meta:
+      collection: tower_infrastruktur
+      conditions:
+        - hidden: true
+          name: Hide if not input
+          options:
+            hidden: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _neq: Input Manual
+        - name: Show if input
+          required: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _eq: Input Manual
+      display: null
+      display_options: null
+      field: tahun_pembangunan
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: '1900'
+            value: 1900
+          - text: '1901'
+            value: 1901
+          - text: '1902'
+            value: 1902
+          - text: '1903'
+            value: 1903
+          - text: '1904'
+            value: 1904
+          - text: '1905'
+            value: 1905
+          - text: '1906'
+            value: 1906
+          - text: '1907'
+            value: 1907
+          - text: '1908'
+            value: 1908
+          - text: '1909'
+            value: 1909
+          - text: '1910'
+            value: 1910
+          - text: '1911'
+            value: 1911
+          - text: '1912'
+            value: 1912
+          - text: '1913'
+            value: 1913
+          - text: '1914'
+            value: 1914
+          - text: '1915'
+            value: 1915
+          - text: '1916'
+            value: 1916
+          - text: '1917'
+            value: 1917
+          - text: '1918'
+            value: 1918
+          - text: '1919'
+            value: 1919
+          - text: '1920'
+            value: 1920
+          - text: '1921'
+            value: 1921
+          - text: '1922'
+            value: 1922
+          - text: '1923'
+            value: 1923
+          - text: '1924'
+            value: 1924
+          - text: '1925'
+            value: 1925
+          - text: '1926'
+            value: 1926
+          - text: '1927'
+            value: 1927
+          - text: '1928'
+            value: 1928
+          - text: '1929'
+            value: 1929
+          - text: '1930'
+            value: 1930
+          - text: '1931'
+            value: 1931
+          - text: '1932'
+            value: 1932
+          - text: '1933'
+            value: 1933
+          - text: '1934'
+            value: 1934
+          - text: '1935'
+            value: 1935
+          - text: '1936'
+            value: 1936
+          - text: '1937'
+            value: 1937
+          - text: '1938'
+            value: 1938
+          - text: '1939'
+            value: 1939
+          - text: '1940'
+            value: 1940
+          - text: '1941'
+            value: 1941
+          - text: '1942'
+            value: 1942
+          - text: '1943'
+            value: 1943
+          - text: '1944'
+            value: 1944
+          - text: '1945'
+            value: 1945
+          - text: '1946'
+            value: 1946
+          - text: '1947'
+            value: 1947
+          - text: '1948'
+            value: 1948
+          - text: '1949'
+            value: 1949
+          - text: '1950'
+            value: 1950
+          - text: '1951'
+            value: 1951
+          - text: '1952'
+            value: 1952
+          - text: '1953'
+            value: 1953
+          - text: '1954'
+            value: 1954
+          - text: '1955'
+            value: 1955
+          - text: '1956'
+            value: 1956
+          - text: '1957'
+            value: 1957
+          - text: '1958'
+            value: 1958
+          - text: '1959'
+            value: 1959
+          - text: '1960'
+            value: 1960
+          - text: '1961'
+            value: 1961
+          - text: '1962'
+            value: 1962
+          - text: '1963'
+            value: 1963
+          - text: '1964'
+            value: 1964
+          - text: '1965'
+            value: 1965
+          - text: '1966'
+            value: 1966
+          - text: '1967'
+            value: 1967
+          - text: '1968'
+            value: 1968
+          - text: '1969'
+            value: 1969
+          - text: '1970'
+            value: 1970
+          - text: '1971'
+            value: 1971
+          - text: '1972'
+            value: 1972
+          - text: '1973'
+            value: 1973
+          - text: '1974'
+            value: 1974
+          - text: '1975'
+            value: 1975
+          - text: '1976'
+            value: 1976
+          - text: '1977'
+            value: 1977
+          - text: '1978'
+            value: 1978
+          - text: '1979'
+            value: 1979
+          - text: '1980'
+            value: 1980
+          - text: '1981'
+            value: 1981
+          - text: '1982'
+            value: 1982
+          - text: '1983'
+            value: 1983
+          - text: '1984'
+            value: 1984
+          - text: '1985'
+            value: 1985
+          - text: '1986'
+            value: 1986
+          - text: '1987'
+            value: 1987
+          - text: '1988'
+            value: 1988
+          - text: '1989'
+            value: 1989
+          - text: '1990'
+            value: 1990
+          - text: '1991'
+            value: 1991
+          - text: '1992'
+            value: 1992
+          - text: '1993'
+            value: 1993
+          - text: '1994'
+            value: 1994
+          - text: '1995'
+            value: 1995
+          - text: '1996'
+            value: 1996
+          - text: '1997'
+            value: 1997
+          - text: '1998'
+            value: 1998
+          - text: '1999'
+            value: 1999
+          - text: '2000'
+            value: 2000
+          - text: '2001'
+            value: 2001
+          - text: '2002'
+            value: 2002
+          - text: '2003'
+            value: 2003
+          - text: '2004'
+            value: 2004
+          - text: '2005'
+            value: 2005
+          - text: '2006'
+            value: 2006
+          - text: '2007'
+            value: 2007
+          - text: '2008'
+            value: 2008
+          - text: '2009'
+            value: 2009
+          - text: '2010'
+            value: 2010
+          - text: '2011'
+            value: 2011
+          - text: '2012'
+            value: 2012
+          - text: '2013'
+            value: 2013
+          - text: '2014'
+            value: 2014
+          - text: '2015'
+            value: 2015
+          - text: '2016'
+            value: 2016
+          - text: '2017'
+            value: 2017
+          - text: '2018'
+            value: 2018
+          - text: '2019'
+            value: 2019
+          - text: '2020'
+            value: 2020
+          - text: '2021'
+            value: 2021
+          - text: '2022'
+            value: 2022
+          - text: '2023'
+            value: 2023
+          - text: '2024'
+            value: 2024
+          - text: '2025'
+            value: 2025
+          - text: '2026'
+            value: 2026
+      readonly: false
+      required: false
+      searchable: true
+      sort: 10
+      special: null
+      translations: null
+      validation:
+        _and:
+          - tahun_pembangunan:
+              _gte: '1900'
+          - tahun_pembangunan:
+              _lte: '2026'
+      validation_message: null
+      width: full
+    schema:
+      name: tahun_pembangunan
+      table: tower_infrastruktur
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: penyelenggara
+    type: string
+    meta:
+      collection: tower_infrastruktur
+      conditions:
+        - hidden: true
+          name: Hide if not input
+          options:
+            hidden: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _neq: Input Manual
+        - name: Show if input
+          required: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _eq: Input Manual
+      display: null
+      display_options: null
+      field: penyelenggara
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 11
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: penyelenggara
+      table: tower_infrastruktur
+      data_type: character varying
+      default_value: null
+      max_length: 50
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: longitude
+    type: float
+    meta:
+      collection: tower_infrastruktur
+      conditions:
+        - hidden: true
+          name: Hide if not input
+          options:
+            hidden: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _neq: Input Manual
+        - name: Show if input
+          required: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _eq: Input Manual
+      display: null
+      display_options: null
+      field: longitude
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options:
+        max: 141
+        min: 95
+      readonly: false
+      required: false
+      searchable: true
+      sort: 12
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: longitude
+      table: tower_infrastruktur
+      data_type: real
+      default_value: null
+      max_length: null
+      numeric_precision: 24
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: latitude
+    type: float
+    meta:
+      collection: tower_infrastruktur
+      conditions:
+        - hidden: true
+          name: Hide if not input
+          options:
+            hidden: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _neq: Input Manual
+        - name: Show if input
+          required: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _eq: Input Manual
+      display: null
+      display_options: null
+      field: latitude
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options:
+        max: 6
+        min: -11
+      readonly: false
+      required: false
+      searchable: true
+      sort: 13
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: latitude
+      table: tower_infrastruktur
+      data_type: real
+      default_value: null
+      max_length: null
+      numeric_precision: 24
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: jenis_menara
+    type: string
+    meta:
+      collection: tower_infrastruktur
+      conditions:
+        - hidden: true
+          name: Hide if not input
+          options:
+            hidden: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _neq: Input Manual
+        - name: Show if input
+          required: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _eq: Input Manual
+      display: null
+      display_options: null
+      field: jenis_menara
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 15
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: jenis_menara
+      table: tower_infrastruktur
+      data_type: character varying
+      default_value: null
+      max_length: 50
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: tinggi_menara
+    type: integer
+    meta:
+      collection: tower_infrastruktur
+      conditions:
+        - hidden: true
+          name: Hide if not input
+          options:
+            hidden: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _neq: Input Manual
+        - name: Show if input
+          required: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _eq: Input Manual
+      display: null
+      display_options: null
+      field: tinggi_menara
+      group: null
+      hidden: false
+      interface: tower-height-input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 16
+      special: null
+      translations: null
+      validation:
+        _and:
+          - tinggi_menara:
+              _lte: '999'
+          - tinggi_menara:
+              _gte: '1'
+      validation_message: null
+      width: full
+    schema:
+      name: tinggi_menara
+      table: tower_infrastruktur
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: kapasitas_maksimal
+    type: string
+    meta:
+      collection: tower_infrastruktur
+      conditions:
+        - hidden: true
+          name: Hide if not input
+          options:
+            hidden: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _neq: Input Manual
+        - name: Show if input
+          required: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _eq: Input Manual
+      display: null
+      display_options: null
+      field: kapasitas_maksimal
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 17
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: kapasitas_maksimal
+      table: tower_infrastruktur
+      data_type: character varying
+      default_value: null
+      max_length: 50
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: kapasitas_disewakan
+    type: string
+    meta:
+      collection: tower_infrastruktur
+      conditions:
+        - hidden: true
+          name: Hide if not input
+          options:
+            hidden: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _neq: Input Manual
+        - name: Show if input
+          required: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _eq: Input Manual
+      display: null
+      display_options: null
+      field: kapasitas_disewakan
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 18
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: kapasitas_disewakan
+      table: tower_infrastruktur
+      data_type: character varying
+      default_value: null
+      max_length: 50
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: kapasitas_digunakan_sendiri
+    type: string
+    meta:
+      collection: tower_infrastruktur
+      conditions:
+        - hidden: true
+          name: Hide if not input
+          options:
+            hidden: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _neq: Input Manual
+        - name: Show if input
+          required: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _eq: Input Manual
+      display: null
+      display_options: null
+      field: kapasitas_digunakan_sendiri
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 19
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: kapasitas_digunakan_sendiri
+      table: tower_infrastruktur
+      data_type: character varying
+      default_value: null
+      max_length: 50
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: deleted_at
+    type: timestamp
+    meta:
+      collection: tower_infrastruktur
+      conditions: null
+      display: null
+      display_options: null
+      field: deleted_at
+      group: null
+      hidden: true
+      interface: datetime
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 21
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: deleted_at
+      table: tower_infrastruktur
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: is_archived
+    type: boolean
+    meta:
+      collection: tower_infrastruktur
+      conditions: null
+      display: null
+      display_options: null
+      field: is_archived
+      group: null
+      hidden: true
+      interface: boolean
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 22
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: is_archived
+      table: tower_infrastruktur
+      data_type: boolean
+      default_value: false
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: alamat
+    type: string
+    meta:
+      collection: tower_infrastruktur
+      conditions:
+        - hidden: true
+          name: Hide if not input
+          options:
+            hidden: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _neq: Input Manual
+        - name: Show if input
+          required: true
+          rule:
+            _and:
+              - metode_pendaftaran:
+                  _eq: Input Manual
+      display: null
+      display_options: null
+      field: alamat
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 14
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: alamat
+      table: tower_infrastruktur
+      data_type: character varying
+      default_value: null
+      max_length: 50
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: provinsi
+    type: string
+    meta:
+      collection: tower_infrastruktur
+      conditions: null
+      display: null
+      display_options: null
+      field: provinsi
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 23
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: provinsi
+      table: tower_infrastruktur
+      data_type: character varying
+      default_value: null
+      max_length: 100
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: kab_kota
+    type: string
+    meta:
+      collection: tower_infrastruktur
+      conditions: null
+      display: null
+      display_options: null
+      field: kab_kota
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 24
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: kab_kota
+      table: tower_infrastruktur
+      data_type: character varying
+      default_value: null
+      max_length: 100
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: kecamatan
+    type: string
+    meta:
+      collection: tower_infrastruktur
+      conditions: null
+      display: null
+      display_options: null
+      field: kecamatan
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 25
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: kecamatan
+      table: tower_infrastruktur
+      data_type: character varying
+      default_value: null
+      max_length: 100
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: kelurahan
+    type: string
+    meta:
+      collection: tower_infrastruktur
+      conditions: null
+      display: null
+      display_options: null
+      field: kelurahan
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 26
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: kelurahan
+      table: tower_infrastruktur
+      data_type: character varying
+      default_value: null
+      max_length: 100
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_infrastruktur
+    field: verification_status
+    type: string
+    meta:
+      collection: tower_infrastruktur
+      conditions: null
+      display: null
+      display_options: null
+      field: verification_status
+      group: null
+      hidden: true
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: Submitted
+            value: Submitted
+          - text: Approved
+            value: Approved
+          - text: Rejected
+            value: Rejected
+      readonly: true
+      required: false
+      searchable: true
+      sort: 22
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: verification_status
+      table: tower_infrastruktur
+      data_type: character varying
+      default_value: Submitted
+      max_length: 32
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_registration_attempts
+    field: id
+    type: integer
+    meta:
+      collection: tower_registration_attempts
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: numeric
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: tower_registration_attempts
+      data_type: integer
+      default_value: nextval('tower_registration_attempts_id_seq'::regclass)
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: true
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_registration_attempts
+    field: registration_code
+    type: string
+    meta:
+      collection: tower_registration_attempts
+      conditions: null
+      display: null
+      display_options: null
+      field: registration_code
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 11
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: registration_code
+      table: tower_registration_attempts
+      data_type: character varying
+      default_value: null
+      max_length: 16
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: true
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_registration_attempts
+    field: user_created
+    type: uuid
+    meta:
+      collection: tower_registration_attempts
+      conditions: null
+      display: null
+      display_options: null
+      field: user_created
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 2
+      special:
+        - user-created
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: user_created
+      table: tower_registration_attempts
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_users
+      foreign_key_column: id
+  - collection: tower_registration_attempts
+    field: date_created
+    type: timestamp
+    meta:
+      collection: tower_registration_attempts
+      conditions: null
+      display: null
+      display_options: null
+      field: date_created
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 3
+      special:
+        - date-created
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: date_created
+      table: tower_registration_attempts
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_registration_attempts
+    field: date_updated
+    type: timestamp
+    meta:
+      collection: tower_registration_attempts
+      conditions: null
+      display: null
+      display_options: null
+      field: date_updated
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 4
+      special:
+        - date-updated
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: date_updated
+      table: tower_registration_attempts
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_registration_attempts
+    field: tower_id
+    type: uuid
+    meta:
+      collection: tower_registration_attempts
+      conditions: null
+      display: null
+      display_options: null
+      field: tower_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: tower_id
+      table: tower_registration_attempts
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: tower_infrastruktur
+      foreign_key_column: id
+  - collection: tower_registration_attempts
+    field: status
+    type: string
+    meta:
+      collection: tower_registration_attempts
+      conditions: null
+      display: null
+      display_options: null
+      field: status
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: Draft
+            value: Draft
+          - text: Registered
+            value: Registered
+          - text: Rejected
+            value: Rejected
+      readonly: false
+      required: true
+      searchable: true
+      sort: 6
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: status
+      table: tower_registration_attempts
+      data_type: character varying
+      default_value: Draft
+      max_length: 16
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_registration_attempts
+    field: attempt_type
+    type: string
+    meta:
+      collection: tower_registration_attempts
+      conditions: null
+      display: null
+      display_options: null
+      field: attempt_type
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: New Registration
+            value: New Registration
+          - text: Update
+            value: Update
+      readonly: false
+      required: true
+      searchable: true
+      sort: 7
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: attempt_type
+      table: tower_registration_attempts
+      data_type: character varying
+      default_value: New Registration
+      max_length: 32
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_registration_attempts
+    field: metode_pendaftaran
+    type: string
+    meta:
+      collection: tower_registration_attempts
+      conditions: null
+      display: null
+      display_options: null
+      field: metode_pendaftaran
+      group: null
+      hidden: false
+      interface: select-dropdown
+      note: null
+      options:
+        choices:
+          - text: Input Manual
+            value: Input Manual
+          - text: Upload Document (.xlsx)
+            value: Upload Document (.xlsx)
+      readonly: false
+      required: true
+      searchable: true
+      sort: 8
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: metode_pendaftaran
+      table: tower_registration_attempts
+      data_type: character varying
+      default_value: Input Manual
+      max_length: 50
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_registration_attempts
+    field: submission_data
+    type: json
+    meta:
+      collection: tower_registration_attempts
+      conditions: null
+      display: null
+      display_options: null
+      field: submission_data
+      group: null
+      hidden: false
+      interface: input-code
+      note: null
+      options:
+        language: json
+      readonly: false
+      required: true
+      searchable: true
+      sort: 9
+      special:
+        - cast-json
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: submission_data
+      table: tower_registration_attempts
+      data_type: json
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_registration_attempts
+    field: validation_errors
+    type: json
+    meta:
+      collection: tower_registration_attempts
+      conditions: null
+      display: null
+      display_options: null
+      field: validation_errors
+      group: null
+      hidden: false
+      interface: input-code
+      note: null
+      options:
+        language: json
+      readonly: false
+      required: false
+      searchable: true
+      sort: 10
+      special:
+        - cast-json
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: validation_errors
+      table: tower_registration_attempts
+      data_type: json
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_tenant
+    field: id
+    type: integer
+    meta:
+      collection: tower_tenant
+      conditions: null
+      display: null
+      display_options: null
+      field: id
+      group: null
+      hidden: true
+      interface: numeric
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 1
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: id
+      table: tower_tenant
+      data_type: integer
+      default_value: nextval('tower_tenant_id_seq'::regclass)
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: false
+      is_unique: true
+      is_indexed: false
+      is_primary_key: true
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: true
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_tenant
+    field: tower_id
+    type: uuid
+    meta:
+      collection: tower_tenant
+      conditions: null
+      display: null
+      display_options: null
+      field: tower_id
+      group: null
+      hidden: false
+      interface: select-dropdown-m2o
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 2
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: tower_id
+      table: tower_tenant
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: tower_infrastruktur
+      foreign_key_column: id
+  - collection: tower_tenant
+    field: penyelenggara
+    type: string
+    meta:
+      collection: tower_tenant
+      conditions: null
+      display: null
+      display_options: null
+      field: penyelenggara
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 3
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: penyelenggara
+      table: tower_tenant
+      data_type: character varying
+      default_value: null
+      max_length: 50
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_tenant
+    field: kapasitas_disewakan
+    type: string
+    meta:
+      collection: tower_tenant
+      conditions: null
+      display: null
+      display_options: null
+      field: kapasitas_disewakan
+      group: null
+      hidden: false
+      interface: input
+      note: null
+      options: null
+      readonly: false
+      required: true
+      searchable: true
+      sort: 4
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: half
+    schema:
+      name: kapasitas_disewakan
+      table: tower_tenant
+      data_type: character varying
+      default_value: null
+      max_length: 50
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: false
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_tenant
+    field: sort
+    type: integer
+    meta:
+      collection: tower_tenant
+      conditions: null
+      display: null
+      display_options: null
+      field: sort
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 5
+      special: null
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: sort
+      table: tower_tenant
+      data_type: integer
+      default_value: null
+      max_length: null
+      numeric_precision: 32
+      numeric_scale: 0
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_tenant
+    field: user_created
+    type: uuid
+    meta:
+      collection: tower_tenant
+      conditions: null
+      display: null
+      display_options: null
+      field: user_created
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 6
+      special:
+        - user-created
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: user_created
+      table: tower_tenant
+      data_type: uuid
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: directus_users
+      foreign_key_column: id
+  - collection: tower_tenant
+    field: date_created
+    type: timestamp
+    meta:
+      collection: tower_tenant
+      conditions: null
+      display: null
+      display_options: null
+      field: date_created
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 7
+      special:
+        - date-created
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: date_created
+      table: tower_tenant
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+  - collection: tower_tenant
+    field: date_updated
+    type: timestamp
+    meta:
+      collection: tower_tenant
+      conditions: null
+      display: null
+      display_options: null
+      field: date_updated
+      group: null
+      hidden: true
+      interface: input
+      note: null
+      options: null
+      readonly: true
+      required: false
+      searchable: true
+      sort: 8
+      special:
+        - date-updated
+      translations: null
+      validation: null
+      validation_message: null
+      width: full
+    schema:
+      name: date_updated
+      table: tower_tenant
+      data_type: timestamp with time zone
+      default_value: null
+      max_length: null
+      numeric_precision: null
+      numeric_scale: null
+      is_nullable: true
+      is_unique: false
+      is_indexed: false
+      is_primary_key: false
+      is_generated: false
+      generation_expression: null
+      has_auto_increment: false
+      foreign_key_table: null
+      foreign_key_column: null
+systemFields:
+  - collection: directus_activity
+    field: timestamp
+    schema:
+      is_indexed: true
+  - collection: directus_oauth_clients
+    field: date_created
+    schema:
+      is_indexed: true
+  - collection: directus_oauth_codes
+    field: expires_at
+    schema:
+      is_indexed: true
+  - collection: directus_oauth_codes
+    field: used_at
+    schema:
+      is_indexed: true
+  - collection: directus_oauth_consents
+    field: client
+    schema:
+      is_indexed: true
+  - collection: directus_oauth_tokens
+    field: code_hash
+    schema:
+      is_indexed: true
+  - collection: directus_oauth_tokens
+    field: expires_at
+    schema:
+      is_indexed: true
+  - collection: directus_oauth_tokens
+    field: previous_session
+    schema:
+      is_indexed: true
+  - collection: directus_oauth_tokens
+    field: session
+    schema:
+      is_indexed: true
+  - collection: directus_revisions
+    field: activity
+    schema:
+      is_indexed: true
+  - collection: directus_revisions
+    field: parent
+    schema:
+      is_indexed: true
+  - collection: directus_sessions
+    field: oauth_client
+    schema:
+      is_indexed: true
+relations:
+  - collection: tower_infrastruktur
+    field: user_updated
+    related_collection: directus_users
+    meta:
+      junction_field: null
+      many_collection: tower_infrastruktur
+      many_field: user_updated
+      one_allowed_collections: null
+      one_collection: directus_users
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: tower_infrastruktur
+      column: user_updated
+      foreign_key_table: directus_users
+      foreign_key_column: id
+      constraint_name: tower_infrastruktur_user_updated_foreign
+      on_update: NO ACTION
+      on_delete: NO ACTION
+  - collection: tower_infrastruktur
+    field: user_created
+    related_collection: directus_users
+    meta:
+      junction_field: null
+      many_collection: tower_infrastruktur
+      many_field: user_created
+      one_allowed_collections: null
+      one_collection: directus_users
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: tower_infrastruktur
+      column: user_created
+      foreign_key_table: directus_users
+      foreign_key_column: id
+      constraint_name: tower_infrastruktur_user_created_foreign
+      on_update: NO ACTION
+      on_delete: NO ACTION
+  - collection: tower_infrastruktur
+    field: document
+    related_collection: directus_files
+    meta:
+      junction_field: null
+      many_collection: tower_infrastruktur
+      many_field: document
+      one_allowed_collections: null
+      one_collection: directus_files
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: tower_infrastruktur
+      column: document
+      foreign_key_table: directus_files
+      foreign_key_column: id
+      constraint_name: tower_infrastruktur_document_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: tower_registration_attempts
+    field: tower_id
+    related_collection: tower_infrastruktur
+    meta:
+      junction_field: null
+      many_collection: tower_registration_attempts
+      many_field: tower_id
+      one_allowed_collections: null
+      one_collection: tower_infrastruktur
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: registration_attempts
+      sort_field: null
+    schema:
+      table: tower_registration_attempts
+      column: tower_id
+      foreign_key_table: tower_infrastruktur
+      foreign_key_column: id
+      constraint_name: tower_registration_attempts_tower_id_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: tower_registration_attempts
+    field: user_created
+    related_collection: directus_users
+    meta:
+      junction_field: null
+      many_collection: tower_registration_attempts
+      many_field: user_created
+      one_allowed_collections: null
+      one_collection: directus_users
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: tower_registration_attempts
+      column: user_created
+      foreign_key_table: directus_users
+      foreign_key_column: id
+      constraint_name: tower_registration_attempts_user_created_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL
+  - collection: tower_tenant
+    field: tower_id
+    related_collection: tower_infrastruktur
+    meta:
+      junction_field: null
+      many_collection: tower_tenant
+      many_field: tower_id
+      one_allowed_collections: null
+      one_collection: tower_infrastruktur
+      one_collection_field: null
+      one_deselect_action: delete
+      one_field: tenants
+      sort_field: sort
+    schema:
+      table: tower_tenant
+      column: tower_id
+      foreign_key_table: tower_infrastruktur
+      foreign_key_column: id
+      constraint_name: tower_tenant_tower_id_foreign
+      on_update: NO ACTION
+      on_delete: CASCADE
+  - collection: tower_tenant
+    field: user_created
+    related_collection: directus_users
+    meta:
+      junction_field: null
+      many_collection: tower_tenant
+      many_field: user_created
+      one_allowed_collections: null
+      one_collection: directus_users
+      one_collection_field: null
+      one_deselect_action: nullify
+      one_field: null
+      sort_field: null
+    schema:
+      table: tower_tenant
+      column: user_created
+      foreign_key_table: directus_users
+      foreign_key_column: id
+      constraint_name: tower_tenant_user_created_foreign
+      on_update: NO ACTION
+      on_delete: SET NULL

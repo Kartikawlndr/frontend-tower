@@ -1,0 +1,15 @@
+{
+  "name": "applicant-tower-guard",
+  "description": "Enforces Applicant tower-registration rules",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "directus:extension": {
+    "type": "hook",
+    "path": "src/index.js",
+    "source": "src/index.js",
+    "host": "*"
+  }
+}

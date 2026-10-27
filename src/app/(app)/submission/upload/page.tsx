@@ -7,29 +7,32 @@ import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, Th, Td } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { clientEnv, parsePayloadSize } from "@/lib/env";
 
-const MAX_SIZE = parsePayloadSize(clientEnv.maxPayloadSize);
+const MAX_SIZE = 10 * 1024 * 1024;
 
 const TEXT_RULE = "Maksimal 50 karakter";
 
 const COLUMNS = [
-  { field: "Kode/ID Menara", type: "Teks", rule: TEXT_RULE },
-  { field: "Nama Pemilik Menara", type: "Teks", rule: TEXT_RULE },
-  { field: "Tahun Pembangunan", type: "Bilangan Bulat", rule: "4 digit, 1900 sampai tahun saat ini" },
-  { field: "Penyelenggara Jaringan (Tenant)", type: "Teks", rule: "Maksimal 50 karakter, satu penyewa per baris" },
-  { field: "Longitude", type: "Desimal", rule: "6 desimal, 95 sampai 141" },
-  { field: "Latitude", type: "Desimal", rule: "6 desimal, -11 sampai 6" },
+  { field: "Kode/ID Menara", type: "Teks", rule: "Maksimal 50 karakter; contoh 000101" },
+  { field: "Nama Pemilik Menara Telekomunikasi", type: "Teks", rule: TEXT_RULE },
+  { field: "Tahun Pembangunan Menara Telekomunikasi", type: "Dropdown", rule: "1900 sampai 2026" },
+  { field: "Penyelenggara Jaringan Telekomunikasi", type: "Teks", rule: "Maksimal 50 karakter; multi-tenant dipisahkan koma" },
+  { field: "Longitude", type: "Desimal", rule: "95 sampai 141; maksimal 6 angka desimal" },
+  { field: "Latitude", type: "Desimal", rule: "-11 sampai 6; maksimal 6 angka desimal" },
+  { field: "Provinsi", type: "Dropdown", rule: "Pilih dari daftar 38 provinsi" },
+  { field: "Kabupaten/Kota", type: "Dropdown bertingkat", rule: "Pilih setelah Provinsi" },
+  { field: "Kecamatan", type: "Dropdown bertingkat", rule: "Pilih setelah Kabupaten/Kota" },
+  { field: "Kelurahan", type: "Dropdown bertingkat", rule: "Pilih setelah Kecamatan" },
   { field: "Alamat", type: "Teks", rule: TEXT_RULE },
-  { field: "Jenis Menara", type: "Teks", rule: TEXT_RULE },
-  { field: "Tinggi Menara (AGL)", type: "Bilangan Bulat", rule: "Positif, maks 3 digit (meter)" },
-  { field: "Kapasitas Maksimal", type: "Teks", rule: TEXT_RULE },
+  { field: "Jenis Menara Telekomunikasi", type: "Teks", rule: TEXT_RULE },
+  { field: "Tinggi Menara Telekomunikasi (AGL)", type: "Bilangan bulat", rule: "1 sampai 999; huruf dan desimal ditolak" },
+  { field: "Kapasitas maksimal menara telekomunikasi", type: "Teks", rule: TEXT_RULE },
   {
-    field: "Kapasitas Disewakan",
+    field: "Kapasitas menara telekomunikasi yang disewakan",
     type: "Teks",
-    rule: "Total kapasitas menara; harus sama untuk semua baris dengan ID menara yang sama",
+    rule: TEXT_RULE,
   },
-  { field: "Kapasitas Digunakan Sendiri", type: "Teks", rule: TEXT_RULE },
+  { field: "Kapasitas menara telekomunikasi yang digunakan sendiri", type: "Teks", rule: TEXT_RULE },
 ];
 
 function formatSize(bytes: number) {
@@ -46,8 +49,8 @@ export default function UploadExcelPage() {
   const [uploading, setUploading] = useState(false);
   const handleDownloadTemplate = () => {
     const link = document.createElement("a");
-    link.href = "/Template_Pendaftaran_Menara.xlsx";
-    link.download = "template-menara.xlsx";
+    link.href = "/Template_Registrasi_Menara.xlsx";
+    link.download = "Template_Registrasi_Menara.xlsx";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -179,7 +182,7 @@ export default function UploadExcelPage() {
           )}
 
           <p className="text-helper">
-            Satu baris untuk satu penyewa. Jika ID menara sama, seluruh data menara termasuk kapasitas disewakan harus identik.
+            Satu baris untuk satu menara. Pisahkan nama multi-tenant dengan koma. Jika ID menara berulang, seluruh data menara termasuk kapasitas disewakan harus sama dan tenant tidak boleh duplikat.
           </p>
           <div>
             <Button type="button" variant="outline" onClick={handleDownloadTemplate}>

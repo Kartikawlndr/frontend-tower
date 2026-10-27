@@ -12,7 +12,8 @@ variables before using the real data flows:
 - `APP_URL` — portal base URL (defaults to `http://localhost:3000`); registration
   verification emails return to the portal's `/api/verify-email` route.
 - `USER_REGISTER` — set to `false` to disable public registration.
-- `MAX_PAYLOAD_SIZE` — maximum workbook upload size (defaults to `200mb`).
+- `MAX_PAYLOAD_SIZE` — maximum general upload payload (defaults to `200mb`);
+  bulk registration workbooks are capped at 10 MB.
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY` — optional public Turnstile site key.
 
 Public registration sends only the fields accepted by Directus
@@ -39,6 +40,20 @@ response; there is no client-side role switch.
 Run the frontend with `npm run dev`. The Directus extensions must already be
 deployed and active for login, tower submissions, workbook imports, audit logs,
 and account management to work. This project does not change Directus permissions.
+
+## Run the full project locally
+
+The Directus backend lives in [`backend/`](./backend/README.md). Start it first:
+
+1. Copy `backend/.env.example` to `backend/.env`, fill in local secrets, and
+   follow the backend README to start Docker Compose, apply the schema and SQL
+   migrations, build the extensions, and configure Directus.
+2. Copy the root `.env.example` to `.env` and set the frontend URLs to
+   `http://localhost:3000` and `http://localhost:8055`.
+3. From the repository root, run `npm ci` and `npm run dev`.
+
+Never commit either `.env` file. Each developer should use their own local
+credentials and database.
 
 For end-to-end testing, use separate test accounts configured in Directus for
 Applicant, Web Manager, and Administrator. Verify that Applicant sees and

@@ -1,0 +1,31 @@
+{
+  "name": "bulk-tower-upload",
+  "description": "Atomic Excel import endpoint for tower infrastructure",
+  "icon": "upload_file",
+  "version": "1.0.0",
+  "keywords": [
+    "directus",
+    "directus-extension",
+    "directus-extension-endpoint"
+  ],
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "directus:extension": {
+    "type": "endpoint",
+    "path": "dist/index.js",
+    "source": "src/index.js",
+    "host": "*"
+  },
+  "scripts": {
+    "build": "directus-extension build",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@directus/extensions-sdk": "18.0.6"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  }
+}
