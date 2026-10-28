@@ -413,12 +413,16 @@ export default function TowerRecordsPage() {
               <Button variant="download" disabled={selected.size === 0 && results.length === 0} onClick={download}>
                 <Download className="h-4 w-4" strokeWidth={2} /> {selected.size > 0 ? `Unduh Terpilih (${selected.size})` : "Unduh"}
               </Button>
-              <Button variant="destructive" disabled={selected.size === 0} onClick={() => setPending({ title: "Hapus data terpilih", ids: Array.from(selected), confirmLabel: "Hapus" })}>
-                Hapus Terpilih
-              </Button>
-              <Button variant="danger-outline" disabled={results.length === 0} onClick={() => setPending({ title: "Hapus semua data yang cocok", ids: results.map((record) => record.id), confirmLabel: "Hapus" })}>
-                Hapus Massal
-              </Button>
+              {role !== "Normal User" && (
+                <>
+                  <Button variant="destructive" disabled={selected.size === 0} onClick={() => setPending({ title: "Hapus data terpilih", ids: Array.from(selected), confirmLabel: "Hapus" })}>
+                    Hapus Terpilih
+                  </Button>
+                  <Button variant="danger-outline" disabled={results.length === 0} onClick={() => setPending({ title: "Hapus semua data yang cocok", ids: results.map((record) => record.id), confirmLabel: "Hapus" })}>
+                    Hapus Massal
+                  </Button>
+                </>
+              )}
             </div>
           </div>
 
@@ -455,8 +459,12 @@ export default function TowerRecordsPage() {
                   ))}
                   <Td className="whitespace-nowrap">
                     <button type="button" onClick={() => setViewing(record)} className="cursor-pointer font-semibold text-primary hover:underline">Lihat</button>
-                    <span className="px-2 text-faint" aria-hidden>|</span>
-                    <button type="button" onClick={() => setPending({ title: `Arsipkan ${record.kode}`, ids: [record.id] })} className="cursor-pointer font-semibold text-danger hover:underline">Arsipkan</button>
+                    {role !== "Normal User" && (
+                      <>
+                        <span className="px-2 text-faint" aria-hidden>|</span>
+                        <button type="button" onClick={() => setPending({ title: `Arsipkan ${record.kode}`, ids: [record.id] })} className="cursor-pointer font-semibold text-danger hover:underline">Arsipkan</button>
+                      </>
+                    )}
                   </Td>
                 </tr>
               ))}
@@ -464,7 +472,9 @@ export default function TowerRecordsPage() {
           </Table>
 
           <Pagination page={current} pageSize={pageSize} total={results.length} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} />
-          <p className="text-caption-note">Pengarsipan bersifat soft delete: data dikeluarkan dari registri aktif dan tidak dihapus permanen.</p>
+          {role !== "Normal User" && (
+            <p className="text-caption-note">Pengarsipan bersifat soft delete: data dikeluarkan dari registri aktif dan tidak dihapus permanen.</p>
+          )}
         </CardBody>
       </Card>
 

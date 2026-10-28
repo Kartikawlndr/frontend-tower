@@ -19,7 +19,12 @@ type RegistrationRow = {
   date: string;
   method: string;
   status: string;
-  validationErrors?: Array<{ message?: string }>;
+  validationErrors?: Array<{
+    row?: number | null;
+    column?: string | null;
+    field?: string;
+    message?: string;
+  }>;
 };
 type PortalAttempt = {
   id: string | number;
@@ -27,7 +32,7 @@ type PortalAttempt = {
   attempt_type?: string;
   metode_pendaftaran?: string;
   date_created?: string;
-  validation_errors?: Array<{ message?: string }>;
+  validation_errors?: RegistrationRow["validationErrors"];
 };
 type PortalTower = {
   id: string;
@@ -55,11 +60,27 @@ const STATUS_VARIANT: Record<string, "success" | "destructive" | "warning"> = {
 };
 const METHOD_TEXT: Record<string, string> = {
   "Upload Excel": "Unggah Excel",
+  "Upload Document (.xlsx)": "Upload Document (.xlsx)",
   "Input Manual": "Formulir Pendaftaran",
 };
 
 function toDate(value?: string) {
   return value ? value.slice(0, 10) : "";
+}
+
+function compareNewestFirst(a: RegistrationRow, b: RegistrationRow) {
+  const aTime = Date.parse(a.date);
+  const bTime = Date.parse(b.date);
+  const aValid = Number.isFinite(aTime);
+  const bValid = Number.isFinite(bTime);
+
+  if (!aValid || !bValid) {
+    if (aValid) return -1;
+    if (bValid) return 1;
+    return 0;
+  }
+
+  return bTime - aTime;
 }
 
 function toRows(payload: HistoryResponse): RegistrationRow[] {
@@ -98,7 +119,7 @@ function toRows(payload: HistoryResponse): RegistrationRow[] {
       status: "Draft",
     });
   }
-  return rows.sort((a, b) => b.date.localeCompare(a.date));
+  return rows.sort(compareNewestFirst);
 }
 
 export default function SubmissionHistoryPage() {
@@ -247,8 +268,33 @@ export default function SubmissionHistoryPage() {
                   <Td>
                     {row.towerId ? (
                       <Link href={`/submission/${row.towerId}`} className="font-semibold text-primary hover:underline">Lihat</Link>
-                    ) : row.validationErrors?.[0]?.message ? (
-                      <span title={row.validationErrors.map((issue) => issue.message).filter(Boolean).join("\n")}>Lihat alasan</span>
+                    ) : row.status === "Draft" ? (
+                      <Link
+                        href={`/submission/form?draft_id=${encodeURIComponent(row.id)}`}
+                        className="font-semibold text-primary hover:underline"
+                      >
+                        Lanjutkan
+                      </Link>
+                    ) : row.validationErrors?.some((issue) => issue.message) ? (
+                      <details className="group">
+                        <summary className="cursor-pointer list-none font-semibold text-primary hover:underline">
+                          Lihat alasan
+                        </summary>
+                        <ul className="mt-2 min-w-56 max-w-sm list-inside list-disc space-y-1 text-left text-xs text-danger">
+                          {row.validationErrors.map((issue, index) => {
+                            const context = [
+                              issue.row ? `Baris ${issue.row}` : "",
+                              issue.column || issue.field || "",
+                            ].filter(Boolean).join(", ");
+                            return (
+                              <li key={`${row.id}-${index}`}>
+                                {context ? `${context}: ` : ""}
+                                {issue.message}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </details>
                     ) : "—"}
                   </Td>
                 </tr>

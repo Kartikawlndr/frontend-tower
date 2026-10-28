@@ -10,9 +10,13 @@ The same endpoint serves the official workbook at
 `GET /bulk-tower-upload/template`, so the template link does not depend on the
 signup application's development server.
 
-The current workbook has 16 columns, including the four cascading
-administrative-region fields. The endpoint also accepts the prior 12-column
-template for existing files. Every non-empty data row is validated before any
+The current workbook has 12 columns and does not ask users to enter province,
+regency/city, district, or village. The endpoint accepts the previous
+16-column workbook for existing files, but ignores its manually entered
+administrative values. After validating all rows, it resolves all tower
+coordinates in one PostGIS query against `indonesian_administrative_boundaries`
+using `ST_Covers`. An unmatched point (for example, one in the sea) receives
+blank administrative fields. Every non-empty data row is validated before any
 records are written. One invalid row rejects the whole file. A successful file
 is written in a single database transaction. Each distinct
 `id_menara` becomes one `tower_infrastruktur` record with status `Submitted`,
@@ -35,12 +39,13 @@ All validation errors reject the workbook and persist a `Rejected` attempt.
 Required text fields cannot be blank; construction year must be a whole year
 from 1900 through 2026; tower height must be an integer from 1 through 999;
 coordinates must fall within Indonesia's longitude (95–141) and latitude
-(-11–6) ranges. The current workbook's province, regency/city, district, and
-village values are checked against the bundled administrative-region dataset,
-including their parent-child relationships.
-The database unique index applies only to non-archived (`deleted_at IS NULL`)
-records, so a soft-deleted tower ID can be registered again.
-Files are limited to 10 MB and 1,000 data rows.
+(-11–6) ranges. Administrative values are derived from the imported boundary
+polygons rather than the bundled administrative-region dataset.
+Tower IDs remain unique even when an existing record is archived or soft
+deleted, so those IDs cannot be registered again.
+Files are limited to 10 MB and 1,000 data rows. The backend Compose
+`boundary-importer` service loads the read-only
+`../Geopackage/indoadmin2024.gpkg` source into PostGIS before Directus starts.
 
 Build and test from this directory with `npm run build` and `npm test`. The
 Directus service mounts this extension from `docker-compose.yml`.

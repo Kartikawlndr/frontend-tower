@@ -36,12 +36,28 @@ function validTower(overrides = {}) {
   };
 }
 
+function databaseWithRegion(region = {
+  province: "Jawa Barat",
+  regency_city: "Kota Bandung",
+  district: "Coblong",
+  village: "Dago",
+}) {
+  const database = () => {
+    throw new Error("Manual registration must not read uploaded files.");
+  };
+  database.raw = async () => ({
+    rows: [{ row_number: 1, ...region }],
+  });
+  return database;
+}
+
 test("forces Applicant submissions to the allowed fields and Submitted status", async () => {
-  const result = await sanitizeApplicantTower(validTower(), {
+  const result = await sanitizeApplicantTower(validTower({
+    provinsi: "Sumatera Barat",
+    kab_kota: "Kota Padang",
+  }), {
     accountability: { user: "applicant-id" },
-    database: () => {
-      throw new Error("Manual registration must not read uploaded files.");
-    },
+    database: databaseWithRegion(),
   });
 
   assert.equal(result.verification_status, "Submitted");
@@ -51,8 +67,10 @@ test("forces Applicant submissions to the allowed fields and Submitted status", 
   assert.equal(result.nama_pemilik, "PEMILIK");
   assert.equal(result.penyelenggara, "PENYELENGGARA");
   assert.equal(result.alamat, "JAKARTA");
-  assert.equal(result.provinsi, "SUMATERA BARAT");
-  assert.equal(result.kab_kota, "KOTA PADANG");
+  assert.equal(result.provinsi, "JAWA BARAT");
+  assert.equal(result.kab_kota, "KOTA BANDUNG");
+  assert.equal(result.kecamatan, "COBLONG");
+  assert.equal(result.kelurahan, "DAGO");
   assert.equal(result.jenis_menara, "BTS");
   assert.equal(result.longitude, 106.8);
   assert.equal(result.latitude, -6.2);
@@ -101,40 +119,29 @@ test("rejects invalid coordinates, years, and heights", async () => {
   );
 });
 
-test("rejects a kabupaten/kota that does not belong to the selected province", async () => {
-  await assert.rejects(
-    sanitizeApplicantTower(
-      validTower({ kab_kota: "Kota Medan" }),
-      { accountability: { user: "applicant-id" }, database: () => undefined },
-    ),
-    /kabupaten\/kota sesuai provinsi/,
-  );
-});
-
-test("requires valid cascading kecamatan and kelurahan selections", async () => {
+test("manual submissions with no matching boundary save blank administrative fields", async () => {
   const result = await sanitizeApplicantTower(
-    validTower({ kecamatan: "  Padang Barat ", kelurahan: "Belakang Tangsi" }),
+    validTower({
+      provinsi: undefined,
+      kab_kota: undefined,
+      kecamatan: undefined,
+      kelurahan: undefined,
+    }),
     {
       accountability: { user: "applicant-id" },
-      database: () => undefined,
+      database: databaseWithRegion({
+        province: null,
+        regency_city: null,
+        district: null,
+        village: null,
+      }),
     },
   );
 
-  assert.equal(result.kecamatan, "PADANG BARAT");
-  assert.equal(result.kelurahan, "BELAKANG TANGSI");
-
-  await assert.rejects(
-    sanitizeApplicantTower(validTower({ kecamatan: "" }), {
-      accountability: { user: "applicant-id" }, database: () => undefined,
-    }),
-    /kecamatan: kolom wajib dipilih/,
-  );
-  await assert.rejects(
-    sanitizeApplicantTower(validTower({ kelurahan: "Kelurahan Tidak Ada" }), {
-      accountability: { user: "applicant-id" }, database: () => undefined,
-    }),
-    /kelurahan\/desa sesuai kecamatan/,
-  );
+  assert.equal(result.provinsi, null);
+  assert.equal(result.kab_kota, null);
+  assert.equal(result.kecamatan, null);
+  assert.equal(result.kelurahan, null);
 });
 
 test("revalidates Applicant edits without allowing ID or system-field changes", async () => {
@@ -147,9 +154,7 @@ test("revalidates Applicant edits without allowing ID or system-field changes", 
     }),
     {
       accountability: { user: "applicant-id" },
-      database: () => {
-        throw new Error("Manual edits must not read uploaded files.");
-      },
+      database: databaseWithRegion(),
     },
   );
 
@@ -163,18 +168,31 @@ test("revalidates Applicant edits without allowing ID or system-field changes", 
 test("accepts only the current Applicant's XLSX attachment", async () => {
   const context = {
     accountability: { user: "applicant-id" },
-    database: () => ({
-      select: () => ({
-        where: () => ({
-          first: async () => ({
-            uploaded_by: "applicant-id",
-            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            filesize: 1024,
-            filename_download: "towers.xlsx",
+    database: Object.assign(
+      () => ({
+        select: () => ({
+          where: () => ({
+            first: async () => ({
+              uploaded_by: "applicant-id",
+              type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+              filesize: 1024,
+              filename_download: "towers.xlsx",
+            }),
           }),
         }),
       }),
-    }),
+      {
+        raw: async () => ({
+          rows: [{
+            row_number: 1,
+            province: "Jawa Barat",
+            regency_city: "Kota Bandung",
+            district: "Coblong",
+            village: "Dago",
+          }],
+        }),
+      },
+    ),
   };
 
   const result = await sanitizeApplicantTower(
@@ -201,9 +219,7 @@ test("sanitizes multiple unique tenant entries while keeping legacy first-tenant
     }),
     {
       accountability: { user: "applicant-id" },
-      database: () => {
-        throw new Error("Manual registration must not read uploaded files.");
-      },
+      database: databaseWithRegion(),
     },
   );
 
@@ -218,7 +234,7 @@ test("sanitizes multiple unique tenant entries while keeping legacy first-tenant
           { penyelenggara: " tenant a ", kapasitas_disewakan: "1" },
         ],
       }),
-      { accountability: { user: "applicant-id" }, database: () => undefined },
+      { accountability: { user: "applicant-id" }, database: databaseWithRegion() },
     ),
     /duplikat/,
   );
@@ -231,7 +247,7 @@ test("sanitizes multiple unique tenant entries while keeping legacy first-tenant
           { penyelenggara: "Tenant B", kapasitas_disewakan: "8" },
         ],
       }),
-      { accountability: { user: "applicant-id" }, database: () => undefined },
+      { accountability: { user: "applicant-id" }, database: databaseWithRegion() },
     ),
     /kapasitas total menara/,
   );
@@ -249,9 +265,7 @@ test("Directus create and update filters uppercase tower and tenant text", async
     { collection: "tower_infrastruktur" },
     {
       accountability: { user: "admin-id" },
-      database: () => {
-        throw new Error("Manual tower entry must not read uploaded files.");
-      },
+      database: databaseWithRegion(),
     },
   );
   assert.equal(createTower.nama_pemilik, "PEMILIK BARU");

@@ -1,15 +1,16 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { ChevronDown, Plus, Search, Send } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import { INDONESIAN_REGIONS } from "@/lib/indonesian-administrative-regions";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
 
@@ -140,10 +141,6 @@ type Values = {
   longitude: string;
   latitude: string;
   alamat: string;
-  provinsi: string;
-  kabKota: string;
-  kecamatan: string;
-  kelurahan: string;
   tinggi: string;
   kapMaks: string;
   kapSewa: string;
@@ -165,10 +162,6 @@ const EMPTY: Values = {
   longitude: "",
   latitude: "",
   alamat: "",
-  provinsi: "",
-  kabKota: "",
-  kecamatan: "",
-  kelurahan: "",
   tinggi: "",
   kapMaks: "",
   kapSewa: "",
@@ -203,10 +196,6 @@ function validate(values: Values, tenants: Tenant[]): Errors {
   set("longitude", coordError(values.longitude, 95, 141));
   set("latitude", coordError(values.latitude, -11, 6));
   set("alamat", textError(values.alamat));
-  set("provinsi", values.provinsi ? undefined : "Wajib dipilih");
-  set("kabKota", values.kabKota ? undefined : "Wajib dipilih");
-  set("kecamatan", values.kecamatan ? undefined : "Wajib dipilih");
-  set("kelurahan", values.kelurahan ? undefined : "Wajib dipilih");
   set("kapMaks", textError(values.kapMaks));
   set("kapSewa", textError(values.kapSewa));
   set("kapSendiri", textError(values.kapSendiri));
@@ -413,7 +402,11 @@ function YearField({
   );
 }
 
-export default function ApplicationFormPage() {
+function ApplicationFormContent({
+  requestedDraftId,
+}: {
+  requestedDraftId: string | null;
+}) {
   const router = useRouter();
   const { user } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
@@ -424,19 +417,96 @@ export default function ApplicationFormPage() {
   const [attempted, setAttempted] = useState(false);
   const [notice, setNotice] = useState("");
   const [noticeIsError, setNoticeIsError] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [submissionFeedback, setSubmissionFeedback] = useState<{
+    title: string;
+    messages: string[];
+  } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(Boolean(requestedDraftId));
+  const [draftId, setDraftId] = useState<string | null>(null);
 
   const [mapInput, setMapInput] = useState("");
   const [isLocked, setIsLocked] = useState(false);
-  const selectedProvince = INDONESIAN_REGIONS.find(
-    (region) => region.name === values.provinsi,
-  );
-  const selectedRegency = selectedProvince?.kabKota.find(
-    (regency) => regency.name === values.kabKota,
-  );
-  const selectedDistrict = selectedRegency?.kecamatan.find(
-    (district) => district.name === values.kecamatan,
-  );
+
+  useEffect(() => {
+    if (!requestedDraftId) return;
+
+    let active = true;
+    fetch(`/api/towers/drafts?id=${encodeURIComponent(requestedDraftId)}`, {
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const payload = (await response.json().catch(() => null)) as
+          | {
+              data?: {
+                id: string;
+                submission_data?: Record<string, unknown>;
+              } | null;
+              error?: string;
+            }
+          | null;
+        if (!response.ok || !payload?.data) {
+          throw new Error(payload?.error || "Draf tidak ditemukan atau sudah dikirim.");
+        }
+        if (!active) return;
+
+        const data = payload.data.submission_data ?? {};
+        const text = (value: unknown) =>
+          typeof value === "string" || typeof value === "number" ? String(value) : "";
+        const nextValues: Values = {
+          kode: text(data.id_menara),
+          pemilik: text(data.nama_pemilik),
+          tahun: text(data.tahun_pembangunan),
+          jenis: text(data.jenis_menara),
+          longitude: text(data.longitude),
+          latitude: text(data.latitude),
+          alamat: text(data.alamat),
+          tinggi: text(data.tinggi_menara),
+          kapMaks: text(data.kapasitas_maksimal),
+          kapSewa: text(data.kapasitas_disewakan),
+          kapSendiri: text(data.kapasitas_digunakan_sendiri),
+        };
+        const restoredTenants = Array.isArray(data.tenants)
+          ? data.tenants.map((tenant, index) => {
+              const entry =
+                tenant && typeof tenant === "object"
+                  ? (tenant as Record<string, unknown>)
+                  : {};
+              return { id: index + 1, name: text(entry.penyelenggara) };
+            })
+          : [];
+        setValues(nextValues);
+        setMapInput(
+          nextValues.latitude && nextValues.longitude
+            ? `${nextValues.latitude}, ${nextValues.longitude}`
+            : "",
+        );
+        setTenants(
+          restoredTenants.length > 0 ? restoredTenants : [{ id: 1, name: "" }],
+        );
+        nextId.current = Math.max(restoredTenants.length, 1) + 1;
+        setDraftId(payload.data.id);
+        setNotice("Draf berhasil dimuat. Anda dapat melanjutkan pengisian.");
+      })
+      .catch((loadError) => {
+        if (!active) return;
+        setDraftId(null);
+        setNotice(
+          loadError instanceof Error
+            ? loadError.message
+            : "Draf tidak dapat dimuat.",
+        );
+        setNoticeIsError(true);
+      })
+      .finally(() => {
+        if (active) setIsLoadingDraft(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [requestedDraftId]);
 
   function revalidate(nextValues: Values, nextTenants: Tenant[]) {
     if (attempted) setErrors(validate(nextValues, nextTenants));
@@ -452,13 +522,6 @@ export default function ApplicationFormPage() {
       const next = {
         ...values,
         [key]: value,
-        ...(key === "provinsi"
-          ? { kabKota: "", kecamatan: "", kelurahan: "" }
-          : key === "kabKota"
-            ? { kecamatan: "", kelurahan: "" }
-            : key === "kecamatan"
-              ? { kelurahan: "" }
-            : {}),
       };
       setValues(next);
       setNotice("");
@@ -589,11 +652,14 @@ export default function ApplicationFormPage() {
     setIsSubmitting(true);
     setNotice("");
     setNoticeIsError(false);
+    setDraftSaved(false);
+    setSubmissionFeedback(null);
     try {
       const response = await fetch("/api/towers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(draftId ? { draft_id: draftId } : {}),
           id_menara: values.kode,
           nama_pemilik: values.pemilik,
           tahun_pembangunan: Number(values.tahun),
@@ -601,10 +667,6 @@ export default function ApplicationFormPage() {
           longitude: Number(values.longitude),
           latitude: Number(values.latitude),
           alamat: values.alamat,
-          provinsi: values.provinsi,
-          kab_kota: values.kabKota,
-          kecamatan: values.kecamatan,
-          kelurahan: values.kelurahan,
           jenis_menara: values.jenis,
           tinggi_menara: Number(values.tinggi),
           kapasitas_maksimal: values.kapMaks,
@@ -622,21 +684,30 @@ export default function ApplicationFormPage() {
       if (!response.ok) {
         const messages = payload?.errors
           ?.map(({ message }) => message)
-          .filter(Boolean);
-        throw new Error(
-          messages?.join(" ") ||
-            payload?.error ||
-            "Pengajuan tidak dapat disimpan.",
-        );
+          .filter((message): message is string => Boolean(message)) ?? [];
+        setSubmissionFeedback({
+          title:
+            response.status === 409 || response.status === 422
+              ? "Pengajuan Ditolak"
+              : "Pengajuan Belum Berhasil",
+          messages:
+            messages.length > 0
+              ? messages
+              : [payload?.error || "Pengajuan tidak dapat disimpan."],
+        });
+        return;
       }
+
       router.push("/submission/history");
     } catch (error) {
-      setNotice(
-        error instanceof Error
-          ? error.message
-          : "Terjadi kesalahan saat menyimpan pengajuan.",
-      );
-      setNoticeIsError(true);
+      setSubmissionFeedback({
+        title: "Pengajuan Belum Berhasil",
+        messages: [
+          error instanceof Error
+            ? error.message
+            : "Terjadi kesalahan saat menyimpan pengajuan.",
+        ],
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -645,11 +716,13 @@ export default function ApplicationFormPage() {
   async function handleDraft() {
     setNotice("");
     setNoticeIsError(false);
+    setDraftSaved(false);
     try {
       const response = await fetch("/api/towers/drafts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(draftId ? { draft_id: draftId } : {}),
           submission_data: {
             id_menara: values.kode,
             nama_pemilik: values.pemilik,
@@ -658,10 +731,6 @@ export default function ApplicationFormPage() {
             longitude: values.longitude,
             latitude: values.latitude,
             alamat: values.alamat,
-            provinsi: values.provinsi,
-            kab_kota: values.kabKota,
-            kecamatan: values.kecamatan,
-            kelurahan: values.kelurahan,
             jenis_menara: values.jenis,
             tinggi_menara: values.tinggi,
             kapasitas_maksimal: values.kapMaks,
@@ -675,12 +744,14 @@ export default function ApplicationFormPage() {
         }),
       });
       const payload = (await response.json().catch(() => null)) as
-        | { error?: string }
+        | { data?: { id?: string }; error?: string }
         | null;
       if (!response.ok) {
         throw new Error(payload?.error || "Draf tidak dapat disimpan.");
       }
+      if (payload?.data?.id) setDraftId(payload.data.id);
       setNotice("Draf berhasil disimpan.");
+      setDraftSaved(true);
     } catch (error) {
       setNotice(
         error instanceof Error ? error.message : "Draf tidak dapat disimpan.",
@@ -848,75 +919,6 @@ export default function ApplicationFormPage() {
               disabled={isLocked}
             />
             <div className="md:col-span-2 flex flex-col gap-4">
-              <Select
-                id="provinsi"
-                label="Provinsi"
-                requiredMark
-                {...field("provinsi")}
-              >
-                <option value="">Pilih provinsi</option>
-                {INDONESIAN_REGIONS.map((region) => (
-                  <option key={region.code} value={region.name}>
-                    {region.name}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                id="kab-kota"
-                label="Kabupaten/Kota"
-                requiredMark
-                value={values.kabKota}
-                onChange={change("kabKota")}
-                error={errors.fields.kabKota}
-                disabled={!selectedProvince}
-              >
-                <option value="">
-                  {selectedProvince
-                    ? "Pilih kabupaten/kota"
-                    : "Pilih provinsi terlebih dahulu"}
-                </option>
-                {selectedProvince?.kabKota.map((kabKota) => (
-                  <option key={kabKota.code} value={kabKota.name}>
-                    {kabKota.name}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                id="kecamatan"
-                label="Kecamatan"
-                requiredMark
-                {...field("kecamatan")}
-                disabled={!selectedRegency}
-              >
-                <option value="">
-                  {selectedRegency
-                    ? "Pilih kecamatan"
-                    : "Pilih kabupaten/kota terlebih dahulu"}
-                </option>
-                {selectedRegency?.kecamatan.map((district) => (
-                  <option key={district.code} value={district.name}>
-                    {district.name}
-                  </option>
-                ))}
-              </Select>
-              <Select
-                id="kelurahan"
-                label="Kelurahan/Desa"
-                requiredMark
-                {...field("kelurahan")}
-                disabled={!selectedDistrict}
-              >
-                <option value="">
-                  {selectedDistrict
-                    ? "Pilih kelurahan/desa"
-                    : "Pilih kecamatan terlebih dahulu"}
-                </option>
-                {selectedDistrict?.kelurahan.map((village) => (
-                  <option key={village.code} value={village.name}>
-                    {village.name}
-                  </option>
-                ))}
-              </Select>
               <Input
                 id="alamat"
                 label="Alamat"
@@ -965,8 +967,54 @@ export default function ApplicationFormPage() {
           }`}
         >
           {notice}
+          {draftSaved && !noticeIsError && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                type="submit"
+                variant="outline"
+                disabled={isSubmitting || isLoadingDraft}
+              >
+                Lanjutkan pengiriman
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.push("/submission/history")}
+              >
+                Kembali ke riwayat
+              </Button>
+            </div>
+          )}
         </div>
       )}
+      <Dialog
+        open={submissionFeedback !== null}
+        onClose={() => setSubmissionFeedback(null)}
+        title={submissionFeedback?.title ?? "Pengajuan Belum Berhasil"}
+        description={
+          submissionFeedback?.title === "Pengajuan Ditolak"
+            ? "Pengajuan belum dapat diproses karena alasan berikut:"
+            : "Periksa informasi berikut, lalu coba lagi jika diperlukan."
+        }
+        footer={
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setSubmissionFeedback(null)}
+          >
+            Tutup
+          </Button>
+        }
+      >
+        <ul
+          role="alert"
+          className="list-inside list-disc space-y-1 text-sm text-danger"
+        >
+          {(submissionFeedback?.messages ?? []).map((reason, index) => (
+            <li key={`${index}-${reason}`}>{reason}</li>
+          ))}
+        </ul>
+      </Dialog>
 
       <div className="flex justify-end gap-3">
         <Button
@@ -978,15 +1026,39 @@ export default function ApplicationFormPage() {
           Batal
         </Button>
         {user.role === "USER" && (
-          <Button type="button" variant="amber" onClick={handleDraft}>
+          <Button
+            type="button"
+            variant="amber"
+            onClick={handleDraft}
+            disabled={isLoadingDraft || isSubmitting}
+          >
             Simpan sebagai Draf
           </Button>
         )}
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting || isLoadingDraft}>
           <Send className="h-4 w-4" strokeWidth={2} />
-          {isSubmitting ? "Mengirim..." : "Kirim Pengajuan"}
+          {isLoadingDraft ? "Memuat draf..." : isSubmitting ? "Mengirim..." : "Kirim Pengajuan"}
         </Button>
       </div>
     </form>
+  );
+}
+
+function ApplicationFormWithSearchParams() {
+  const searchParams = useSearchParams();
+  const requestedDraftId = searchParams.get("draft_id");
+  return (
+    <ApplicationFormContent
+      key={requestedDraftId ?? "new"}
+      requestedDraftId={requestedDraftId}
+    />
+  );
+}
+
+export default function ApplicationFormPage() {
+  return (
+    <Suspense fallback={<p className="p-8 text-center text-helper">Memuat formulir...</p>}>
+      <ApplicationFormWithSearchParams />
+    </Suspense>
   );
 }

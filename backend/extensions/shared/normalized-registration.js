@@ -138,8 +138,10 @@ export async function createRegisteredTowers({
           "Kapasitas disewakan harus sama untuk semua tenant pada menara yang sama.",
         );
       }
+      const registeredAt = new Date().toISOString();
       const towerId = await towers.createOne({
         ...registration.tower,
+        date_created: registeredAt,
         penyelenggara: firstTenant.penyelenggara,
         kapasitas_disewakan: firstTenant.kapasitas_disewakan,
         metode_pendaftaran: method,
@@ -172,10 +174,12 @@ export async function createRegisteredTowers({
         tower_id: towerId,
         status: "Registered",
         registration_code: registrationCode,
+        date_created: registeredAt,
         attempt_type: "New Registration",
         metode_pendaftaran: method,
         submission_data: {
           ...registration.tower,
+          date_created: registeredAt,
           tenants: registration.tenants,
           document: documentId,
         },

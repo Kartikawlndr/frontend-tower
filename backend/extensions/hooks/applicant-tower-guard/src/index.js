@@ -1,6 +1,4 @@
-import administrativeRegions from "./indonesian-administrative-regions.json" with {
-  type: "json",
-};
+import { resolveAdministrativeRegions } from "./administrative-regions.js";
 
 const COLLECTION = "tower_infrastruktur";
 const TENANT_COLLECTION = "tower_tenant";
@@ -58,30 +56,6 @@ function requireText(value, field, { numericAllowed = false } = {}) {
     throw new Error(`${field}: maksimal ${MAX_TEXT_LENGTH} karakter.`);
   }
   return text.toUpperCase();
-}
-
-function optionalAdministrativeText(value, field) {
-  if (value == null || (typeof value === "string" && !value.trim())) return null;
-  if (typeof value !== "string") {
-    throw new Error(`${field}: isi dengan teks yang valid.`);
-  }
-  const text = value.normalize("NFC").trim();
-  if (Array.from(text).length > 100) {
-    throw new Error(`${field}: maksimal 100 karakter.`);
-  }
-  return text.toUpperCase();
-}
-
-function requireAdministrativeText(value, field) {
-  if (typeof value !== "string") {
-    throw new Error(`${field}: pilih nilai yang tersedia.`);
-  }
-  const text = value.normalize("NFC").trim();
-  if (!text) throw new Error(`${field}: kolom wajib dipilih.`);
-  if (Array.from(text).length > 100) {
-    throw new Error(`${field}: maksimal 100 karakter.`);
-  }
-  return text.toLocaleUpperCase("id-ID");
 }
 
 export function uppercaseTowerTextFields(payload, collection) {
@@ -295,40 +269,6 @@ export async function sanitizeTowerSubmission(input, context) {
     { integer: true, min: 1900, max: new Date().getFullYear() },
   );
   output.alamat = requireText(output.alamat, "alamat");
-  if (!output.document) {
-    output.provinsi = requireText(output.provinsi, "provinsi");
-    output.kab_kota = requireText(output.kab_kota, "kab_kota");
-    output.kecamatan = requireAdministrativeText(output.kecamatan, "kecamatan");
-    output.kelurahan = requireAdministrativeText(output.kelurahan, "kelurahan");
-    const province = administrativeRegions.regions.find(
-      (region) => region.name.toLocaleUpperCase("id-ID") === output.provinsi,
-    );
-    if (!province) {
-      throw new Error("provinsi: pilih provinsi yang tersedia.");
-    }
-    const regency = province.kabKota.find(
-      (kabKota) => kabKota.name.toLocaleUpperCase("id-ID") === output.kab_kota,
-    );
-    if (!regency) {
-      throw new Error("kab_kota: pilih kabupaten/kota sesuai provinsi.");
-    }
-    const district = regency.kecamatan.find(
-      (item) => item.name.toLocaleUpperCase("id-ID") === output.kecamatan,
-    );
-    if (!district) {
-      throw new Error("kecamatan: pilih kecamatan sesuai kabupaten/kota.");
-    }
-    if (
-      !district.kelurahan.some(
-        (item) => item.name.toLocaleUpperCase("id-ID") === output.kelurahan,
-      )
-    ) {
-      throw new Error("kelurahan: pilih kelurahan/desa sesuai kecamatan.");
-    }
-  } else {
-    output.kecamatan = optionalAdministrativeText(output.kecamatan, "kecamatan");
-    output.kelurahan = optionalAdministrativeText(output.kelurahan, "kelurahan");
-  }
   output.jenis_menara = requireText(output.jenis_menara, "jenis_menara");
   output.tinggi_menara = requireNumber(output.tinggi_menara, "tinggi_menara", {
     integer: true,
@@ -355,6 +295,16 @@ export async function sanitizeTowerSubmission(input, context) {
     min: -11,
     max: 6,
     maxDecimalPlaces: 6,
+  });
+
+  const [resolved] = await resolveAdministrativeRegions(context.database, [{
+    tower: output,
+  }]);
+  Object.assign(output, {
+    provinsi: resolved.tower.provinsi,
+    kab_kota: resolved.tower.kab_kota,
+    kecamatan: resolved.tower.kecamatan,
+    kelurahan: resolved.tower.kelurahan,
   });
 
   if (output.document) {

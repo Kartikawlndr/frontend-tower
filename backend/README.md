@@ -19,6 +19,12 @@ Prerequisites: Docker Desktop with Compose, Node.js/npm, and Python 3 with
    docker compose up -d
    ```
 
+   The one-shot `boundary-importer` service loads
+   `..\Geopackage\indoadmin2024.gpkg` into PostGIS before Directus starts. Keep
+   that file at this path. It reads the GeoPackage without modifying it and
+   skips the import when the destination layer already has the same number of
+   features as the source.
+
 3. Apply the Directus schema snapshot to initialize the collections and fields:
 
    ```powershell
@@ -52,13 +58,17 @@ credentials or data into a local environment.
 
 ## Bulk registration workbook
 
-The official 16-column template is
+The official 12-column template is
 `extensions/endpoints/bulk-tower-upload/templates/Template_Registrasi_Menara.xlsx`.
 The endpoint also serves this file at `/bulk-tower-upload/template`. To
 regenerate it, run `python scripts/generate_registration_template.py` from this
 directory; the generated file replaces the endpoint template. Copy the
 generated workbook to the frontend's `public/Template_Registrasi_Menara.xlsx`
 as well so the download link and Directus endpoint serve the same version.
+Province, regency/city, district, and village are filled from the longitude and
+latitude using the imported PostGIS boundaries; points outside every village
+polygon retain blank administrative fields. The previous 16-column workbook
+remains accepted, but its manually entered administrative values are ignored.
 
 `docker-compose.yml` mounts source extensions, the schema snapshot, email
 templates, and a local uploads directory. PostgreSQL data is kept in a named

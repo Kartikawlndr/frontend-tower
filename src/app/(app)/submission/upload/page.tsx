@@ -5,10 +5,17 @@ import { useRouter } from "next/navigation";
 import { CloudUpload, Paperclip, X, Download } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import { Table, Th, Td } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 const MAX_SIZE = 10 * 1024 * 1024;
+
+type UploadIssue = {
+  row?: number | null;
+  column?: string | null;
+  message?: string;
+};
 
 const TEXT_RULE = "Maksimal 50 karakter";
 
@@ -19,10 +26,6 @@ const COLUMNS = [
   { field: "Penyelenggara Jaringan Telekomunikasi", type: "Teks", rule: "Maksimal 50 karakter; multi-tenant dipisahkan koma" },
   { field: "Longitude", type: "Desimal", rule: "95 sampai 141; maksimal 6 angka desimal" },
   { field: "Latitude", type: "Desimal", rule: "-11 sampai 6; maksimal 6 angka desimal" },
-  { field: "Provinsi", type: "Dropdown", rule: "Pilih dari daftar 38 provinsi" },
-  { field: "Kabupaten/Kota", type: "Dropdown bertingkat", rule: "Pilih setelah Provinsi" },
-  { field: "Kecamatan", type: "Dropdown bertingkat", rule: "Pilih setelah Kabupaten/Kota" },
-  { field: "Kelurahan", type: "Dropdown bertingkat", rule: "Pilih setelah Kecamatan" },
   { field: "Alamat", type: "Teks", rule: TEXT_RULE },
   { field: "Jenis Menara Telekomunikasi", type: "Teks", rule: TEXT_RULE },
   { field: "Tinggi Menara Telekomunikasi (AGL)", type: "Bilangan bulat", rule: "1 sampai 999; huruf dan desimal ditolak" },
@@ -45,6 +48,10 @@ export default function UploadExcelPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
+  const [feedback, setFeedback] = useState<{
+    title: string;
+    issues: UploadIssue[];
+  } | null>(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const handleDownloadTemplate = () => {
@@ -69,12 +76,14 @@ export default function UploadExcelPage() {
       return;
     }
     setError("");
+    setFeedback(null);
     setFile(next);
   }
 
   function clear() {
     setFile(null);
     setError("");
+    setFeedback(null);
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -90,23 +99,33 @@ export default function UploadExcelPage() {
         body,
       });
       const payload = (await response.json().catch(() => null)) as
-        | { error?: string; errors?: Array<{ message?: string }> }
+        | { error?: string; errors?: UploadIssue[] }
         | null;
       if (!response.ok) {
         const messages = payload?.errors
-          ?.map(({ message }) => message)
-          .filter(Boolean);
-        throw new Error(
-          messages?.join(" ") || payload?.error || "Impor Excel gagal.",
-        );
+          ?.filter((issue) => Boolean(issue.message)) ?? [];
+        setFeedback({
+          title: response.status === 422 ? "Pengajuan Ditolak" : "Unggah Belum Berhasil",
+          issues:
+            messages.length > 0
+              ? messages
+              : [{ message: payload?.error || "Impor Excel gagal." }],
+        });
+        return;
       }
       router.push("/submission/history");
     } catch (uploadError) {
-      setError(
-        uploadError instanceof Error
-          ? uploadError.message
-          : "Impor Excel gagal.",
-      );
+      setFeedback({
+        title: "Unggah Belum Berhasil",
+        issues: [
+          {
+            message:
+              uploadError instanceof Error
+                ? uploadError.message
+                : "Impor Excel gagal.",
+          },
+        ],
+      });
     } finally {
       setUploading(false);
     }
@@ -184,6 +203,9 @@ export default function UploadExcelPage() {
           <p className="text-helper">
             Satu baris untuk satu menara. Pisahkan nama multi-tenant dengan koma. Jika ID menara berulang, seluruh data menara termasuk kapasitas disewakan harus sama dan tenant tidak boleh duplikat.
           </p>
+          <p className="text-helper">
+            Provinsi, Kabupaten/Kota, Kecamatan, dan Kelurahan diisi otomatis berdasarkan koordinat. Jika titik tidak masuk poligon wilayah, data wilayah akan kosong.
+          </p>
           <div>
             <Button type="button" variant="outline" onClick={handleDownloadTemplate}>
               <Download className="h-4 w-4" strokeWidth={2} />
@@ -228,9 +250,48 @@ export default function UploadExcelPage() {
           disabled={!file || uploading}
           onClick={upload}
         >
-          {uploading ? "Memproses..." : "Unggah / Kirim"}
+          {uploading ? "Memproses..." : "Kirim Pengajuan"}
         </Button>
       </div>
+      <Dialog
+        open={feedback !== null}
+        onClose={() => setFeedback(null)}
+        title={feedback?.title ?? "Unggah Belum Berhasil"}
+        description={
+          feedback?.title === "Pengajuan Ditolak"
+            ? "File belum dapat diproses karena alasan berikut:"
+            : "File belum berhasil diproses. Periksa informasi berikut:"
+        }
+        footer={
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setFeedback(null)}
+          >
+            Tutup
+          </Button>
+        }
+      >
+        <ul
+          role="alert"
+          className="max-h-80 list-inside list-disc space-y-2 overflow-y-auto text-sm text-danger"
+        >
+          {(feedback?.issues ?? []).map((issue, index) => {
+            const context = [
+              issue.row ? `Baris ${issue.row}` : "",
+              issue.column || "",
+            ]
+              .filter(Boolean)
+              .join(" — ");
+            return (
+              <li key={`${index}-${issue.message}`}>
+                {context ? `${context}: ` : ""}
+                {issue.message}
+              </li>
+            );
+          })}
+        </ul>
+      </Dialog>
     </div>
   );
 }

@@ -277,7 +277,7 @@ function AuthContent() {
                       required
                       value={signInUsername}
                       onChange={(e) => setSignInUsername(e.target.value)}
-                      placeholder="Email akun Directus"
+                      placeholder="Email"
                       className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0070ba] focus:ring-1 focus:ring-[#0070ba] text-slate-800 placeholder:text-slate-400 transition-all text-xs"
                     />
                   </div>

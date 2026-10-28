@@ -395,7 +395,9 @@ export default function SubmissionDetailPage({
           </dl>
           <div className="mt-5 flex flex-wrap gap-3">
             {user.role === "USER" && !editing && <Button onClick={() => setEditing(true)}>Ubah Data</Button>}
-            <Button variant="danger-outline" disabled={working} onClick={archiveTower}>Arsipkan</Button>
+            {user.role !== "USER" && (
+              <Button variant="danger-outline" disabled={working} onClick={archiveTower}>Arsipkan</Button>
+            )}
           </div>
         </CardBody>
       </Card>

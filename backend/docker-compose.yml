@@ -11,6 +11,48 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  boundary-importer:
+    image: ghcr.io/osgeo/gdal:ubuntu-small-latest
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      PGHOST: database
+      PGPORT: "5432"
+      PGDATABASE: ${DB_DATABASE}
+      PGUSER: ${DB_USER}
+      PGPASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ../Geopackage/indoadmin2024.gpkg:/data/indoadmin2024.gpkg:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        connection="PG:host=$${PGHOST} port=$${PGPORT} dbname=$${PGDATABASE} user=$${PGUSER}"
+        source_count="$$(ogrinfo -ro -so /data/indoadmin2024.gpkg indoadmin | sed -n 's/^Feature Count: //p')"
+        if [ -z "$$source_count" ]; then
+          echo "Unable to read features from indoadmin2024.gpkg." >&2
+          exit 1
+        fi
+        loaded_count="$$(ogrinfo -ro -so "$$connection" indonesian_administrative_boundaries 2>/dev/null | sed -n 's/^Feature Count: //p')"
+        if [ "$$loaded_count" = "$$source_count" ]; then
+          echo "Administrative boundaries already loaded ($$loaded_count features)."
+          exit 0
+        fi
+        ogr2ogr -f PostgreSQL "$$connection" /data/indoadmin2024.gpkg \
+          -sql "SELECT geom, Province AS province, District AS regency_city, Subdistric AS district, Village AS village FROM indoadmin" \
+          -nln indonesian_administrative_boundaries \
+          -nlt PROMOTE_TO_MULTI \
+          -t_srs EPSG:4326 \
+          -lco FID=fid \
+          -lco GEOMETRY_NAME=geom \
+          -lco SPATIAL_INDEX=GIST \
+          -overwrite
 
   directus:
     image: directus/directus:latest
@@ -48,7 +90,10 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
     depends_on:
-      - database
+      database:
+        condition: service_healthy
+      boundary-importer:
+        condition: service_completed_successfully
     volumes:
       - ./uploads:/directus/uploads
       - ./extensions/interfaces/map-latlong-picker:/directus/extensions/map-latlong-picker

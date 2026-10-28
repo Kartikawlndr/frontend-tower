@@ -7,6 +7,7 @@ import { FileSpreadsheet, ClipboardList } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog } from "@/components/ui/dialog";
 import { Table, Th, Td } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
@@ -29,21 +30,96 @@ const METHODS = [
 
 type MethodValue = (typeof METHODS)[number]["value"];
 
-const STATUS_VARIANT = {
-  Terdaftar: "success",
-  Ditolak: "destructive",
-} as const;
+const STATUS_VARIANT: Record<string, "success" | "destructive" | "warning"> = {
+  Registered: "success",
+  Rejected: "destructive",
+  Draft: "warning",
+};
+
+type SubmissionAttempt = {
+  id: string | number;
+  status: string;
+  registration_code?: string;
+  metode_pendaftaran?: string;
+  date_created?: string;
+  validation_errors?: Array<{
+    row?: number | null;
+    column?: string | null;
+    field?: string;
+    message?: string;
+  }>;
+};
+
+type SubmissionTower = {
+  id: string;
+  id_menara?: string;
+  date_created?: string;
+  metode_pendaftaran?: string;
+  verification_status?: string;
+  registration_attempts?: SubmissionAttempt[];
+};
+
+type RecentSubmission = {
+  id: string;
+  towerId: string | null;
+  code: string;
+  date: string;
+  method: string;
+  status: string;
+  validationErrors?: SubmissionAttempt["validation_errors"];
+};
+
+type SubmissionsResponse = {
+  data?: SubmissionTower[];
+  rejected_attempts?: SubmissionAttempt[];
+  draft_attempt?: { id: string | number; date_updated?: string } | null;
+  error?: string;
+};
+
+function recentSubmissions(payload: SubmissionsResponse): RecentSubmission[] {
+  const rows: RecentSubmission[] = [];
+  for (const tower of payload.data ?? []) {
+    for (const attempt of tower.registration_attempts ?? []) {
+      rows.push({
+        id: `${tower.id}-${attempt.id}`,
+        towerId: tower.id,
+        code: attempt.registration_code || tower.id_menara || "—",
+        date: attempt.date_created || tower.date_created || "",
+        method: attempt.metode_pendaftaran || tower.metode_pendaftaran || "",
+        status: attempt.status,
+        validationErrors: attempt.validation_errors,
+      });
+    }
+  }
+  for (const attempt of payload.rejected_attempts ?? []) {
+    rows.push({
+      id: `rejected-${attempt.id}`,
+      towerId: null,
+      code: "—",
+      date: attempt.date_created || "",
+      method: attempt.metode_pendaftaran || "",
+      status: "Rejected",
+      validationErrors: attempt.validation_errors,
+    });
+  }
+  if (payload.draft_attempt) {
+    rows.push({
+      id: `draft-${payload.draft_attempt.id}`,
+      towerId: null,
+      code: "—",
+      date: payload.draft_attempt.date_updated || "",
+      method: "Input Manual",
+      status: "Draft",
+    });
+  }
+  return rows.sort((left, right) => right.date.localeCompare(left.date)).slice(0, 4);
+}
 
 export default function SubmissionPage() {
   const router = useRouter();
   const [method, setMethod] = useState<MethodValue>("upload");
-  const [recent, setRecent] = useState<Array<{
-    id: string;
-    code: string;
-    date: string;
-    method: string;
-    status: string;
-  }>>([]);
+  const [recent, setRecent] = useState<RecentSubmission[]>([]);
+  const [selectedRejection, setSelectedRejection] = useState<RecentSubmission | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -51,25 +127,10 @@ export default function SubmissionPage() {
     let active = true;
     fetch("/api/towers?limit=10", { cache: "no-store" })
       .then(async (response) => {
-        const payload = (await response.json().catch(() => null)) as {
-          data?: Array<{
-            id: string;
-            id_menara?: string;
-            date_created?: string;
-            verification_status?: string;
-            metode_pendaftaran?: string;
-          }>;
-          error?: string;
-        } | null;
+        const payload = (await response.json().catch(() => null)) as SubmissionsResponse | null;
         if (!response.ok) throw new Error(payload?.error || "Pengajuan terbaru tidak dapat dimuat.");
         if (active) {
-          setRecent((payload?.data ?? []).map((tower) => ({
-            id: tower.id,
-            code: tower.id_menara || "—",
-            date: tower.date_created ? new Date(tower.date_created).toLocaleDateString("id-ID") : "—",
-            method: tower.metode_pendaftaran || "",
-            status: tower.verification_status || "Registered",
-          })));
+          setRecent(recentSubmissions(payload ?? {}));
         }
       })
       .catch((requestError) => {
@@ -157,20 +218,43 @@ export default function SubmissionPage() {
               ) : recent.map((r) => (
                 <tr key={r.id}>
                   <Td>{r.code}</Td>
-                  <Td>{r.date}</Td>
-                  <Td>{r.method === "Upload Excel" ? "Unggah Excel" : "Formulir Pendaftaran"}</Td>
+                  <Td>{r.date ? new Date(r.date).toLocaleDateString("id-ID") : "—"}</Td>
                   <Td>
-                    <Badge variant={STATUS_VARIANT[r.status === "Registered" ? "Terdaftar" : "Ditolak"]}>
-                      {r.status === "Registered" ? "Terdaftar" : r.status}
+                    {r.method === "Upload Document (.xlsx)"
+                      ? r.method
+                      : r.method === "Upload Excel"
+                        ? "Unggah Excel"
+                        : "Formulir Pendaftaran"}
+                  </Td>
+                  <Td>
+                    <Badge variant={STATUS_VARIANT[r.status] ?? "warning"}>
+                      {r.status === "Registered" ? "Terdaftar" : r.status === "Rejected" ? "Ditolak" : "Draf"}
                     </Badge>
                   </Td>
                   <Td>
-                    <Link
-                      href={`/submission/${r.id}`}
-                      className="font-semibold text-primary hover:underline"
-                    >
-                      Lihat
-                    </Link>
+                    {r.status === "Draft" ? (
+                      <Link
+                        href={`/submission/form?draft_id=${encodeURIComponent(r.id.slice("draft-".length))}`}
+                        className="font-semibold text-primary hover:underline"
+                      >
+                        Lanjutkan
+                      </Link>
+                    ) : r.towerId ? (
+                      <Link
+                        href={`/submission/${r.towerId}`}
+                        className="font-semibold text-primary hover:underline"
+                      >
+                        Lihat
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRejection(r)}
+                        className="font-semibold text-primary hover:underline"
+                      >
+                        Lihat alasan
+                      </button>
+                    )}
                   </Td>
                 </tr>
               ))}
@@ -186,6 +270,39 @@ export default function SubmissionPage() {
           </div>
         </CardBody>
       </Card>
+
+      <Dialog
+        open={selectedRejection !== null}
+        onClose={() => setSelectedRejection(null)}
+        title="Alasan penolakan"
+        description="Periksa rincian berikut sebelum mengirim ulang data."
+        footer={
+          <Button variant="outline" onClick={() => setSelectedRejection(null)}>
+            Tutup
+          </Button>
+        }
+      >
+        {selectedRejection?.validationErrors?.some((issue) => issue.message) ? (
+          <ul className="list-inside list-disc space-y-2 text-sm text-danger">
+            {selectedRejection.validationErrors.map((issue, index) => {
+              const context = [
+                issue.row ? `Baris ${issue.row}` : "",
+                issue.column || issue.field || "",
+              ].filter(Boolean).join(", ");
+              return (
+                <li key={`${selectedRejection.id}-${index}`}>
+                  {context ? `${context}: ` : ""}
+                  {issue.message}
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted">
+            Rincian alasan penolakan tidak tersedia.
+          </p>
+        )}
+      </Dialog>
     </div>
   );
 }

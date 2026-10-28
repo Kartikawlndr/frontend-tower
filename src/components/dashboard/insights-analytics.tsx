@@ -25,8 +25,14 @@ export interface CompanyData {
 
 export interface TrendPoint {
   month: string;
+  periodLabel: string;
   submissions: number;
   towers: number;
+}
+
+export interface TrendRecord {
+  timestamp: string;
+  type: "submission" | "tower";
 }
 
 export interface ActivityData {
@@ -43,22 +49,9 @@ interface InsightsAnalyticsProps {
   totalSubmissions: number;
   methods: MethodData;
   topCompanies: CompanyData[];
-  trends?: TrendPoint[];
+  trendRecords: TrendRecord[];
   activities: ActivityData[];
 }
-
-const FALLBACK_TRENDS: TrendPoint[] = [
-  { month: "Jan", submissions: 1, towers: 12 },
-  { month: "Feb", submissions: 1, towers: 20 },
-  { month: "Mar", submissions: 2, towers: 35 },
-  { month: "Apr", submissions: 2, towers: 41 },
-  { month: "Mei", submissions: 3, towers: 60 },
-  { month: "Jun", submissions: 2, towers: 48 },
-  { month: "Jul", submissions: 3, towers: 72 },
-  { month: "Agu", submissions: 4, towers: 90 },
-  { month: "Sep", submissions: 4, towers: 85 },
-  { month: "Okt", submissions: 5, towers: 118 },
-];
 
 const formatNumber = (n: number) => n.toLocaleString("id-ID");
 
@@ -265,6 +258,7 @@ function MethodDonut({
 }
 
 type Metric = "submissions" | "towers";
+type TrendMode = "year" | "month" | "custom";
 
 const METRICS: Record<Metric, { label: string; unit: string; color: string }> =
   {
@@ -272,10 +266,153 @@ const METRICS: Record<Metric, { label: string; unit: string; color: string }> =
     towers: { label: "Menara", unit: "menara", color: ACCENT },
   };
 
-function TrendChart({ data }: { data: TrendPoint[] }) {
+function localDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function TrendChart({ records }: { records: TrendRecord[] }) {
   const [metric, setMetric] = useState<Metric>("submissions");
+  const [mode, setMode] = useState<TrendMode>("year");
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth();
+  const currentDay = currentDate.getDate();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [startDate, setStartDate] = useState(
+    localDateKey(new Date(currentYear, currentMonth, 1)),
+  );
+  const [endDate, setEndDate] = useState(
+    localDateKey(new Date(currentYear, currentMonth, currentDay)),
+  );
   const [active, setActive] = useState<number | null>(null);
   const [wrapRef, width] = useElementWidth<HTMLDivElement>();
+
+  const availableYears = records.flatMap((record) => {
+    const date = new Date(record.timestamp);
+    return Number.isNaN(date.getTime()) ? [] : [date.getFullYear()];
+  });
+  const firstYear = Math.min(
+    currentYear,
+    ...availableYears.filter((year) => year <= currentYear),
+  );
+  const years = Array.from(
+    { length: currentYear - firstYear + 1 },
+    (_, index) => currentYear - index,
+  );
+  const data = useMemo(() => {
+    let rangeStart: Date;
+    let rangeEnd: Date;
+    let interval: "day" | "month";
+
+    if (mode === "year") {
+      rangeStart = new Date(selectedYear, 0, 1);
+      rangeEnd =
+        selectedYear === currentYear
+          ? new Date(currentYear, currentMonth, currentDay)
+          : new Date(selectedYear, 11, 31);
+      interval = "month";
+    } else if (mode === "month") {
+      rangeStart = new Date(selectedYear, selectedMonth, 1);
+      rangeEnd =
+        selectedYear === currentYear &&
+        selectedMonth === currentMonth
+          ? new Date(currentYear, currentMonth, currentDay)
+          : new Date(selectedYear, selectedMonth + 1, 0);
+      interval = "day";
+    } else {
+      rangeStart = new Date(`${startDate}T00:00:00`);
+      rangeEnd = new Date(`${endDate}T00:00:00`);
+      const dayCount = Math.floor(
+        (rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000,
+      ) + 1;
+      interval = dayCount <= 45 ? "day" : "month";
+    }
+
+    if (
+      Number.isNaN(rangeStart.getTime()) ||
+      Number.isNaN(rangeEnd.getTime()) ||
+      rangeStart > rangeEnd
+    ) {
+      return [];
+    }
+
+    const bounds = {
+      start: localDateKey(rangeStart),
+      end: localDateKey(rangeEnd),
+    };
+    const bucketTotals = new Map<string, TrendPoint>();
+    const addBucket = (date: Date) => {
+      const key =
+        interval === "month"
+          ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+          : localDateKey(date);
+      if (!bucketTotals.has(key)) {
+        bucketTotals.set(key, {
+          month:
+            interval === "month"
+              ? new Intl.DateTimeFormat("id-ID", { month: "short" }).format(date)
+              : String(date.getDate()),
+          periodLabel:
+            interval === "month"
+              ? new Intl.DateTimeFormat("id-ID", {
+                  month: "long",
+                  year: "numeric",
+                }).format(date)
+              : new Intl.DateTimeFormat("id-ID", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                }).format(date),
+          submissions: 0,
+          towers: 0,
+        });
+      }
+      return bucketTotals.get(key)!;
+    };
+
+    if (interval === "month") {
+      const cursor = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+      const last = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), 1);
+      while (cursor <= last) {
+        addBucket(cursor);
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+    } else {
+      const cursor = new Date(rangeStart);
+      while (cursor <= rangeEnd) {
+        addBucket(cursor);
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    }
+
+    for (const record of records) {
+      const date = new Date(record.timestamp);
+      if (Number.isNaN(date.getTime())) continue;
+      const dateKey = localDateKey(date);
+      if (dateKey < bounds.start || dateKey > bounds.end) continue;
+      const bucket = addBucket(date);
+      if (record.type === "submission") bucket.submissions += 1;
+      else bucket.towers += 1;
+    }
+
+    return Array.from(bucketTotals.entries())
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([, point]) => point);
+  }, [
+    currentDay,
+    currentMonth,
+    currentYear,
+    endDate,
+    mode,
+    records,
+    selectedMonth,
+    selectedYear,
+    startDate,
+  ]);
 
   const cfg = METRICS[metric];
   const height = 232;
@@ -347,32 +484,109 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
           <h3 className="text-sm font-bold text-heading">
             Grafik Tren Pendaftaran Menara
           </h3>
-          <p className="text-2xs text-muted">
-            Volume pengajuan data infrastruktur pasif bulanan (2026)
-          </p>
+          <p className="text-2xs text-muted">Volume data sesuai periode pilihan</p>
         </div>
 
-        <div
-          role="tablist"
-          aria-label="Pilih metrik"
-          className="flex items-center gap-1 rounded-lg border border-border-soft bg-canvas p-0.5"
-        >
-          {(Object.keys(METRICS) as Metric[]).map((key) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={metric === key}
-              onClick={() => setMetric(key)}
-              className={`rounded-md px-3 py-1 text-2xs font-semibold transition-colors ${
-                metric === key
-                  ? "bg-primary text-on-primary shadow-sm"
-                  : "text-muted hover:text-heading"
-              }`}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex items-center gap-1 rounded-lg border border-border-soft bg-canvas p-0.5">
+            {([
+              ["year", "Tahun"],
+              ["month", "Bulan"],
+              ["custom", "Rentang tanggal"],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={mode === value}
+                onClick={() => {
+                  setMode(value);
+                  setActive(null);
+                }}
+                className={`rounded-md px-2.5 py-1 text-2xs font-semibold transition-colors ${
+                  mode === value
+                    ? "bg-primary text-on-primary shadow-sm"
+                    : "text-muted hover:text-heading"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {mode !== "custom" ? (
+            <label className="sr-only" htmlFor="trend-year">Tahun grafik</label>
+          ) : null}
+          {mode !== "custom" && (
+            <select
+              id="trend-year"
+              value={selectedYear}
+              onChange={(event) => setSelectedYear(Number(event.target.value))}
+              className="rounded-md border border-border-soft bg-surface px-2 py-1 text-xs text-heading"
             >
-              {METRICS[key].label}
-            </button>
-          ))}
+              {years.map((year) => <option key={year} value={year}>{year}</option>)}
+            </select>
+          )}
+          {mode === "month" && (
+            <>
+              <label className="sr-only" htmlFor="trend-month">Bulan grafik</label>
+              <select
+                id="trend-month"
+                value={selectedMonth}
+                onChange={(event) => setSelectedMonth(Number(event.target.value))}
+                className="rounded-md border border-border-soft bg-surface px-2 py-1 text-xs text-heading"
+              >
+                {Array.from({ length: 12 }, (_, month) => (
+                  <option key={month} value={month}>
+                    {new Intl.DateTimeFormat("id-ID", { month: "long" }).format(
+                      new Date(2026, month, 1),
+                    )}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+          {mode === "custom" && (
+            <>
+              <label className="sr-only" htmlFor="trend-start">Tanggal mulai</label>
+              <input
+                id="trend-start"
+                type="date"
+                value={startDate}
+                onChange={(event) => setStartDate(event.target.value)}
+                className="rounded-md border border-border-soft bg-surface px-2 py-1 text-xs text-heading"
+              />
+              <span className="text-xs text-muted">s.d.</span>
+              <label className="sr-only" htmlFor="trend-end">Tanggal akhir</label>
+              <input
+                id="trend-end"
+                type="date"
+                value={endDate}
+                onChange={(event) => setEndDate(event.target.value)}
+                className="rounded-md border border-border-soft bg-surface px-2 py-1 text-xs text-heading"
+              />
+            </>
+          )}
+          <div
+            role="tablist"
+            aria-label="Pilih metrik"
+            className="flex items-center gap-1 rounded-lg border border-border-soft bg-canvas p-0.5"
+          >
+            {(Object.keys(METRICS) as Metric[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={metric === key}
+                onClick={() => setMetric(key)}
+                className={`rounded-md px-2.5 py-1 text-2xs font-semibold transition-colors ${
+                  metric === key
+                    ? "bg-primary text-on-primary shadow-sm"
+                    : "text-muted hover:text-heading"
+                }`}
+              >
+                {METRICS[key].label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -383,7 +597,7 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
           </span>
           <span className="text-xs text-muted">
             {cfg.unit}
-            {data[focusIdx] ? ` pada ${data[focusIdx].month}` : ""}
+            {data[focusIdx] ? ` pada ${data[focusIdx].periodLabel}` : ""}
           </span>
           <DeltaChip value={focusDelta} />
         </div>
@@ -399,7 +613,7 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
         ref={wrapRef}
         tabIndex={0}
         role="group"
-        aria-label={`Grafik garis ${cfg.label} bulanan. Gunakan tombol panah untuk berpindah bulan.`}
+        aria-label={`Grafik garis ${cfg.label} sesuai periode pilihan. Gunakan tombol panah untuk berpindah data.`}
         onKeyDown={handleKey}
         onBlur={() => setActive(null)}
         className="relative mt-3 w-full rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -509,7 +723,7 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
             }}
           >
             <div className="text-2xs font-medium text-muted">
-              {data[active].month} 2026
+              {data[active].periodLabel}
             </div>
             <div className="mt-0.5 flex items-center gap-1.5">
               <span
@@ -529,7 +743,9 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
 
         {values.length === 0 && (
           <div className="flex h-full items-center justify-center text-xs text-muted">
-            Belum ada data tren.
+            {mode === "custom" && startDate > endDate
+              ? "Tanggal mulai harus sebelum atau sama dengan tanggal akhir."
+              : "Belum ada data pada periode ini."}
           </div>
         )}
       </div>
@@ -622,13 +838,17 @@ const STATUS_META: Record<
 };
 
 function methodLabel(method: string) {
-  if (method === "Upload Excel") return "Unggah Excel";
+  if (method === "Upload Excel" || method === "Upload Document (.xlsx)") {
+    return "Upload Document";
+  }
   if (method === "Application Form") return "Formulir Pendaftaran";
   return method;
 }
 
 function RecentActivities({ items }: { items: ActivityData[] }) {
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const counts = useMemo(
     () => ({
@@ -640,8 +860,14 @@ function RecentActivities({ items }: { items: ActivityData[] }) {
     [items]
   );
 
-  const visible =
+  const filtered =
     filter === "all" ? items : items.filter((i) => i.status === filter);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const visible = filtered.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
 
   return (
     <div className="rounded-card border border-border-soft bg-surface p-6 shadow-card">
@@ -670,7 +896,10 @@ function RecentActivities({ items }: { items: ActivityData[] }) {
               <button
                 key={key}
                 type="button"
-                onClick={() => setFilter(key)}
+                onClick={() => {
+                  setFilter(key);
+                  setPage(1);
+                }}
                 className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-2xs font-semibold transition-colors ${
                   active
                     ? "bg-primary text-on-primary"
@@ -747,6 +976,51 @@ function RecentActivities({ items }: { items: ActivityData[] }) {
           </tbody>
         </table>
       </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-soft pt-3 text-2xs text-muted">
+        <div className="flex items-center gap-2">
+          <label htmlFor="activity-page-size">Baris per halaman</label>
+          <select
+            id="activity-page-size"
+            value={pageSize}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value));
+              setPage(1);
+            }}
+            className="rounded-md border border-border-soft bg-surface px-2 py-1 text-xs text-heading"
+          >
+            {[10, 20, 50].map((size) => (
+              <option key={size} value={size}>{size}</option>
+            ))}
+          </select>
+          <span>
+            {filtered.length === 0
+              ? "0 aktivitas"
+              : `${(currentPage - 1) * pageSize + 1}–${Math.min(
+                  currentPage * pageSize,
+                  filtered.length,
+                )} dari ${filtered.length} aktivitas`}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPage((value) => Math.max(1, value - 1))}
+            disabled={currentPage === 1}
+            className="rounded-md border border-border-soft px-2.5 py-1 font-semibold text-heading enabled:hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Sebelumnya
+          </button>
+          <span>Halaman {currentPage} dari {pageCount}</span>
+          <button
+            type="button"
+            onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
+            disabled={currentPage === pageCount}
+            className="rounded-md border border-border-soft px-2.5 py-1 font-semibold text-heading enabled:hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Berikutnya
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -755,14 +1029,14 @@ export function InsightsAnalytics({
   totalSubmissions,
   methods,
   topCompanies,
-  trends = FALLBACK_TRENDS,
+  trendRecords,
   activities,
 }: InsightsAnalyticsProps) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <MethodDonut methods={methods} total={totalSubmissions} />
-        <TrendChart data={trends && trends.length > 0 ? trends : FALLBACK_TRENDS} />
+        <TrendChart records={trendRecords} />
       </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <TopCompanies items={topCompanies} />

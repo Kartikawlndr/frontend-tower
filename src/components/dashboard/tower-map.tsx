@@ -45,6 +45,20 @@ function createTowerPopup(tower: TowerRecord) {
   return content;
 }
 
+function createClusterPopup(towers: TowerRecord[]) {
+  const content = document.createElement("div");
+  content.className = "space-y-3";
+  towers.forEach((tower, index) => {
+    if (index > 0) {
+      const separator = document.createElement("hr");
+      separator.className = "border-[#e5e7eb]";
+      content.appendChild(separator);
+    }
+    content.appendChild(createTowerPopup(tower));
+  });
+  return content;
+}
+
 export default function TowerMap({
   towers = EMPTY_TOWERS,
 }: {
@@ -94,21 +108,88 @@ export default function TowerMap({
     const markerLayer = markerLayerRef.current;
     if (!map || !markerLayer) return;
 
-    markerLayer.clearLayers();
-    validTowers.forEach((tower) => {
-      L.marker([tower.latitude, tower.longitude], { icon: towerIcon })
-        .bindPopup(createTowerPopup(tower))
-        .addTo(markerLayer);
-    });
+    const renderMarkers = () => {
+      markerLayer.clearLayers();
+      const groups: TowerRecord[][] = [];
+      for (const tower of validTowers) {
+        const point = map.latLngToLayerPoint([tower.latitude, tower.longitude]);
+        const group = groups.find((entries) => {
+          const center = entries.reduce(
+            (sum, entry) => ({
+              lat: sum.lat + entry.latitude / entries.length,
+              lng: sum.lng + entry.longitude / entries.length,
+            }),
+            { lat: 0, lng: 0 },
+          );
+          return point.distanceTo(
+            map.latLngToLayerPoint([center.lat, center.lng]),
+          ) < 28;
+        });
+        if (group) group.push(tower);
+        else groups.push([tower]);
+      }
 
+      for (const group of groups) {
+        const center = group.reduce(
+          (sum, tower) => ({
+            lat: sum.lat + tower.latitude / group.length,
+            lng: sum.lng + tower.longitude / group.length,
+          }),
+          { lat: 0, lng: 0 },
+        );
+        const marker =
+          group.length === 1
+            ? L.marker([center.lat, center.lng], { icon: towerIcon })
+            : L.marker([center.lat, center.lng], {
+                icon: L.divIcon({
+                  className: "",
+                  html: `<span style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border:2px solid white;border-radius:50%;background:#016db0;color:white;font-size:12px;font-weight:700;box-shadow:0 1px 5px #0006">${group.length}</span>`,
+                  iconSize: [32, 32],
+                  iconAnchor: [16, 16],
+                }),
+              });
+        marker.bindPopup(
+          group.length === 1
+            ? createTowerPopup(group[0])
+            : createClusterPopup(group),
+        );
+        if (group.length > 1) {
+          marker.on("click", () => {
+            const distinctLocations = new Set(
+              group.map((tower) => `${tower.latitude},${tower.longitude}`),
+            );
+            if (distinctLocations.size > 1) {
+              map.fitBounds(
+                L.latLngBounds(
+                  group.map(
+                    (tower) =>
+                      [tower.latitude, tower.longitude] as [number, number],
+                  ),
+                ),
+                { padding: [40, 40], maxZoom: 18 },
+              );
+            }
+          });
+        }
+        marker.addTo(markerLayer);
+      }
+    };
+
+    renderMarkers();
+    map.on("zoomend", renderMarkers);
     if (validTowers.length > 0) {
-      const bounds = L.latLngBounds(
-        validTowers.map(
-          (tower) => [tower.latitude, tower.longitude] as [number, number]
-        )
+      map.fitBounds(
+        L.latLngBounds(
+          validTowers.map(
+            (tower) => [tower.latitude, tower.longitude] as [number, number],
+          ),
+        ),
+        { padding: [40, 40], maxZoom: 14 },
       );
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
     }
+    return () => {
+      map.off("zoomend", renderMarkers);
+    };
   }, [validTowers]);
 
   return (

@@ -5,16 +5,15 @@ import {
   createRegisteredTowers,
   createRejectedAttempt,
 } from "../../../shared/normalized-registration.js";
-import administrativeRegions from "../../../hooks/applicant-tower-guard/src/indonesian-administrative-regions.json" with {
-  type: "json",
-};
+import { resolveAdministrativeRegions } from "../../../hooks/applicant-tower-guard/src/administrative-regions.js";
+
+export { resolveAdministrativeRegions } from "../../../hooks/applicant-tower-guard/src/administrative-regions.js";
 
 const COLLECTION = "tower_infrastruktur";
 const FILE_COLLECTION = "directus_files";
 const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const TEMPLATE_PATH = fileURLToPath(new URL("../templates/Template_Registrasi_Menara.xlsx", import.meta.url));
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-// The official administrative-region workbook expands to roughly 40 MB.
 const MAX_ARCHIVE_SIZE = 50 * 1024 * 1024;
 const MAX_ARCHIVE_ENTRIES = 128;
 const MAX_COMPRESSION_RATIO = 100;
@@ -29,16 +28,18 @@ const HEADERS = [
   "penyelenggara",
   "longitude",
   "latitude",
-  "provinsi",
-  "kab_kota",
-  "kecamatan",
-  "kelurahan",
   "alamat",
   "jenis_menara",
   "tinggi_menara",
   "kapasitas_maksimal",
   "kapasitas_disewakan",
   "kapasitas_digunakan_sendiri",
+];
+const ADMINISTRATIVE_HEADERS = [
+  "provinsi",
+  "kab_kota",
+  "kecamatan",
+  "kelurahan",
 ];
 const DISPLAY_HEADERS = [
   "Kode/ID Menara",
@@ -47,10 +48,6 @@ const DISPLAY_HEADERS = [
   "Penyelenggara Jaringan Telekomunikasi",
   "Longitude",
   "Latitude",
-  "Provinsi",
-  "Kabupaten/Kota",
-  "Kecamatan",
-  "Kelurahan",
   "Alamat",
   "Jenis Menara Telekomunikasi",
   "Tinggi Menara Telekomunikasi (AGL)",
@@ -59,16 +56,20 @@ const DISPLAY_HEADERS = [
   "Kapasitas menara telekomunikasi yang digunakan sendiri",
 ];
 const DISPLAY_HEADER_FIELDS = new Map(
-  DISPLAY_HEADERS.map((header, index) => [
-    normalizeHeader(header),
-    HEADERS[index],
-  ]),
+  [
+    ...DISPLAY_HEADERS.map((header, index) => [
+      normalizeHeader(header),
+      HEADERS[index],
+    ]),
+    ["provinsi", "provinsi"],
+    ["kabupaten/kota", "kab_kota"],
+    ["kecamatan", "kecamatan"],
+    ["kelurahan", "kelurahan"],
+  ],
 );
 const LEGACY_HEADER_FIELDS = new Map([
-  ...HEADERS.filter(
-    (header) =>
-      !["provinsi", "kab_kota", "kecamatan", "kelurahan"].includes(header),
-  ).map((header) => [header, header]),
+  ...HEADERS.map((header) => [header, header]),
+  ...ADMINISTRATIVE_HEADERS.map((header) => [header, header]),
   ["penyelenggara_penyewa", "penyelenggara"],
 ]);
 
@@ -187,6 +188,29 @@ export function validateXlsxArchive(buffer) {
   }
 }
 
+export function duplicateTowerIdError(error) {
+  if (
+    error?.code === "RECORD_NOT_UNIQUE" &&
+    error?.extensions?.field === "id_menara"
+  ) {
+    const towerId = error.extensions.value;
+    return {
+      row: null,
+      column: "id_menara",
+      message: `ID menara "${String(towerId)}" sudah terdaftar di database (kemungkinan sudah pernah diunggah). Tidak ada data dari file ini yang disimpan.`,
+    };
+  }
+  if (error?.code === "23505") {
+    return {
+      row: null,
+      column: "id_menara",
+      message:
+        "ID menara sudah terdaftar di database (kemungkinan sudah pernah diunggah). Tidak ada data dari file ini yang disimpan.",
+    };
+  }
+  return null;
+}
+
 async function readStream(stream) {
   const chunks = [];
   for await (const chunk of stream) {
@@ -215,7 +239,7 @@ function normalizeHeader(value) {
 function findHeader(workbook) {
   const expectedHeaderSets = [
     new Set(HEADERS),
-    new Set(LEGACY_HEADER_FIELDS.values()),
+    new Set([...HEADERS, ...ADMINISTRATIVE_HEADERS]),
   ];
   const matches = [];
 
@@ -248,7 +272,10 @@ function findHeader(workbook) {
         matches.push({
           worksheet,
           rowNumber,
-          expanded: expected.size === HEADERS.length,
+          hasAdministrativeColumns: expected.size > HEADERS.length,
+          officialTemplate: values.some(
+            ({ value }) => value === normalizeHeader(DISPLAY_HEADERS[0]),
+          ),
           columns: new Map(mapped.map(({ field, column }) => [field, column])),
         });
       }
@@ -269,9 +296,9 @@ function findHeader(workbook) {
   }
 
   const match = matches[0];
-  const requiredHeaders = match.expanded
-    ? HEADERS
-    : [...new Set(LEGACY_HEADER_FIELDS.values())];
+  const requiredHeaders = match.hasAdministrativeColumns
+    ? [...HEADERS, ...ADMINISTRATIVE_HEADERS]
+    : HEADERS;
   const missing = requiredHeaders.filter((header) => !match.columns.has(header));
   if (missing.length) {
     throw new WorkbookValidationError(
@@ -399,10 +426,14 @@ export async function parseTowerWorkbook(buffer) {
     ]);
   }
 
-  const { worksheet, rowNumber: headerRow, columns, expanded } = findHeader(workbook);
+  const {
+    worksheet,
+    rowNumber: headerRow,
+    columns,
+    officialTemplate,
+  } = findHeader(workbook);
   const groups = new Map();
   const errors = [];
-  const isExpandedTemplate = expanded;
   const dataStartRow = firstDataRow(worksheet, headerRow, columns);
   let dataRowCount = 0;
 
@@ -430,7 +461,7 @@ export async function parseTowerWorkbook(buffer) {
       readNumber(row, columns.get(field), index, errors, { ...options, field });
 
     const id_menara = readFieldText("id_menara", {
-      numericAllowed: !isExpandedTemplate,
+      numericAllowed: !officialTemplate,
     });
     const nama_pemilik = readFieldText("nama_pemilik");
     const tahun_pembangunan = readFieldNumber("tahun_pembangunan", {
@@ -452,10 +483,6 @@ export async function parseTowerWorkbook(buffer) {
       max: 6,
       maxDecimalPlaces: 6,
     });
-    const provinsi = isExpandedTemplate ? readFieldText("provinsi") : null;
-    const kab_kota = isExpandedTemplate ? readFieldText("kab_kota") : null;
-    const kecamatan = isExpandedTemplate ? readFieldText("kecamatan") : null;
-    const kelurahan = isExpandedTemplate ? readFieldText("kelurahan") : null;
     const alamat = readFieldText("alamat");
     const jenis_menara = readFieldText("jenis_menara");
     const tinggi_menara = readFieldNumber("tinggi_menara", {
@@ -471,58 +498,14 @@ export async function parseTowerWorkbook(buffer) {
       { numericAllowed: true },
     );
 
-    if (isExpandedTemplate) {
-      const province = administrativeRegions.regions.find(
-        (region) => region.name.toLocaleUpperCase("id-ID") === provinsi,
-      );
-      if (!province) {
-        errors.push({
-          row: index,
-          column: "provinsi",
-          message: "Pilih provinsi yang tersedia pada Data_Master.",
-        });
-      } else {
-        const regency = province.kabKota.find(
-          (item) => item.name.toLocaleUpperCase("id-ID") === kab_kota,
-        );
-        if (!regency) {
-          errors.push({
-            row: index,
-            column: "kab_kota",
-            message: "Pilih Kabupaten/Kota yang sesuai dengan Provinsi.",
-          });
-        } else {
-          const district = regency.kecamatan.find(
-            (item) => item.name.toLocaleUpperCase("id-ID") === kecamatan,
-          );
-          if (!district) {
-            errors.push({
-              row: index,
-              column: "kecamatan",
-              message: "Pilih Kecamatan yang sesuai dengan Kabupaten/Kota.",
-            });
-          } else if (
-            !district.kelurahan.some(
-              (item) => item.name.toLocaleUpperCase("id-ID") === kelurahan,
-            )
-          ) {
-            errors.push({
-              row: index,
-              column: "kelurahan",
-              message: "Pilih Kelurahan yang sesuai dengan Kecamatan.",
-            });
-          }
-        }
-      }
-    }
-
     const tower = {
       id_menara,
       nama_pemilik,
       tahun_pembangunan,
-      ...(isExpandedTemplate
-        ? { provinsi, kab_kota, kecamatan, kelurahan }
-        : {}),
+      provinsi: null,
+      kab_kota: null,
+      kecamatan: null,
+      kelurahan: null,
       alamat,
       jenis_menara,
       tinggi_menara,
@@ -679,20 +662,23 @@ export default defineEndpoint((router, { logger, services, database, getSchema }
         ]);
       }
 
-      const registrations = await parseTowerWorkbook(fileBuffer);
+      const parsedRegistrations = await parseTowerWorkbook(fileBuffer);
+      const registrations = await resolveAdministrativeRegions(
+        database,
+        parsedRegistrations,
+      );
       const existing = await database(COLLECTION)
         .select("id_menara")
         .whereIn(
           "id_menara",
           registrations.map(({ tower }) => tower.id_menara),
         )
-        .whereNull("deleted_at");
       if (existing.length) {
         throw new WorkbookValidationError(
           existing.map(({ id_menara }) => ({
             row: null,
             column: "id_menara",
-            message: `ID menara "${id_menara}" sudah terdaftar.`,
+            message: `ID menara "${id_menara}" sudah terdaftar di database (kemungkinan sudah pernah diunggah). Tidak ada data dari file ini yang disimpan.`,
           })),
         );
       }
@@ -738,13 +724,9 @@ export default defineEndpoint((router, { logger, services, database, getSchema }
         return res.status(422).json({ errors: error.errors });
       }
 
-      if (error?.code === "23505") {
-        const errors = [{
-          row: null,
-          column: "id_menara",
-          message:
-            "Salah satu ID menara sudah pernah tercatat. Tidak ada baris yang disimpan.",
-        }];
+      const duplicateError = duplicateTowerIdError(error);
+      if (duplicateError) {
+        const errors = [duplicateError];
         try {
           await createRejectedAttempt({
             database,

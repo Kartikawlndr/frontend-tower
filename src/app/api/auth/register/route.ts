@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       email: email.trim(),
       password,
       first_name: firstName,
-      ...(lastName ? { last_name: lastName } : {}),
+      last_name: lastName,
       verification_url: new URL(
         "/api/verify-email",
         serverEnv.appUrl,

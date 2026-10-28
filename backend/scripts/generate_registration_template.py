@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any
 
 from openpyxl import Workbook
-from openpyxl.comments import Comment
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.workbook.defined_name import DefinedName
@@ -19,14 +18,6 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_REGIONS = (
-    ROOT
-    / "extensions"
-    / "hooks"
-    / "applicant-tower-guard"
-    / "src"
-    / "indonesian-administrative-regions.json"
-)
 DEFAULT_OUTPUT = (
     ROOT
     / "extensions"
@@ -45,10 +36,6 @@ FORM_HEADERS = (
     "Penyelenggara Jaringan Telekomunikasi",
     "Longitude",
     "Latitude",
-    "Provinsi",
-    "Kabupaten/Kota",
-    "Kecamatan",
-    "Kelurahan",
     "Alamat",
     "Jenis Menara Telekomunikasi",
     "Tinggi Menara Telekomunikasi (AGL)",
@@ -63,10 +50,6 @@ FORM_NOTES = (
     "Wajib; teks maks. 50 karakter. Pisahkan nama multi-tenant dengan koma.",
     "Wajib; angka 95 sampai 141, maksimal 6 angka desimal.",
     "Wajib; angka -11 sampai 6, maksimal 6 angka desimal.",
-    "Wajib; pilih dari daftar.",
-    "Wajib; pilih setelah Provinsi.",
-    "Wajib; pilih setelah Kabupaten/Kota.",
-    "Wajib; pilih setelah Kecamatan.",
     "Wajib; teks maks. 50 karakter. Masukkan detail jalan/RT/RW.",
     "Wajib; teks maks. 50 karakter.",
     "Wajib; bilangan bulat 1 sampai 999.",
@@ -383,7 +366,7 @@ def create_form_sheet(workbook: Workbook) -> Worksheet:
     sheet.page_setup.fitToHeight = 0
     sheet.print_title_rows = "1:4"
 
-    sheet.merge_cells("A1:P1")
+    sheet.merge_cells("A1:L1")
     title = sheet["A1"]
     title.value = "TEMPLATE UPLOAD BULK REGISTRASI MENARA TELEKOMUNIKASI"
     title.fill = PatternFill("solid", fgColor=NAVY)
@@ -391,11 +374,12 @@ def create_form_sheet(workbook: Workbook) -> Worksheet:
     title.alignment = Alignment(horizontal="center", vertical="center")
     sheet.row_dimensions[1].height = 32
 
-    sheet.merge_cells("A2:P2")
+    sheet.merge_cells("A2:L2")
     instructions = sheet["A2"]
     instructions.value = (
         "Isi satu baris untuk satu menara. Kolom bertanda Wajib harus diisi. "
-        "Pilih wilayah melalui dropdown berjenjang; jangan mengetik pilihan sendiri. "
+        "Provinsi, Kabupaten/Kota, Kecamatan, dan Kelurahan diisi otomatis dari koordinat. "
+        "Titik di laut yang tidak masuk poligon wilayah akan memiliki data wilayah kosong. "
         "Kode/ID menara harus berupa teks agar angka nol di depan tetap tersimpan. "
         "Maksimal 1.000 baris data."
     )
@@ -405,8 +389,7 @@ def create_form_sheet(workbook: Workbook) -> Worksheet:
     sheet.row_dimensions[2].height = 34
 
     for column, (header, note) in enumerate(zip(FORM_HEADERS, FORM_NOTES), 1):
-        fill = GREEN_DARK if column == 13 else BLUE_DARK
-        style_header(sheet.cell(3, column, header), fill)
+        style_header(sheet.cell(3, column, header), BLUE_DARK)
         sheet.cell(4, column, note)
         sheet.cell(4, column).font = Font(name="Aptos", size=9, italic=True, color=GRAY)
         sheet.cell(4, column).fill = PatternFill("solid", fgColor="EAF2F8")
@@ -422,50 +405,25 @@ def create_form_sheet(workbook: Workbook) -> Worksheet:
     final_row = FIRST_DATA_ROW + DATA_ROWS - 1
     for row in range(FIRST_DATA_ROW, final_row + 1):
         sheet.row_dimensions[row].height = 22
-        for column in range(1, 17):
+        for column in range(1, 13):
             cell = sheet.cell(row, column)
             cell.font = Font(name="Aptos", size=10, color=BLACK)
             cell.alignment = Alignment(vertical="center")
-            if column in (3, 7, 8, 9, 10):
+            if column == 3:
                 cell.fill = PatternFill("solid", fgColor=BLUE)
                 cell.alignment = Alignment(
                     horizontal="center", vertical="center", wrap_text=True
                 )
-            if column in (1, 2, 4, 11, 12, 14, 15, 16):
+            if column in (1, 2, 4, 7, 8, 10, 11, 12):
                 cell.number_format = "@"
         sheet.cell(row, 5).number_format = "0.000000"
         sheet.cell(row, 6).number_format = "0.000000"
-        sheet.cell(row, 13).number_format = "0"
 
     add_list_validation(
         sheet,
         "=year_list",
         f"C{FIRST_DATA_ROW}:C{final_row}",
         "Pilih tahun pembangunan antara 1900 dan 2026.",
-    )
-    add_list_validation(
-        sheet,
-        "=province_list",
-        f"G{FIRST_DATA_ROW}:G{final_row}",
-        "Pilih salah satu dari 38 provinsi.",
-    )
-    add_list_validation(
-        sheet,
-        '=INDIRECT(INDEX(province_range_keys,MATCH(G5,province_lookup_names,0)))',
-        f"H{FIRST_DATA_ROW}:H{final_row}",
-        "Pilih Kabupaten/Kota setelah memilih Provinsi.",
-    )
-    add_list_validation(
-        sheet,
-        '=INDIRECT(INDEX(regency_range_keys,MATCH(G5&"|"&H5,regency_lookup_keys,0)))',
-        f"I{FIRST_DATA_ROW}:I{final_row}",
-        "Pilih Kecamatan setelah memilih Kabupaten/Kota.",
-    )
-    add_list_validation(
-        sheet,
-        '=INDIRECT(INDEX(district_range_keys,MATCH(G5&"|"&H5&"|"&I5,district_lookup_keys,0)))',
-        f"J{FIRST_DATA_ROW}:J{final_row}",
-        "Pilih Kelurahan setelah memilih Kecamatan.",
     )
 
     add_custom_validation(
@@ -475,7 +433,7 @@ def create_form_sheet(workbook: Workbook) -> Worksheet:
         "Kode/ID tidak valid",
         "Masukkan Kode/ID Menara sebagai teks maksimal 50 karakter.",
     )
-    for column in ("B", "D", "K", "L", "N", "O", "P"):
+    for column in ("B", "D", "G", "H", "J", "K", "L"):
         add_custom_validation(
             sheet,
             f"=AND(ISTEXT({column}5),LEN({column}5)>0,LEN({column}5)<=50)",
@@ -513,7 +471,7 @@ def create_form_sheet(workbook: Workbook) -> Worksheet:
         prompt="Bilangan bulat saja; rentang 1 sampai 999 meter.",
     )
     sheet.add_data_validation(height_validation)
-    height_validation.add(f"M{FIRST_DATA_ROW}:M{final_row}")
+    height_validation.add(f"I{FIRST_DATA_ROW}:I{final_row}")
 
     set_auto_width(sheet, minimum=14, maximum=42)
     for column, width in {
@@ -523,47 +481,40 @@ def create_form_sheet(workbook: Workbook) -> Worksheet:
         "D": 36,
         "E": 17,
         "F": 17,
-        "G": 22,
-        "H": 28,
-        "I": 26,
-        "J": 28,
-        "K": 38,
-        "L": 35,
-        "M": 36,
-        "N": 40,
-        "O": 42,
-        "P": 44,
+        "G": 38,
+        "H": 35,
+        "I": 36,
+        "J": 40,
+        "K": 42,
+        "L": 44,
     }.items():
         sheet.column_dimensions[column].width = width
-    sheet["A5"].comment = Comment(
-        "Format teks menjaga nol di depan. Contoh yang benar: 000101.",
-        "OpenAI",
-    )
     return sheet
 
 
-def build_workbook(regions_path: Path, output_path: Path) -> dict[str, int]:
-    regions = load_regions(regions_path)
+def create_year_master(workbook: Workbook) -> None:
+    sheet = workbook.create_sheet("Data_Master")
+    sheet.sheet_state = "hidden"
+    sheet["A1"] = "Tahun Pembangunan"
+    for row, year in enumerate(range(1900, 2027), 2):
+        sheet.cell(row, 1, year)
+    add_defined_name(workbook, "year_list", "'Data_Master'!$A$2:$A$128")
+
+
+def build_workbook(output_path: Path) -> None:
     workbook = Workbook()
     workbook.properties.title = "Template Registrasi Menara Telekomunikasi"
     workbook.properties.subject = "Template upload bulk registrasi menara"
     workbook.properties.creator = "Portal Infrastruktur Pasif"
 
     create_form_sheet(workbook)
-    _, stats = create_data_master(workbook, regions, regions_path)
+    create_year_master(workbook)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     workbook.save(output_path)
-    return stats
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--regions",
-        type=Path,
-        default=DEFAULT_REGIONS,
-        help="Path to the administrative-regions JSON source.",
-    )
     parser.add_argument(
         "--output",
         type=Path,
@@ -571,10 +522,8 @@ def main() -> None:
         help="Output .xlsx path.",
     )
     args = parser.parse_args()
-    stats = build_workbook(args.regions, args.output)
-    summary = ", ".join(f"{key}={value:,}" for key, value in stats.items())
+    build_workbook(args.output)
     print(f"Created: {args.output}")
-    print(f"Administrative data: {summary}")
 
 
 if __name__ == "__main__":

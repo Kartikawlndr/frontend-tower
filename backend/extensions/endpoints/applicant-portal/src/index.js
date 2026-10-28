@@ -9,6 +9,7 @@ import {
   createRejectedAttempt,
   setRecordCreator,
 } from "../../../shared/normalized-registration.js";
+import { AdministrativeRegionLookupError } from "../../../hooks/applicant-tower-guard/src/administrative-regions.js";
 
 const COLLECTION = "tower_infrastruktur";
 const TENANT_COLLECTION = "tower_tenant";
@@ -633,17 +634,30 @@ export default defineEndpoint(
 
     router.get("/towers/drafts", async (req, res) => {
       if (req.portalRole !== "Applicant") return forbidden(res);
+      const requestedId =
+        req.query.id === undefined ? null : parseDraftId(String(req.query.id));
+      if (req.query.id !== undefined && requestedId === null) {
+        return res.status(400).json({ error: "ID draft tidak valid." });
+      }
       try {
-        const draft = await database(ATTEMPT_COLLECTION)
+        const draftQuery = database(ATTEMPT_COLLECTION)
           .select("id", "submission_data", "date_updated")
           .where({
             user_created: req.accountability.user,
             status: "Draft",
             attempt_type: "New Registration",
-          })
-          .orderBy("date_updated", "desc")
-          .orderBy("date_created", "desc")
-          .first();
+          });
+        if (requestedId !== null) {
+          draftQuery.where({ id: requestedId });
+        } else {
+          draftQuery
+            .orderBy("date_updated", "desc")
+            .orderBy("date_created", "desc");
+        }
+        const draft = await draftQuery.first();
+        if (requestedId !== null && !draft) {
+          return res.status(404).json({ error: "Draft tidak ditemukan atau sudah dikirim." });
+        }
         return res.json({
           data: draft
             ? {
@@ -801,6 +815,12 @@ export default defineEndpoint(
           { database, accountability: req.accountability },
         );
       } catch (error) {
+        if (error instanceof AdministrativeRegionLookupError) {
+          logger.error(error, "Failed to resolve administrative regions for manual registration");
+          return res.status(500).json({
+            error: "Wilayah administratif tidak dapat ditentukan saat ini. Coba lagi.",
+          });
+        }
         const errors = [{
           field: error.field ?? "data",
           message: error.message ?? "Data menara tidak memenuhi ketentuan.",

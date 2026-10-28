@@ -186,6 +186,15 @@ test("registered submission transaction writes tower, tenants, attempt, and acti
   assert.equal(attempt.data.registration_code, "REG-000001");
   assert.equal(attempt.data.tower_id, created[0].id);
   assert.equal(attempt.data.submission_data.tenants.length, 2);
+  assert.ok(Number.isFinite(Date.parse(attempt.data.date_created)));
+  assert.equal(
+    attempt.data.date_created,
+    attempt.data.submission_data.date_created,
+  );
+  assert.equal(
+    records.find(({ collection }) => collection === "tower_infrastruktur").data.date_created,
+    attempt.data.date_created,
+  );
   assert.equal(activities.length, 3);
   assert.deepEqual(
     owners.map(({ table }) => table),

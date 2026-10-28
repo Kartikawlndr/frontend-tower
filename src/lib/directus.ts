@@ -36,7 +36,7 @@ export async function directusRegister(params: {
   email: string;
   password: string;
   first_name: string;
-  last_name?: string;
+  last_name: string;
   verification_url: string;
 }): Promise<{ success: boolean; message?: string; error?: string }> {
   const response = await fetch(`${directusUrl()}/users/register`, {
@@ -46,7 +46,7 @@ export async function directusRegister(params: {
       email: params.email,
       password: params.password,
       first_name: params.first_name,
-      ...(params.last_name ? { last_name: params.last_name } : {}),
+      last_name: params.last_name,
       verification_url: params.verification_url,
     }),
     cache: "no-store",

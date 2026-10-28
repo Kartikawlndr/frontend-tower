@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import ExcelJS from "exceljs";
-import { parseTowerWorkbook, validateXlsxArchive } from "./index.js";
+import {
+  duplicateTowerIdError,
+  parseTowerWorkbook,
+  resolveAdministrativeRegions,
+  validateXlsxArchive,
+} from "./index.js";
 
 const headers = [
   "id_menara",
@@ -36,6 +41,22 @@ const expandedHeaders = [
   "Kapasitas menara telekomunikasi yang disewakan",
   "Kapasitas menara telekomunikasi yang digunakan sendiri",
 ];
+
+test("turns Directus ID uniqueness errors into a clear duplicate-upload reason", () => {
+  assert.deepEqual(
+    duplicateTowerIdError({
+      code: "RECORD_NOT_UNIQUE",
+      extensions: { field: "id_menara", value: "000123" },
+    }),
+    {
+      row: null,
+      column: "id_menara",
+      message:
+        'ID menara "000123" sudah terdaftar di database (kemungkinan sudah pernah diunggah). Tidak ada data dari file ini yang disimpan.',
+    },
+  );
+  assert.equal(duplicateTowerIdError({ code: "RECORD_NOT_UNIQUE" }), null);
+});
 
 async function workbookBuffer(rows, sheetName = "Template", columns = headers) {
   const workbook = new ExcelJS.Workbook();
@@ -191,33 +212,25 @@ test("finds the template headers on the data sheet", async () => {
   assert.equal(items[0].tower.id_menara, "TOWER-1");
 });
 
-test("parses the expanded template, validates the region hierarchy, and splits tenants", async () => {
+test("accepts the previous template but does not trust manually entered regions", async () => {
+  const row = expandedValidRow("000101");
+  row[6] = "Provinsi yang tidak sesuai";
   const items = await parseTowerWorkbook(
     await workbookBuffer(
-      [expandedValidRow("000101")],
+      [row],
       "Template",
       expandedHeaders,
     ),
   );
   assert.equal(items[0].tower.id_menara, "000101");
-  assert.equal(items[0].tower.provinsi, "ACEH");
-  assert.equal(items[0].tower.kab_kota, "KABUPATEN ACEH SELATAN");
+  assert.equal(items[0].tower.provinsi, null);
+  assert.equal(items[0].tower.kab_kota, null);
+  assert.equal(items[0].tower.kecamatan, null);
+  assert.equal(items[0].tower.kelurahan, null);
   assert.equal(items[0].tenants.length, 2);
   assert.deepEqual(
     items[0].tenants.map(({ penyelenggara }) => penyelenggara),
     ["PENYELENGGARA A", "PENYELENGGARA B"],
-  );
-});
-
-test("rejects expanded-template rows with mismatched administrative regions", async () => {
-  const row = expandedValidRow("000102");
-  row[6] = "Sumatera Utara";
-  await assert.rejects(
-    parseTowerWorkbook(await workbookBuffer([row], "Template", expandedHeaders)),
-    (error) =>
-      error.errors.some(
-        (issue) => issue.column === "kab_kota" && issue.row === 2,
-      ),
   );
 });
 
@@ -235,10 +248,89 @@ test("accepts the shipped template archive and recognizes its headers", async ()
     new URL("../templates/Template_Registrasi_Menara.xlsx", import.meta.url),
   );
   validateXlsxArchive(buffer);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  const worksheet = workbook.getWorksheet("Form_Registrasi");
+  assert.deepEqual(
+    worksheet.getRow(3).values.slice(1),
+    [
+      "Kode/ID Menara",
+      "Nama Pemilik Menara Telekomunikasi",
+      "Tahun Pembangunan Menara Telekomunikasi",
+      "Penyelenggara Jaringan Telekomunikasi",
+      "Longitude",
+      "Latitude",
+      "Alamat",
+      "Jenis Menara Telekomunikasi",
+      "Tinggi Menara Telekomunikasi (AGL)",
+      "Kapasitas maksimal menara telekomunikasi",
+      "Kapasitas menara telekomunikasi yang disewakan",
+      "Kapasitas menara telekomunikasi yang digunakan sendiri",
+    ],
+  );
+  assert.equal(workbook.getWorksheet("Data_Master").state, "hidden");
   await assert.rejects(
     parseTowerWorkbook(buffer),
     (error) =>
       error.errors[0]?.message === "Workbook tidak berisi baris data.",
+  );
+});
+
+test("resolves all tower regions in one PostGIS query and leaves unmatched points blank", async () => {
+  const registrations = [
+    { tower: { longitude: 106.8, latitude: -6.2 } },
+    { tower: { longitude: 120, latitude: -8 } },
+  ];
+  const queries = [];
+  const database = {
+    async raw(sql, bindings) {
+      queries.push({ sql, bindings });
+      return {
+        rows: [
+          {
+            row_number: 1,
+            province: "Jawa Tengah",
+            regency_city: "Kota Semarang",
+            district: "Semarang Tengah",
+            village: "Miroto",
+          },
+          {
+            row_number: 2,
+            province: null,
+            regency_city: null,
+            district: null,
+            village: null,
+          },
+        ],
+      };
+    },
+  };
+
+  const resolved = await resolveAdministrativeRegions(database, registrations);
+  assert.equal(queries.length, 1);
+  assert.match(queries[0].sql, /ST_Covers/);
+  assert.match(queries[0].sql, /ST_MakePoint\(input_points\.longitude, input_points\.latitude\)/);
+  assert.deepEqual(JSON.parse(queries[0].bindings[0]), [
+    { row_number: 1, longitude: 106.8, latitude: -6.2 },
+    { row_number: 2, longitude: 120, latitude: -8 },
+  ]);
+  assert.deepEqual(
+    [
+      resolved[0].tower.provinsi,
+      resolved[0].tower.kab_kota,
+      resolved[0].tower.kecamatan,
+      resolved[0].tower.kelurahan,
+    ],
+    ["JAWA TENGAH", "KOTA SEMARANG", "SEMARANG TENGAH", "MIROTO"],
+  );
+  assert.deepEqual(
+    [
+      resolved[1].tower.provinsi,
+      resolved[1].tower.kab_kota,
+      resolved[1].tower.kecamatan,
+      resolved[1].tower.kelurahan,
+    ],
+    [null, null, null, null],
   );
 });
 

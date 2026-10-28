@@ -7,7 +7,6 @@ import dynamic from "next/dynamic";
 import {
   Building2,
   Download,
-  FileSpreadsheet,
   Globe2,
   MapPin,
   RotateCcw,
@@ -164,11 +163,10 @@ interface DashboardStatsData {
     count: number;
     percentage: number;
   }[];
-  monthlyTrends: {
-    month: string;
-    submissions: number;
-    towers: number;
-  }[];
+  trendRecords: Array<{
+    timestamp: string;
+    type: "submission" | "tower";
+  }>;
   recentActivities: {
     id: string;
     regNumber: string;
@@ -193,13 +191,18 @@ type PortalTower = {
   kab_kota?: string;
   kecamatan?: string;
   kelurahan?: string;
+  metode_pendaftaran?: string;
   date_created?: string;
   tinggi_menara?: number | string;
   kapasitas_maksimal?: number | string;
   tenants?: Array<{ penyelenggara?: string }>;
 };
 
-type TowersResponse = { data?: PortalTower[]; error?: string };
+type TowersResponse = {
+  data?: PortalTower[];
+  meta?: { total?: number };
+  error?: string;
+};
 
 export default function DashboardPage() {
   const { role } = useAuth();
@@ -245,19 +248,37 @@ export default function DashboardPage() {
 
   const fetchTowers = useCallback(async (signal?: AbortSignal) => {
     try {
-      const response = await fetch("/api/towers?limit=100", {
-        cache: "no-store",
-        signal,
-      });
-      const payload = (await response.json().catch(() => null)) as TowersResponse | null;
-      if (!response.ok) {
-        throw new Error(payload?.error || "Data menara tidak dapat dimuat.");
-      }
-      if (!payload || !Array.isArray(payload.data)) {
-        throw new Error("Respons daftar menara dari Directus tidak valid.");
+      const towers: PortalTower[] = [];
+      let total = 0;
+      let page = 1;
+      while (towers.length < total || page === 1) {
+        const response = await fetch(`/api/towers?page=${page}&limit=100`, {
+          cache: "no-store",
+          signal,
+        });
+        const payload = (await response.json().catch(() => null)) as TowersResponse | null;
+        const pageTotal = payload?.meta?.total;
+        if (!response.ok) {
+          throw new Error(payload?.error || "Data menara tidak dapat dimuat.");
+        }
+        if (
+          !payload ||
+          !Array.isArray(payload.data) ||
+          typeof pageTotal !== "number" ||
+          !Number.isInteger(pageTotal) ||
+          pageTotal < 0
+        ) {
+          throw new Error("Respons daftar menara dari Directus tidak valid.");
+        }
+        if (page === 1) total = pageTotal;
+        if (payload.data.length === 0 && towers.length < total) {
+          throw new Error("Daftar menara dari Directus tidak lengkap.");
+        }
+        towers.push(...payload.data);
+        page += 1;
       }
       setTowersError("");
-      setDashboardTowers(payload.data.map((tower) => ({
+      setDashboardTowers(towers.map((tower) => ({
           id: tower.id,
           kodeId: tower.id_menara || "",
           namaPemilik: tower.nama_pemilik || "",
@@ -443,10 +464,8 @@ export default function DashboardPage() {
     }));
   }
 
-  function exportCsv(onlyVisibleColumns: boolean) {
-    const cols = onlyVisibleColumns
-      ? ALL_COLUMNS.filter((c) => visibleCols[c.key])
-      : ALL_COLUMNS;
+  function downloadCsv() {
+    const cols = ALL_COLUMNS.filter((c) => visibleCols[c.key]);
 
     const header = cols.map((c) => `"${c.label}"`).join(",");
     const rows = filteredTowers.map((t) =>
@@ -465,9 +484,7 @@ export default function DashboardPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = onlyVisibleColumns
-      ? "dashboard-towers-export.csv"
-      : "dashboard-towers-all.csv";
+    a.download = "dashboard-towers.csv";
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -666,7 +683,7 @@ export default function DashboardPage() {
            totalSubmissions={displayMetrics.totalSubmissions}
            methods={displayMethods}
            topCompanies={displayTopCompanies}
-           trends={stats?.monthlyTrends}
+           trendRecords={stats?.trendRecords ?? []}
            activities={displayActivities}
           />
         </div>
@@ -706,7 +723,7 @@ export default function DashboardPage() {
                       kodeId: e.target.value,
                     }))
                   }
-                  placeholder="Contoh: TOW-JKT-001"
+                  placeholder="Contoh: TWR-TAHUN-XXXX"
                   className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
                 />
               </div>
@@ -936,7 +953,7 @@ export default function DashboardPage() {
                   Peta Menara Telekomunikasi
                 </h2>
                 <p className="text-xs text-muted">
-                  Menampilkan {filteredTowers.length} menara aktif dari seluruh Indonesia
+                  Menampilkan {filteredTowers.length} menara sesuai filter; titik berdekatan dikelompokkan
                 </p>
               </div>
               {selectedPinId && (
@@ -1003,27 +1020,16 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* Download and Export Buttons */}
+                {/* Download */}
                 <Button
                   type="button"
                   variant="download"
                   size="sm"
-                  onClick={() => exportCsv(true)}
+                  onClick={downloadCsv}
                   title="Unduh kolom yang sedang tampil"
                 >
                   <Download className="h-3.5 w-3.5" />
                   <span>Unduh</span>
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => exportCsv(false)}
-                  title="Ekspor seluruh data ke file CSV"
-                >
-                  <FileSpreadsheet className="h-3.5 w-3.5" />
-                  <span>Ekspor</span>
                 </Button>
               </div>
             </div>

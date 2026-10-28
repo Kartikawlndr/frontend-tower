@@ -23,3 +23,8 @@ modify Directus permissions or schema.
 
 Every tenant row for a tower must repeat the same total `kapasitas_disewakan`;
 it is a tower-level capacity, not a tenant-specific value.
+
+Tower submissions and edits derive province, regency/city, district, and
+village from their coordinates using the shared PostGIS boundary lookup. These
+administrative fields are not accepted as user-provided values; points outside
+all boundary polygons are stored with blank administrative fields.
