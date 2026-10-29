@@ -20,7 +20,6 @@ const TOWER_FIELDS = [
   "id_menara",
   "nama_pemilik",
   "tahun_pembangunan",
-  "penyelenggara",
   "alamat",
   "provinsi",
   "kab_kota",
@@ -99,7 +98,7 @@ export function sanitizeDraftData(input) {
           throw new Error("Data tenant draft tidak valid.");
         }
         const entry = {};
-        for (const key of ["penyelenggara", "kapasitas_disewakan"]) {
+        for (const key of ["penyelenggara"]) {
           const text = tenant[key] ?? "";
           if (typeof text !== "string" || text.length > 200) {
             throw new Error("Kolom tenant draft tidak valid.");
@@ -175,7 +174,18 @@ export function csvForTowers(towers) {
   const rows = [
     columns.map(([label]) => csvCell(label)).join(","),
     ...towers.map((tower) =>
-      columns.map(([, key]) => csvCell(tower[key])).join(","),
+      columns
+        .map(([, key]) =>
+          csvCell(
+            key === "penyelenggara"
+              ? (tower.tenants ?? [])
+                  .map((tenant) => tenant.penyelenggara)
+                  .filter(Boolean)
+                  .join(", ")
+              : tower[key],
+          ),
+        )
+        .join(","),
     ),
   ];
   return `\uFEFF${rows.join("\r\n")}`;
@@ -199,10 +209,10 @@ export async function getPortalRole(database, accountability, applicantRole) {
   if (!accountability?.user) return null;
 
   const user = await database("directus_users")
-    .select("role")
+    .select("role", "status")
     .where({ id: accountability.user })
     .first();
-  if (!user?.role) return null;
+  if (!user?.role || user.status !== "active") return null;
   if (user.role === applicantRole) return "Applicant";
 
   const role = await database("directus_roles")
@@ -297,7 +307,7 @@ async function readTowers(
     : [];
   const draftAttempt = role === "Applicant"
     ? await database(ATTEMPT_COLLECTION)
-        .select("id", "date_updated")
+      .select("id", "date_updated", "date_created")
         .where({
           user_created: accountability.user,
           status: "Draft",
@@ -311,7 +321,10 @@ async function readTowers(
     data: await attachRegistrationData(database, data),
     rejected_attempts: rejectedAttempts,
     draft_attempt: draftAttempt
-      ? { id: String(draftAttempt.id), date_updated: draftAttempt.date_updated }
+      ? {
+          id: String(draftAttempt.id),
+          date_updated: draftAttempt.date_updated ?? draftAttempt.date_created,
+        }
       : null,
     meta: { page, limit, total: Number(count) },
   };
@@ -321,7 +334,7 @@ async function attachRegistrationData(database, towers) {
   if (towers.length === 0) return towers;
   const ids = towers.map(({ id }) => id);
   const tenants = await database(TENANT_COLLECTION)
-    .select("id", "tower_id", "penyelenggara", "kapasitas_disewakan", "sort")
+    .select("id", "tower_id", "penyelenggara", "sort")
     .whereIn("tower_id", ids)
     .orderBy("sort")
     .orderBy("id");
@@ -361,17 +374,13 @@ async function attachRegistrationData(database, towers) {
     const entries = tenantMap.get(tenant.tower_id) ?? [];
     entries.push({
       penyelenggara: tenant.penyelenggara,
-      kapasitas_disewakan: tenant.kapasitas_disewakan,
     });
     tenantMap.set(tenant.tower_id, entries);
   }
   return towers.map((tower) => ({
     ...tower,
     registration_attempts: attemptMap.get(tower.id) ?? [],
-    tenants: tenantMap.get(tower.id) ?? [{
-      penyelenggara: tower.penyelenggara,
-      kapasitas_disewakan: tower.kapasitas_disewakan,
-    }],
+    tenants: tenantMap.get(tower.id) ?? [],
     verification_status:
       statusMap.get(tower.id) ??
       (["Submitted", "Approved", "REGISTERED"].includes(tower.verification_status)
@@ -428,7 +437,6 @@ function isAdministrator(role) {
 export default defineEndpoint(
   (router, { env, logger, services, database, getSchema }) => {
     const {
-      AuthenticationService,
       ItemsService,
       MailService,
       UsersService,
@@ -808,8 +816,6 @@ export default defineEndpoint(
         tower = await sanitizeTowerSubmission(
           {
             ...input,
-            penyelenggara: tenants[0].penyelenggara,
-            kapasitas_disewakan: tenants[0].kapasitas_disewakan,
             document: null,
           },
           { database, accountability: req.accountability },
@@ -1004,8 +1010,6 @@ export default defineEndpoint(
         let updates;
         try {
           tenantEntries = sanitizeTenantEntries(merged);
-          merged.penyelenggara = tenantEntries[0].penyelenggara;
-          merged.kapasitas_disewakan = tenantEntries[0].kapasitas_disewakan;
           updates = await sanitizeTowerUpdate(merged, {
             database,
             accountability: req.accountability,
@@ -1065,7 +1069,6 @@ export default defineEndpoint(
               const tenantId = existingTenants[index].id;
               await tenantService.updateOne(tenantId, {
                 penyelenggara: tenant.penyelenggara,
-                kapasitas_disewakan: tenant.kapasitas_disewakan,
               });
               retainedIds.push(tenantId);
               await transaction("directus_activity").insert({
@@ -1080,7 +1083,6 @@ export default defineEndpoint(
                 tower_id: req.params.id,
                 user_created: req.accountability.user,
                 penyelenggara: tenant.penyelenggara,
-                kapasitas_disewakan: tenant.kapasitas_disewakan,
               });
               await setRecordCreator(
                 transaction,
@@ -1484,43 +1486,32 @@ export default defineEndpoint(
     });
 
     router.post("/password", async (req, res) => {
-      const { current_password, new_password } = req.body ?? {};
-      if (
-        typeof current_password !== "string" ||
-        typeof new_password !== "string" ||
-        new_password.length < 12 ||
-        new_password.length > 128
-      ) {
-        return res.status(400).json({
-          error: "Masukkan password saat ini dan password baru minimal 12 karakter.",
-        });
-      }
-
       try {
-        const authentication = new AuthenticationService({
+        const account = await database("directus_users")
+          .select("email", "status")
+          .where({ id: req.accountability.user })
+          .first();
+        if (!account?.email || account.status !== "active") {
+          return res.status(401).json({ error: "Akun tidak aktif." });
+        }
+        const portalUrl = env.PORTAL_URL ?? "http://localhost:3000";
+        const resetUrl = new URL("/set-password?mode=reset", portalUrl).toString();
+        const users = new UsersService({
           schema: await getSchema(),
           accountability: req.accountability,
         });
-        await authentication.verifyPassword(
-          req.accountability.user,
-          current_password,
+        await users.requestPasswordReset(
+          account.email,
+          resetUrl,
+          "Permintaan perubahan password Portal Infrastruktur Pasif",
         );
-
-        const users = new UsersService({
-          schema: await getSchema(),
-          accountability: null,
+        return res.status(202).json({
+          data: { requested: true },
+          message: "Tautan verifikasi perubahan password dikirim ke email akun Anda.",
         });
-        await users.updateOne(req.accountability.user, {
-          password: new_password,
-        });
-        return res.json({ data: { changed: true } });
       } catch (error) {
-        const code = error?.extensions?.code;
-        if (code === "INVALID_CREDENTIALS") {
-          return res.status(400).json({ error: "Password saat ini tidak cocok." });
-        }
-        logger.error(error, "Failed to change portal account password");
-        return res.status(500).json({ error: "Password tidak dapat diubah saat ini." });
+        logger.error(error, "Failed to request own portal password reset");
+        return res.status(500).json({ error: "Tautan verifikasi tidak dapat dikirim." });
       }
     });
   },

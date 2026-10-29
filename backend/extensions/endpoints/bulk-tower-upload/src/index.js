@@ -20,7 +20,6 @@ const MAX_COMPRESSION_RATIO = 100;
 const MAX_ROWS = 1000;
 const MAX_ERRORS = 200;
 const MAX_TEXT_LENGTH = 50;
-const MAX_CONSTRUCTION_YEAR = 2026;
 const HEADERS = [
   "id_menara",
   "nama_pemilik",
@@ -435,6 +434,7 @@ export async function parseTowerWorkbook(buffer) {
   const groups = new Map();
   const errors = [];
   const dataStartRow = firstDataRow(worksheet, headerRow, columns);
+  const currentYear = new Date().getFullYear();
   let dataRowCount = 0;
 
   worksheet.eachRow({ includeEmpty: false }, (row, index) => {
@@ -467,7 +467,7 @@ export async function parseTowerWorkbook(buffer) {
     const tahun_pembangunan = readFieldNumber("tahun_pembangunan", {
       integer: true,
       min: 1900,
-      max: MAX_CONSTRUCTION_YEAR,
+      max: currentYear,
     });
     const penyelenggara = readFieldText("penyelenggara");
     const kapasitas_disewakan = readFieldText("kapasitas_disewakan", {
@@ -551,10 +551,7 @@ export async function parseTowerWorkbook(buffer) {
           message: `Tenant "${tenant}" duplikat untuk ID menara ini.`,
         });
       } else if (typeof kapasitas_disewakan === "string") {
-        group.tenants.push({
-          penyelenggara: tenant,
-          kapasitas_disewakan,
-        });
+        group.tenants.push({ penyelenggara: tenant });
       }
     }
   });

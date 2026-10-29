@@ -72,7 +72,11 @@ type RecentSubmission = {
 type SubmissionsResponse = {
   data?: SubmissionTower[];
   rejected_attempts?: SubmissionAttempt[];
-  draft_attempt?: { id: string | number; date_updated?: string } | null;
+  draft_attempt?: {
+    id: string | number;
+    date_updated?: string;
+    date_created?: string;
+  } | null;
   error?: string;
 };
 
@@ -107,12 +111,22 @@ function recentSubmissions(payload: SubmissionsResponse): RecentSubmission[] {
       id: `draft-${payload.draft_attempt.id}`,
       towerId: null,
       code: "—",
-      date: payload.draft_attempt.date_updated || "",
+      date: payload.draft_attempt.date_updated || payload.draft_attempt.date_created || "",
       method: "Input Manual",
       status: "Draft",
     });
   }
-  return rows.sort((left, right) => right.date.localeCompare(left.date)).slice(0, 4);
+  return rows
+    .sort((left, right) => {
+      const leftTime = Date.parse(left.date);
+      const rightTime = Date.parse(right.date);
+      const leftValid = Number.isFinite(leftTime);
+      const rightValid = Number.isFinite(rightTime);
+      if (leftValid && rightValid && leftTime !== rightTime) return rightTime - leftTime;
+      if (leftValid !== rightValid) return leftValid ? -1 : 1;
+      return right.id.localeCompare(left.id, undefined, { numeric: true });
+    })
+    .slice(0, 4);
 }
 
 export default function SubmissionPage() {

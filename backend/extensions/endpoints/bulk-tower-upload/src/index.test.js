@@ -99,7 +99,7 @@ const expandedValidRow = (id) => [
   4,
 ];
 
-test("groups tower rows and repeats the shared tower capacity for each tenant", async () => {
+test("groups tower rows and stores rented capacity once on the tower", async () => {
   const items = await parseTowerWorkbook(
     await workbookBuffer([validRow("tower-1"), validRow("tower-2")]),
   );
@@ -112,7 +112,8 @@ test("groups tower rows and repeats the shared tower capacity for each tenant", 
   assert.equal(items[0].tower.alamat, "JAKARTA");
   assert.equal(items[0].tower.jenis_menara, "TELEKOMUNIKASI");
   assert.equal(items[0].tenants[0].penyelenggara, "PENYELENGGARA");
-  assert.equal(items[0].tenants[0].kapasitas_disewakan, "6");
+  assert.equal("kapasitas_disewakan" in items[0].tenants[0], false);
+  assert.equal(items[0].tower.kapasitas_disewakan, "6");
   assert.equal(items[0].tower.kapasitas_maksimal, "10");
 });
 
@@ -139,6 +140,7 @@ test("groups repeated tower IDs when tower attributes match and tenant names dif
   assert.equal(groups.length, 1);
   assert.equal(groups[0].tenants.length, 2);
   assert.equal(groups[0].tenants[1].penyelenggara, "PENYELENGGARA B");
+  assert.equal("kapasitas_disewakan" in groups[0].tenants[1], false);
 });
 
 test("rejects repeated tower IDs with differing tower fields or duplicate tenants", async () => {
@@ -334,11 +336,19 @@ test("resolves all tower regions in one PostGIS query and leaves unmatched point
   );
 });
 
-test("does not accept construction years after the template's 2026 limit", async () => {
-  const row = validRow("tower-2027");
-  row[2] = 2027;
+test("accepts the current construction year and rejects future years", async () => {
+  const currentYear = new Date().getFullYear();
+  const currentYearRow = validRow("tower-current-year");
+  currentYearRow[2] = currentYear;
+  const [parsedCurrentYear] = await parseTowerWorkbook(
+    await workbookBuffer([currentYearRow]),
+  );
+  assert.equal(parsedCurrentYear.tower.tahun_pembangunan, currentYear);
+
+  const futureYearRow = validRow("tower-future-year");
+  futureYearRow[2] = currentYear + 1;
   await assert.rejects(
-    parseTowerWorkbook(await workbookBuffer([row])),
+    parseTowerWorkbook(await workbookBuffer([futureYearRow])),
     (error) =>
       error.errors.some(
         (issue) => issue.column === "tahun_pembangunan" && issue.row === 2,

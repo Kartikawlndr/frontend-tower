@@ -126,24 +126,13 @@ export async function createRegisteredTowers({
     const created = [];
 
     for (const registration of registrations) {
-      const firstTenant = registration.tenants[0];
-      if (
-        !firstTenant ||
-        registration.tenants.some(
-          (tenant) =>
-            tenant.kapasitas_disewakan !== firstTenant.kapasitas_disewakan,
-        )
-      ) {
-        throw new Error(
-          "Kapasitas disewakan harus sama untuk semua tenant pada menara yang sama.",
-        );
+      if (!registration.tenants[0]) {
+        throw new Error("Tambahkan minimal satu tenant untuk setiap menara.");
       }
       const registeredAt = new Date().toISOString();
       const towerId = await towers.createOne({
         ...registration.tower,
         date_created: registeredAt,
-        penyelenggara: firstTenant.penyelenggara,
-        kapasitas_disewakan: firstTenant.kapasitas_disewakan,
         metode_pendaftaran: method,
         verification_status: "Submitted",
         document: documentId,
@@ -155,7 +144,6 @@ export async function createRegisteredTowers({
         const tenantId = await tenants.createOne({
           tower_id: towerId,
           penyelenggara: tenant.penyelenggara,
-          kapasitas_disewakan: tenant.kapasitas_disewakan,
           user_created: userId,
         });
         await setRecordCreator(

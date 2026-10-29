@@ -52,7 +52,10 @@ export async function POST(request: Request) {
 
   if (!loginResponse.ok) {
     return NextResponse.json(
-      { error: "Email atau kata sandi tidak sesuai." },
+      {
+        error:
+          "Email atau kata sandi tidak sesuai, atau akun ditangguhkan. Pastikan data login benar; jika benar, hubungi Super Admin.",
+      },
       { status: 401 },
     );
   }
@@ -87,7 +90,7 @@ export async function POST(request: Request) {
   }
   if (!profileResponse.ok) {
     return NextResponse.json(
-      { error: "Profil atau peran akun tidak dapat diverifikasi." },
+      { error: "Akun ditangguhkan atau peran akun tidak diizinkan mengakses portal." },
       { status: 403 },
     );
   }
@@ -100,6 +103,7 @@ export async function POST(request: Request) {
           first_name?: string;
           last_name?: string;
           role?: string;
+          must_change_password?: boolean;
         };
       }
     | null;
@@ -128,6 +132,7 @@ export async function POST(request: Request) {
       id: profile.id,
       name: `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || profile.email,
       email: profile.email,
+      mustChangePassword: profile.must_change_password === true,
       ...mappedRole,
     },
   });

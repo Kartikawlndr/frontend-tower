@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 function SetPasswordForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const { authenticated, loading: sessionLoading, user, setUser } = useAuth();
   const token = searchParams.get("token") ?? "";
   const mode = searchParams.get("mode");
-  const validMode = mode === "invite" || mode === "reset";
+  const forcedChange = mode === "forced";
+  const validMode = mode === "invite" || mode === "reset" || forcedChange;
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [message, setMessage] = useState("");
@@ -19,6 +23,10 @@ function SetPasswordForm() {
     event.preventDefault();
     setMessage("");
     setSuccess(false);
+    if (password.length < 12 || password.length > 128) {
+      setMessage("Password harus berisi 12 sampai 128 karakter.");
+      return;
+    }
     if (password !== confirmation) {
       setMessage("Konfirmasi password belum sama.");
       return;
@@ -26,19 +34,29 @@ function SetPasswordForm() {
 
     setSubmitting(true);
     try {
-      const response = await fetch("/api/account/complete-password", {
+      const response = await fetch(
+        forcedChange ? "/api/account/forced-password" : "/api/account/complete-password",
+        {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password, mode }),
+        body: JSON.stringify(
+          forcedChange ? { password } : { token, password, mode },
+        ),
       });
-      const result = (await response.json().catch(() => null)) as { message?: string } | null;
+      const result = (await response.json().catch(() => null)) as
+        | { message?: string; error?: string }
+        | null;
       if (!response.ok) {
-        throw new Error(result?.message || "Password tidak dapat disimpan.");
+        throw new Error(result?.error || result?.message || "Password tidak dapat disimpan.");
       }
       setMessage(result?.message || "Password berhasil disimpan.");
       setSuccess(true);
       setPassword("");
       setConfirmation("");
+      if (forcedChange) {
+        setUser({ ...user, mustChangePassword: false });
+        router.replace("/dashboard");
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Password tidak dapat disimpan.");
     } finally {
@@ -52,18 +70,36 @@ function SetPasswordForm() {
         <header>
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">Portal Infrastruktur Pasif</p>
           <h1 className="mt-2 text-2xl font-bold text-heading">
-            {mode === "invite" ? "Aktifkan akun" : "Atur password baru"}
+            {mode === "invite"
+              ? "Aktifkan akun"
+              : forcedChange
+                ? "Ganti password sementara"
+                : "Atur password baru"}
           </h1>
           <p className="mt-2 text-sm text-muted">
-            {mode === "invite" ? "Buat password untuk menyelesaikan undangan akun." : "Buat password baru untuk akun Anda."}
+            {mode === "invite"
+              ? "Buat password untuk menyelesaikan undangan akun."
+              : forcedChange
+                ? "Super Admin mengatur password sementara untuk akun Anda. Buat password baru untuk melanjutkan."
+                : "Buat password baru untuk akun Anda."}
           </p>
         </header>
-        {!validMode || !token ? (
+        {forcedChange && sessionLoading ? (
+          <p role="status" className="text-sm text-muted">Memeriksa sesi akun...</p>
+        ) : forcedChange && !authenticated ? (
+          <p role="alert" className="text-sm text-danger">
+            Sesi login tidak ditemukan. Silakan login kembali untuk mengganti password sementara.
+          </p>
+        ) : forcedChange && !user.mustChangePassword ? (
+          <p role="status" className="text-sm text-muted">
+            Tidak ada kewajiban mengganti password. <Link href="/dashboard" className="font-semibold text-primary">Kembali ke portal</Link>
+          </p>
+        ) : !validMode || (!forcedChange && !token) ? (
           <p role="alert" className="text-sm text-danger">Tautan tidak lengkap atau tidak valid. Minta Super Admin mengirim tautan baru.</p>
         ) : success ? (
           <div role="status" className="space-y-4">
             <p className="text-sm text-primary">{message}</p>
-            <Link href="/" className="inline-flex rounded-card bg-primary px-4 py-2 text-sm font-semibold text-on-primary">Lanjut ke login</Link>
+            <Link href={forcedChange ? "/dashboard" : "/"} className="inline-flex rounded-card bg-primary px-4 py-2 text-sm font-semibold text-on-primary">{forcedChange ? "Lanjut ke portal" : "Lanjut ke login"}</Link>
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-4">

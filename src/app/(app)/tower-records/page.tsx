@@ -413,16 +413,12 @@ export default function TowerRecordsPage() {
               <Button variant="download" disabled={selected.size === 0 && results.length === 0} onClick={download}>
                 <Download className="h-4 w-4" strokeWidth={2} /> {selected.size > 0 ? `Unduh Terpilih (${selected.size})` : "Unduh"}
               </Button>
-              {role !== "Normal User" && (
-                <>
-                  <Button variant="destructive" disabled={selected.size === 0} onClick={() => setPending({ title: "Hapus data terpilih", ids: Array.from(selected), confirmLabel: "Hapus" })}>
-                    Hapus Terpilih
-                  </Button>
-                  <Button variant="danger-outline" disabled={results.length === 0} onClick={() => setPending({ title: "Hapus semua data yang cocok", ids: results.map((record) => record.id), confirmLabel: "Hapus" })}>
-                    Hapus Massal
-                  </Button>
-                </>
-              )}
+              <Button variant="destructive" disabled={selected.size === 0} onClick={() => setPending({ title: "Hapus data terpilih", ids: Array.from(selected), confirmLabel: "Hapus" })}>
+                Hapus Terpilih
+              </Button>
+              <Button variant="danger-outline" disabled={results.length === 0} onClick={() => setPending({ title: "Hapus semua data yang cocok", ids: results.map((record) => record.id), confirmLabel: "Hapus" })}>
+                Hapus Massal
+              </Button>
             </div>
           </div>
 

@@ -25,30 +25,46 @@ Prerequisites: Docker Desktop with Compose, Node.js/npm, and Python 3 with
    skips the import when the destination layer already has the same number of
    features as the source.
 
-3. Apply the Directus schema snapshot to initialize the collections and fields:
+3. When upgrading an existing database, back it up and run the tenant
+   normalization migration before applying the updated schema snapshot. It
+   moves any remaining tower provider value into `tower_tenant`, verifies
+   tenant capacities match the tower-level value, and then removes the
+   duplicated columns:
+
+   ```powershell
+   Get-Content -Raw .\database\tower-tenant-normalization.sql | docker compose exec -T database psql -v ON_ERROR_STOP=1 -U directus -d directus
+   ```
+
+   This migration is idempotent and can also be run after schema creation on a
+   fresh database.
+
+4. Apply the Directus schema snapshot to initialize or reconcile collections
+   and fields:
 
    ```powershell
    docker compose exec directus node /directus/cli.js schema apply /directus/schema.yaml --yes
    ```
 
-4. Apply the SQL files in `database/` to the configured PostgreSQL database.
+5. Apply the SQL files in `database/` to the configured PostgreSQL database.
    Run them from this directory, in this order, after the schema has created
    the collections:
 
    ```powershell
    Get-Content -Raw .\database\tower-administrative-fields.sql | docker compose exec -T database psql -U directus -d directus
    Get-Content -Raw .\database\tower-registration-separation.sql | docker compose exec -T database psql -U directus -d directus
+   Get-Content -Raw .\database\tower-tenant-normalization.sql | docker compose exec -T database psql -v ON_ERROR_STOP=1 -U directus -d directus
+   Get-Content -Raw .\database\tower-registration-update-attempts.sql | docker compose exec -T database psql -U directus -d directus
    Get-Content -Raw .\database\successful-registration-codes.sql | docker compose exec -T database psql -U directus -d directus
    Get-Content -Raw .\database\active-tower-id-uniqueness.sql | docker compose exec -T database psql -U directus -d directus
    ```
 
    These examples use the `DB_USER` and `DB_DATABASE` defaults in `.env.example`;
    replace `directus` if you configured different names.
-5. From each extension directory that contains a `package.json`, run
+6. From each extension directory that contains a `package.json`, run
    `npm ci` followed by `npm run build`. For the bulk-upload endpoint, also run
    `npm test`. Directus loads the built extension files from the mounted
    directories; restart Directus after building.
-6. In a separate terminal, configure the frontend using the repository-root
+7. In a separate terminal, configure the frontend using the repository-root
    `.env.example`, then run `npm ci` and `npm run dev` from the repository root.
 
 Configure Directus roles/permissions, public registration, email verification,

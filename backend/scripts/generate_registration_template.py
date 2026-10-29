@@ -46,7 +46,7 @@ FORM_HEADERS = (
 FORM_NOTES = (
     "Wajib; teks maks. 50 karakter. Masukkan kode mentah sebagai teks, contoh 000101.",
     "Wajib; teks maks. 50 karakter.",
-    "Wajib; pilih tahun 1900 sampai 2026.",
+    "Wajib; pilih tahun dari 1900 sampai tahun berjalan.",
     "Wajib; teks maks. 50 karakter. Pisahkan nama multi-tenant dengan koma.",
     "Wajib; angka 95 sampai 141, maksimal 6 angka desimal.",
     "Wajib; angka -11 sampai 6, maksimal 6 angka desimal.",
@@ -273,7 +273,7 @@ def create_data_master(
             sheet.cell(row_index, column, value)
     village_end = village_start + len(village_rows) - 1
 
-    for row_index, year in enumerate(range(1900, 2027), 2):
+    for row_index, year in enumerate(range(1900, 10000), 2):
         sheet.cell(row_index, 13, year)
 
     add_defined_name(
@@ -311,7 +311,11 @@ def create_data_master(
         "district_range_keys",
         quoted_range("Data_Master", "I", district_start, district_end),
     )
-    add_defined_name(workbook, "year_list", "'Data_Master'!$M$2:$M$128")
+    add_defined_name(
+        workbook,
+        "year_list",
+        "'Data_Master'!$M$2:INDEX('Data_Master'!$M:$M,YEAR(TODAY())-1898)",
+    )
 
     for name, values in (
         ("province_ranges", province_ranges),
@@ -423,7 +427,7 @@ def create_form_sheet(workbook: Workbook) -> Worksheet:
         sheet,
         "=year_list",
         f"C{FIRST_DATA_ROW}:C{final_row}",
-        "Pilih tahun pembangunan antara 1900 dan 2026.",
+        "Pilih tahun pembangunan antara 1900 dan tahun berjalan.",
     )
 
     add_custom_validation(
@@ -496,9 +500,13 @@ def create_year_master(workbook: Workbook) -> None:
     sheet = workbook.create_sheet("Data_Master")
     sheet.sheet_state = "hidden"
     sheet["A1"] = "Tahun Pembangunan"
-    for row, year in enumerate(range(1900, 2027), 2):
+    for row, year in enumerate(range(1900, 10000), 2):
         sheet.cell(row, 1, year)
-    add_defined_name(workbook, "year_list", "'Data_Master'!$A$2:$A$128")
+    add_defined_name(
+        workbook,
+        "year_list",
+        "'Data_Master'!$A$2:INDEX('Data_Master'!$A:$A,YEAR(TODAY())-1898)",
+    )
 
 
 def build_workbook(output_path: Path) -> None:

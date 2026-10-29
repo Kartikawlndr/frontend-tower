@@ -10,6 +10,7 @@ import { Table, Th, Td } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 const MAX_SIZE = 10 * 1024 * 1024;
+const CURRENT_YEAR = new Date().getFullYear();
 
 type UploadIssue = {
   row?: number | null;
@@ -22,7 +23,7 @@ const TEXT_RULE = "Maksimal 50 karakter";
 const COLUMNS = [
   { field: "Kode/ID Menara", type: "Teks", rule: "Maksimal 50 karakter; contoh 000101" },
   { field: "Nama Pemilik Menara Telekomunikasi", type: "Teks", rule: TEXT_RULE },
-  { field: "Tahun Pembangunan Menara Telekomunikasi", type: "Dropdown", rule: "1900 sampai 2026" },
+  { field: "Tahun Pembangunan Menara Telekomunikasi", type: "Dropdown", rule: `1900 sampai ${CURRENT_YEAR}` },
   { field: "Penyelenggara Jaringan Telekomunikasi", type: "Teks", rule: "Maksimal 50 karakter; multi-tenant dipisahkan koma" },
   { field: "Longitude", type: "Desimal", rule: "95 sampai 141; maksimal 6 angka desimal" },
   { field: "Latitude", type: "Desimal", rule: "-11 sampai 6; maksimal 6 angka desimal" },

@@ -125,9 +125,10 @@ const DEFAULT_FILTERS: QueryFilters = {
   registrationNo: "",
 };
 
+const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from(
-  { length: 2026 - 1900 + 1 },
-  (_, i) => 2026 - i
+  { length: CURRENT_YEAR - 1900 + 1 },
+  (_, i) => CURRENT_YEAR - i
 );
 
 function localDateKey(value: string) {
@@ -196,6 +197,11 @@ type PortalTower = {
   tinggi_menara?: number | string;
   kapasitas_maksimal?: number | string;
   tenants?: Array<{ penyelenggara?: string }>;
+  registration_attempts?: Array<{
+    status?: string;
+    attempt_type?: string;
+    registration_code?: string | null;
+  }>;
 };
 
 type TowersResponse = {
@@ -295,7 +301,13 @@ export default function DashboardPage() {
           dateCreated: tower.date_created || "",
           tinggiAgl: Number(tower.tinggi_menara) || 0,
           kapasitasMaks: Number(tower.kapasitas_maksimal) || 0,
-          registrationNo: tower.id_menara || "",
+          registrationNo:
+            tower.registration_attempts?.find(
+              (attempt) =>
+                attempt.status === "Registered" &&
+                attempt.attempt_type === "New Registration" &&
+                attempt.registration_code,
+            )?.registration_code || "",
           status: "REGISTERED",
         })));
     } catch (error) {
@@ -908,7 +920,7 @@ export default function DashboardPage() {
                       registrationNo: e.target.value,
                     }))
                   }
-                  placeholder="Contoh: REG-2026-000101"
+                  placeholder="Contoh: REG-000001"
                   className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading placeholder:text-muted focus:border-primary focus:outline-none"
                 />
               </div>

@@ -26,6 +26,7 @@ test("portal role resolution recognizes only the three configured portal roles",
     ["manager-1", "manager-id"],
     ["admin-1", "admin-id"],
     ["unknown-1", "other-id"],
+    ["suspended-1", "applicant-id"],
   ]);
   const roleNames = new Map([
     ["applicant-id", "Applicant"],
@@ -44,7 +45,8 @@ test("portal role resolution recognizes only the three configured portal roles",
     async first() {
       if (table === "directus_users") {
         const role = assignedRoles.get(this.id);
-        return role ? { role } : undefined;
+        const status = this.id === "suspended-1" ? "suspended" : "active";
+        return role ? { role, status } : undefined;
       }
       const name = roleNames.get(this.id);
       return name ? { name } : undefined;
@@ -68,6 +70,10 @@ test("portal role resolution recognizes only the three configured portal roles",
     null,
   );
   assert.equal(
+    await getPortalRole(database, { user: "suspended-1" }, "applicant-id"),
+    null,
+  );
+  assert.equal(
     await getPortalRole(database, { user: "missing-role" }, "applicant-id"),
     null,
   );
@@ -84,6 +90,10 @@ test("CSV export escapes formulas and quotes", () => {
       nama_pemilik: 'Pemilik "A"',
       longitude: 106.8,
       latitude: -6.2,
+      tenants: [
+        { penyelenggara: "Tenant A" },
+        { penyelenggara: "Tenant B" },
+      ],
     },
   ]);
   assert.match(csv, /"'=HYPERLINK\(""https:\/\/example\.invalid""\)"/);
@@ -91,6 +101,7 @@ test("CSV export escapes formulas and quotes", () => {
   assert.match(csv, /"106\.8","-6\.2"/);
   assert.match(csv.split("\r\n")[0], /"Kecamatan","Kelurahan\/Desa"/);
   assert.match(csv.split("\r\n")[0], /"Tanggal pendaftaran"/);
+  assert.match(csv.split("\r\n")[1], /"Tenant A, Tenant B"/);
 });
 
 test("bulk deletion accepts a bounded unique list only", () => {
@@ -101,21 +112,21 @@ test("bulk deletion accepts a bounded unique list only", () => {
   assert.equal(validateBulkDeleteIds(Array.from({ length: 201 }, (_, i) => String(i))), false);
 });
 
-test("draft snapshots accept partial form state but reject unsupported or oversized fields", () => {
+test("draft snapshots keep tenant names without duplicated tenant capacity", () => {
   assert.deepEqual(
     sanitizeDraftData({
       id_menara: "T-01",
       longitude: "",
       provinsi: "Sumatera Barat",
       kab_kota: "Kota Padang",
-      tenants: [{ penyelenggara: "Tenant A", kapasitas_disewakan: "" }],
+      tenants: [{ penyelenggara: "Tenant A", kapasitas_disewakan: "legacy value" }],
     }),
     {
       id_menara: "T-01",
       longitude: "",
       provinsi: "Sumatera Barat",
       kab_kota: "Kota Padang",
-      tenants: [{ penyelenggara: "Tenant A", kapasitas_disewakan: "" }],
+      tenants: [{ penyelenggara: "Tenant A" }],
     },
   );
   assert.throws(() => sanitizeDraftData({ verification_status: "Registered" }));
@@ -170,10 +181,15 @@ test("registered submission transaction writes tower, tenants, attempt, and acti
     userId: "applicant-1",
     method: "Input Manual",
     registrations: [{
-      tower: { id_menara: "T-01", longitude: 106.8, latitude: -6.2 },
+      tower: {
+        id_menara: "T-01",
+        longitude: 106.8,
+        latitude: -6.2,
+        kapasitas_disewakan: "2",
+      },
       tenants: [
-        { penyelenggara: "Tenant A", kapasitas_disewakan: "2" },
-        { penyelenggara: "Tenant B", kapasitas_disewakan: "2" },
+        { penyelenggara: "Tenant A" },
+        { penyelenggara: "Tenant B" },
       ],
     }],
   });
@@ -181,6 +197,15 @@ test("registered submission transaction writes tower, tenants, attempt, and acti
   assert.equal(created.length, 1);
   assert.equal(records.filter(({ collection }) => collection === "tower_infrastruktur").length, 1);
   assert.equal(records.filter(({ collection }) => collection === "tower_tenant").length, 2);
+  const tower = records.find(({ collection }) => collection === "tower_infrastruktur");
+  assert.equal(tower.data.kapasitas_disewakan, "2");
+  assert.equal("penyelenggara" in tower.data, false);
+  const tenantRecords = records.filter(({ collection }) => collection === "tower_tenant");
+  assert.deepEqual(
+    tenantRecords.map(({ data }) => data.penyelenggara),
+    ["Tenant A", "Tenant B"],
+  );
+  assert.ok(tenantRecords.every(({ data }) => !("kapasitas_disewakan" in data)));
   const attempt = records.find(({ collection }) => collection === "tower_registration_attempts");
   assert.equal(attempt.data.status, "Registered");
   assert.equal(attempt.data.registration_code, "REG-000001");
@@ -209,33 +234,53 @@ test("registered submission transaction writes tower, tenants, attempt, and acti
     query.id !== undefined && data.user_created === "applicant-1"));
 });
 
-test("registered submission rejects tenant-specific values for shared tower capacity", async () => {
+test("registered submission does not persist legacy capacity values on tenant rows", async () => {
+  const records = [];
+  let nextId = 1;
   const database = {
     async transaction(callback) {
-      return callback(() => ({
+      const transaction = (table) => ({
         async insert() {},
-      }));
+        where(query) {
+          this.query = query;
+          return this;
+        },
+        async update() {
+          return 1;
+        },
+      });
+      transaction.raw = async () => ({ rows: [{ last_value: 1 }] });
+      return callback(transaction);
     },
   };
-  class ItemsServiceMock {}
+  class ItemsServiceMock {
+    constructor(collection) {
+      this.collection = collection;
+    }
 
-  await assert.rejects(
-    createRegisteredTowers({
-      database,
-      ItemsService: ItemsServiceMock,
-      schema: {},
-      userId: "applicant-1",
-      method: "Input Manual",
-      registrations: [{
-        tower: { id_menara: "T-01" },
-        tenants: [
-          { penyelenggara: "TENANT A", kapasitas_disewakan: "9" },
-          { penyelenggara: "TENANT B", kapasitas_disewakan: "8" },
-        ],
-      }],
-    }),
-    /Kapasitas disewakan harus sama/,
-  );
+    async createOne(data) {
+      records.push({ collection: this.collection, data, id: nextId++ });
+      return nextId - 1;
+    }
+  }
+
+  await createRegisteredTowers({
+    database,
+    ItemsService: ItemsServiceMock,
+    schema: {},
+    userId: "applicant-1",
+    method: "Input Manual",
+    registrations: [{
+      tower: { id_menara: "T-01", kapasitas_disewakan: "2" },
+      tenants: [
+        { penyelenggara: "TENANT A", kapasitas_disewakan: "9" },
+        { penyelenggara: "TENANT B", kapasitas_disewakan: "8" },
+      ],
+    }],
+  });
+  const tenantRecords = records.filter(({ collection }) => collection === "tower_tenant");
+  assert.equal(tenantRecords.length, 2);
+  assert.ok(tenantRecords.every(({ data }) => !("kapasitas_disewakan" in data)));
 });
 
 test("rejected attempts persist status, error details, and activity atomically", async () => {

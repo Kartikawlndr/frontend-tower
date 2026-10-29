@@ -663,7 +663,6 @@ function ApplicationFormContent({
           id_menara: values.kode,
           nama_pemilik: values.pemilik,
           tahun_pembangunan: Number(values.tahun),
-          penyelenggara: tenants[0].name,
           longitude: Number(values.longitude),
           latitude: Number(values.latitude),
           alamat: values.alamat,
@@ -672,10 +671,7 @@ function ApplicationFormContent({
           kapasitas_maksimal: values.kapMaks,
           kapasitas_disewakan: values.kapSewa,
           kapasitas_digunakan_sendiri: values.kapSendiri,
-          tenants: tenants.map(({ name }) => ({
-            penyelenggara: name,
-            kapasitas_disewakan: values.kapSewa,
-          })),
+          tenants: tenants.map(({ name }) => ({ penyelenggara: name })),
         }),
       });
       const payload = (await response.json().catch(() => null)) as
@@ -727,7 +723,6 @@ function ApplicationFormContent({
             id_menara: values.kode,
             nama_pemilik: values.pemilik,
             tahun_pembangunan: values.tahun,
-            penyelenggara: tenants[0].name,
             longitude: values.longitude,
             latitude: values.latitude,
             alamat: values.alamat,
@@ -736,10 +731,7 @@ function ApplicationFormContent({
             kapasitas_maksimal: values.kapMaks,
             kapasitas_disewakan: values.kapSewa,
             kapasitas_digunakan_sendiri: values.kapSendiri,
-            tenants: tenants.map(({ name }) => ({
-              penyelenggara: name,
-              kapasitas_disewakan: values.kapSewa,
-            })),
+            tenants: tenants.map(({ name }) => ({ penyelenggara: name })),
           },
         }),
       });

@@ -7,6 +7,7 @@ import { ChevronDown, Search } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { INDONESIAN_REGIONS } from "@/lib/indonesian-administrative-regions";
@@ -187,7 +188,7 @@ type Tower = {
   metode_pendaftaran?: string;
   verification_status?: string;
   date_created?: string;
-  tenants?: Array<{ penyelenggara?: string; kapasitas_disewakan?: string }>;
+  tenants?: Array<{ penyelenggara?: string }>;
 };
 type TowerResponse = { data?: Tower; error?: string };
 type EditableValues = {
@@ -298,10 +299,7 @@ export default function SubmissionDetailPage({
           latitude: Number(values.latitude),
           tinggi_menara: Number(values.tinggi_menara),
           penyelenggara: tenantNames[0],
-          tenants: tenantNames.map((penyelenggara) => ({
-            penyelenggara,
-            kapasitas_disewakan: values.kapasitas_disewakan,
-          })),
+          tenants: tenantNames.map((penyelenggara) => ({ penyelenggara })),
         }),
       });
       const payload = (await response.json().catch(() => null)) as { error?: string; errors?: Array<{ message?: string }> } | null;
@@ -510,14 +508,17 @@ export default function SubmissionDetailPage({
                     }
                   />
                 ) : (
-                  <label key={key} className="flex flex-col gap-1 text-field-label">
-                    <input
-                      required
-                      value={values[key]}
-                      onChange={(event) => setValues({ ...values, [key]: event.target.value })}
-                      className="h-10 rounded-input border border-border bg-surface px-3 text-sm text-text"
-                    />
-                  </label>
+                  <Input
+                    key={key}
+                    id={`edit-${key}`}
+                    label={label}
+                    required
+                    requiredMark
+                    value={values[key]}
+                    onChange={(event) =>
+                      setValues({ ...values, [key]: event.target.value })
+                    }
+                  />
                 ))}
                 <label className="flex flex-col gap-1 text-field-label md:col-span-2">
                   Penyelenggara (satu nama per baris; kapasitas disewakan berlaku untuk total menara)

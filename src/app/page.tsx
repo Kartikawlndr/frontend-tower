@@ -87,7 +87,7 @@ function AuthContent() {
 
       if (!data.user) throw new Error('Profil akun tidak dapat dimuat.');
       setUser(data.user);
-      router.push('/dashboard');
+      router.push(data.user.mustChangePassword ? '/set-password?mode=forced' : '/dashboard');
     } catch (err: unknown) {
       const error = err as Error;
       setStatusMessage({

@@ -9,7 +9,6 @@ const MAX_TEXT_LENGTH = 50;
 const TOWER_TEXT_FIELDS = new Set([
   "id_menara",
   "nama_pemilik",
-  "penyelenggara",
   "alamat",
   "provinsi",
   "kab_kota",
@@ -20,12 +19,11 @@ const TOWER_TEXT_FIELDS = new Set([
   "kapasitas_disewakan",
   "kapasitas_digunakan_sendiri",
 ]);
-const TENANT_TEXT_FIELDS = new Set(["penyelenggara", "kapasitas_disewakan"]);
+const TENANT_TEXT_FIELDS = new Set(["penyelenggara"]);
 const ALLOWED_FIELDS = new Set([
   "id_menara",
   "nama_pemilik",
   "tahun_pembangunan",
-  "penyelenggara",
   "longitude",
   "latitude",
   "alamat",
@@ -80,7 +78,9 @@ export function uppercaseTowerTextFields(payload, collection) {
       Array.isArray(result.tenants)
     ) {
       result.tenants = result.tenants.map((tenant) =>
-        uppercaseTowerTextFields(tenant, TENANT_COLLECTION),
+        omitTenantCapacity(
+          uppercaseTowerTextFields(tenant, TENANT_COLLECTION),
+        ),
       );
     }
     return result;
@@ -89,13 +89,30 @@ export function uppercaseTowerTextFields(payload, collection) {
   return Array.isArray(payload) ? payload.map(normalize) : normalize(payload);
 }
 
+function omitTenantCapacity(payload) {
+  const omit = (item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return item;
+    return Object.fromEntries(
+      Object.entries(item).filter(([field]) => field !== "kapasitas_disewakan"),
+    );
+  };
+  return Array.isArray(payload) ? payload.map(omit) : omit(payload);
+}
+
+function omitTowerProvider(payload) {
+  const omit = (item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return item;
+    return Object.fromEntries(
+      Object.entries(item).filter(([field]) => field !== "penyelenggara"),
+    );
+  };
+  return Array.isArray(payload) ? payload.map(omit) : omit(payload);
+}
+
 export function sanitizeTenantEntries(input) {
   const entries = Array.isArray(input?.tenants)
     ? input.tenants
-    : [{
-        penyelenggara: input?.penyelenggara,
-        kapasitas_disewakan: input?.kapasitas_disewakan,
-      }];
+    : [{ penyelenggara: input?.penyelenggara }];
 
   if (entries.length === 0 || entries.length > 50) {
     throw new Error("Tambahkan minimal satu tenant dan maksimal 50 tenant.");
@@ -117,25 +134,8 @@ export function sanitizeTenantEntries(input) {
     }
     names.add(normalizedName);
 
-    return {
-      penyelenggara,
-      kapasitas_disewakan: requireText(
-        entry.kapasitas_disewakan,
-        `Kapasitas disewakan tenant ke-${index + 1}`,
-        { numericAllowed: true },
-      ),
-    };
+    return { penyelenggara };
   });
-  const sharedCapacity = normalizedEntries[0].kapasitas_disewakan;
-  if (
-    normalizedEntries.some(
-      (entry) => entry.kapasitas_disewakan !== sharedCapacity,
-    )
-  ) {
-    throw new Error(
-      "Kapasitas disewakan adalah kapasitas total menara dan harus sama untuk semua tenant.",
-    );
-  }
   return normalizedEntries;
 }
 
@@ -248,7 +248,11 @@ export function validateApplicantFile(input) {
   return input;
 }
 
-export async function sanitizeTowerSubmission(input, context) {
+export async function sanitizeTowerSubmission(
+  input,
+  context,
+  { includeTenants = false } = {},
+) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new Error("Data menara tidak valid.");
   }
@@ -257,8 +261,7 @@ export async function sanitizeTowerSubmission(input, context) {
   const output = Object.fromEntries(
     Object.entries(input).filter(([field]) => ALLOWED_FIELDS.has(field)),
   );
-  output.penyelenggara = tenants[0].penyelenggara;
-  output.kapasitas_disewakan = tenants[0].kapasitas_disewakan;
+  if (includeTenants) output.tenants = tenants;
   output.id_menara = requireText(output.id_menara, "id_menara", {
     numericAllowed: true,
   });
@@ -278,6 +281,11 @@ export async function sanitizeTowerSubmission(input, context) {
   output.kapasitas_maksimal = requireText(
     output.kapasitas_maksimal,
     "kapasitas_maksimal",
+    { numericAllowed: true },
+  );
+  output.kapasitas_disewakan = requireText(
+    output.kapasitas_disewakan,
+    "kapasitas_disewakan",
     { numericAllowed: true },
   );
   output.kapasitas_digunakan_sendiri = requireText(
@@ -348,9 +356,9 @@ export default ({ filter }, { env }) => {
       return payload;
     }
     const normalized = uppercaseTowerTextFields(payload, meta.collection);
-    if (meta.collection === TENANT_COLLECTION) return normalized;
+    if (meta.collection === TENANT_COLLECTION) return omitTenantCapacity(normalized);
     return guardTowerArchiveOnlyUpdate(
-      normalized,
+      omitTowerProvider(normalized),
       context.accountability,
       context.database,
     );
@@ -367,16 +375,24 @@ export default ({ filter }, { env }) => {
     }
 
     if (meta.collection === TENANT_COLLECTION) {
-      return uppercaseTowerTextFields(payload, meta.collection);
+      return omitTenantCapacity(
+        uppercaseTowerTextFields(payload, meta.collection),
+      );
     }
     if (meta.collection !== COLLECTION) return payload;
     const normalized = uppercaseTowerTextFields(payload, meta.collection);
-    if (!context.accountability?.user) return normalized;
+    if (!context.accountability?.user) return omitTowerProvider(normalized);
 
     if (Array.isArray(normalized)) {
-      return Promise.all(normalized.map((item) => sanitizeTowerSubmission(item, context)));
+      return Promise.all(
+        normalized.map((item) =>
+          sanitizeTowerSubmission(item, context, { includeTenants: true }),
+        ),
+      );
     }
-    return sanitizeTowerSubmission(normalized, context);
+    return sanitizeTowerSubmission(normalized, context, {
+      includeTenants: true,
+    });
   });
 };
 

@@ -74,13 +74,9 @@ function compareNewestFirst(a: RegistrationRow, b: RegistrationRow) {
   const aValid = Number.isFinite(aTime);
   const bValid = Number.isFinite(bTime);
 
-  if (!aValid || !bValid) {
-    if (aValid) return -1;
-    if (bValid) return 1;
-    return 0;
-  }
-
-  return bTime - aTime;
+  if (aValid && bValid && aTime !== bTime) return bTime - aTime;
+  if (aValid !== bValid) return aValid ? -1 : 1;
+  return b.id.localeCompare(a.id, undefined, { numeric: true });
 }
 
 function toRows(payload: HistoryResponse): RegistrationRow[] {

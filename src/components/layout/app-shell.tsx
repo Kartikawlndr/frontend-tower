@@ -116,7 +116,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (!loading && !authenticated) router.replace("/");
   }, [authenticated, loading, router]);
 
-  if (loading || !authenticated) {
+  useEffect(() => {
+    if (!loading && authenticated && user.mustChangePassword) {
+      router.replace("/set-password?mode=forced");
+    }
+  }, [authenticated, loading, router, user.mustChangePassword]);
+
+  if (
+    loading ||
+    !authenticated ||
+    user.mustChangePassword
+  ) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas text-sm text-muted">
         Memeriksa sesi akun...

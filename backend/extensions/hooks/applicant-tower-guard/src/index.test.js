@@ -65,7 +65,7 @@ test("forces Applicant submissions to the allowed fields and Submitted status", 
   assert.equal("user_created" in result, false);
   assert.equal(result.id_menara, "T-01");
   assert.equal(result.nama_pemilik, "PEMILIK");
-  assert.equal(result.penyelenggara, "PENYELENGGARA");
+  assert.equal("penyelenggara" in result, false);
   assert.equal(result.alamat, "JAKARTA");
   assert.equal(result.provinsi, "JAWA BARAT");
   assert.equal(result.kab_kota, "KOTA BANDUNG");
@@ -74,6 +74,7 @@ test("forces Applicant submissions to the allowed fields and Submitted status", 
   assert.equal(result.jenis_menara, "BTS");
   assert.equal(result.longitude, 106.8);
   assert.equal(result.latitude, -6.2);
+  assert.equal(result.kapasitas_disewakan, "2");
   assert.equal("map" in result, false);
   assert.equal(result.kapasitas_maksimal, "4 SITE");
 });
@@ -94,7 +95,7 @@ test("uppercases manually entered tower and tenant text without changing system 
     provinsi: "SUMATERA BARAT",
     kab_kota: "KOTA PADANG",
     verification_status: "Submitted",
-    tenants: [{ penyelenggara: "TENANT A", kapasitas_disewakan: "2 SITE" }],
+    tenants: [{ penyelenggara: "TENANT A" }],
   });
 
   assert.deepEqual(
@@ -102,7 +103,7 @@ test("uppercases manually entered tower and tenant text without changing system 
       [{ penyelenggara: "Tenant B", kapasitas_disewakan: "1 site" }],
       "tower_tenant",
     ),
-    [{ penyelenggara: "TENANT B", kapasitas_disewakan: "1 SITE" }],
+    [{ penyelenggara: "TENANT B", kapasitas_disewakan: "1 site" }],
   );
 });
 
@@ -209,12 +210,12 @@ test("accepts only the current Applicant's XLSX attachment", async () => {
   );
 });
 
-test("sanitizes multiple unique tenant entries while keeping legacy first-tenant fields", async () => {
+test("keeps tenant names in the relation and capacity on the tower only", async () => {
   const result = await sanitizeApplicantTower(
     validTower({
       tenants: [
-        { penyelenggara: "Tenant A", kapasitas_disewakan: "2 site" },
-        { penyelenggara: "Tenant B", kapasitas_disewakan: "2 site" },
+        { penyelenggara: "Tenant A" },
+        { penyelenggara: "Tenant B" },
       ],
     }),
     {
@@ -223,15 +224,15 @@ test("sanitizes multiple unique tenant entries while keeping legacy first-tenant
     },
   );
 
-  assert.equal(result.penyelenggara, "TENANT A");
-  assert.equal(result.kapasitas_disewakan, "2 SITE");
+  assert.equal("penyelenggara" in result, false);
+  assert.equal(result.kapasitas_disewakan, "2");
 
   await assert.rejects(
     sanitizeApplicantTower(
       validTower({
         tenants: [
-          { penyelenggara: "Tenant A", kapasitas_disewakan: "2" },
-          { penyelenggara: " tenant a ", kapasitas_disewakan: "1" },
+          { penyelenggara: "Tenant A" },
+          { penyelenggara: " tenant a " },
         ],
       }),
       { accountability: { user: "applicant-id" }, database: databaseWithRegion() },
@@ -239,18 +240,6 @@ test("sanitizes multiple unique tenant entries while keeping legacy first-tenant
     /duplikat/,
   );
 
-  await assert.rejects(
-    sanitizeApplicantTower(
-      validTower({
-        tenants: [
-          { penyelenggara: "Tenant A", kapasitas_disewakan: "9" },
-          { penyelenggara: "Tenant B", kapasitas_disewakan: "8" },
-        ],
-      }),
-      { accountability: { user: "applicant-id" }, database: databaseWithRegion() },
-    ),
-    /kapasitas total menara/,
-  );
 });
 
 test("Directus create and update filters uppercase tower and tenant text", async () => {
@@ -261,7 +250,13 @@ test("Directus create and update filters uppercase tower and tenant text", async
   );
 
   const createTower = await filters.get("items.create")(
-    validTower({ nama_pemilik: "Pemilik Baru" }),
+    validTower({
+      nama_pemilik: "Pemilik Baru",
+      penyelenggara: undefined,
+      tenants: [
+        { penyelenggara: "Tenant Baru", kapasitas_disewakan: "2 site" },
+      ],
+    }),
     { collection: "tower_infrastruktur" },
     {
       accountability: { user: "admin-id" },
@@ -270,23 +265,28 @@ test("Directus create and update filters uppercase tower and tenant text", async
   );
   assert.equal(createTower.nama_pemilik, "PEMILIK BARU");
   assert.equal(createTower.verification_status, "Submitted");
+  assert.equal("penyelenggara" in createTower, false);
+  assert.deepEqual(createTower.tenants, [{ penyelenggara: "TENANT BARU" }]);
 
   const updateTower = await filters.get("items.update")(
-    { alamat: "Jalan Merdeka" },
+    {
+      alamat: "Jalan Merdeka",
+      tenants: [
+        { penyelenggara: "Tenant Diperbarui", kapasitas_disewakan: "2 site" },
+      ],
+    },
     { collection: "tower_infrastruktur" },
     { accountability: { admin: true } },
   );
   assert.equal(updateTower.alamat, "JALAN MERDEKA");
+  assert.deepEqual(updateTower.tenants, [{ penyelenggara: "TENANT DIPERBARUI" }]);
 
   const createTenant = await filters.get("items.create")(
     { penyelenggara: "Tenant Baru", kapasitas_disewakan: "2 site" },
     { collection: "tower_tenant" },
     { accountability: { user: "admin-id" } },
   );
-  assert.deepEqual(createTenant, {
-    penyelenggara: "TENANT BARU",
-    kapasitas_disewakan: "2 SITE",
-  });
+  assert.deepEqual(createTenant, { penyelenggara: "TENANT BARU" });
 
   const updateTenant = await filters.get("items.update")(
     { penyelenggara: "Tenant Diperbarui" },
@@ -294,6 +294,14 @@ test("Directus create and update filters uppercase tower and tenant text", async
     { accountability: { user: "admin-id" } },
   );
   assert.deepEqual(updateTenant, { penyelenggara: "TENANT DIPERBARUI" });
+  assert.deepEqual(
+    await filters.get("items.update")(
+      { penyelenggara: "Tenant Lama", kapasitas_disewakan: "2 site" },
+      { collection: "tower_tenant" },
+      { accountability: { user: "admin-id" } },
+    ),
+    { penyelenggara: "TENANT LAMA" },
+  );
 });
 
 test("restricts Applicant file creation to bounded XLSX uploads", () => {

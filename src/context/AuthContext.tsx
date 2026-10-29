@@ -11,6 +11,7 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   roleLabel: "Normal User" | "Web Manager" | "Super Admin";
+  mustChangePassword?: boolean;
 }
 
 interface AuthContextValue {
@@ -38,31 +39,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    fetch("/api/auth/session", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) return null;
-        return (await response.json()) as { user?: AuthUser };
-      })
-      .then((session) => {
-        if (!mounted) return;
-        if (session?.user) {
-          setActiveUser(session.user);
-          setAuthenticated(true);
-        } else {
-          setActiveUser(ANONYMOUS_USER);
-          setAuthenticated(false);
+    let checking = false;
+    const checkSession = async () => {
+      if (checking) return;
+      checking = true;
+      try {
+        const response = await fetch("/api/auth/session", { cache: "no-store" });
+        if (response.status === 401) {
+          if (mounted) {
+            setActiveUser(ANONYMOUS_USER);
+            setAuthenticated(false);
+          }
+        } else if (response.ok) {
+          const session = (await response.json()) as { user?: AuthUser };
+          if (mounted && session.user) {
+            setActiveUser(session.user);
+            setAuthenticated(true);
+          }
         }
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setActiveUser(ANONYMOUS_USER);
-        setAuthenticated(false);
-        setLoading(false);
-      });
+      } catch {
+        // Keep the current session on transient network failures.
+      } finally {
+        if (mounted) setLoading(false);
+        checking = false;
+      }
+    };
+
+    void checkSession();
+    const interval = window.setInterval(() => void checkSession(), 30_000);
+    const checkWhenVisible = () => {
+      if (document.visibilityState === "visible") void checkSession();
+    };
+    document.addEventListener("visibilitychange", checkWhenVisible);
 
     return () => {
       mounted = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", checkWhenVisible);
     };
   }, []);
 

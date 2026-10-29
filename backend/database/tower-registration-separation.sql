@@ -48,7 +48,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS tower_tenant_unique_name_per_tower
 
 CREATE UNIQUE INDEX IF NOT EXISTS tower_registration_attempts_one_registered_per_tower
   ON tower_registration_attempts (tower_id)
-  WHERE status = 'Registered' AND tower_id IS NOT NULL;
+  WHERE status = 'Registered'
+    AND attempt_type = 'New Registration'
+    AND tower_id IS NOT NULL;
 
 DROP INDEX IF EXISTS tower_infrastruktur_registered_id_menara_unique;
 
@@ -56,30 +58,43 @@ CREATE UNIQUE INDEX IF NOT EXISTS tower_infrastruktur_active_id_menara_unique
   ON tower_infrastruktur (id_menara)
   WHERE deleted_at IS NULL;
 
-INSERT INTO tower_tenant (
-  tower_id,
-  penyelenggara,
-  kapasitas_disewakan,
-  user_created,
-  date_created
-)
-SELECT
-  tower.id,
-  btrim(tower.penyelenggara),
-  btrim(tower.kapasitas_disewakan),
-  tower.user_created,
-  COALESCE(tower.date_created, now())
-FROM tower_infrastruktur AS tower
-WHERE tower.verification_status IN ('Registered', 'Submitted', 'Approved', 'REGISTERED')
-  AND tower.deleted_at IS NULL
-  AND NULLIF(btrim(tower.penyelenggara), '') IS NOT NULL
-  AND NULLIF(btrim(tower.kapasitas_disewakan), '') IS NOT NULL
-  AND NOT EXISTS (
+DO $$
+BEGIN
+  IF EXISTS (
     SELECT 1
-    FROM tower_tenant AS tenant
-    WHERE tenant.tower_id = tower.id
-      AND lower(btrim(tenant.penyelenggara)) = lower(btrim(tower.penyelenggara))
-  );
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'tower_infrastruktur'
+      AND column_name = 'penyelenggara'
+  ) THEN
+    EXECUTE '
+      INSERT INTO tower_tenant (
+        tower_id,
+        penyelenggara,
+        user_created,
+        date_created
+      )
+      SELECT
+        tower.id,
+        btrim(tower.penyelenggara),
+        tower.user_created,
+        COALESCE(tower.date_created, now())
+      FROM tower_infrastruktur AS tower
+      WHERE tower.verification_status IN (
+          ''Registered'', ''Submitted'', ''Approved'', ''REGISTERED''
+        )
+        AND tower.deleted_at IS NULL
+        AND NULLIF(btrim(tower.penyelenggara), '''') IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM tower_tenant AS tenant
+          WHERE tenant.tower_id = tower.id
+            AND lower(btrim(tenant.penyelenggara)) =
+                lower(btrim(tower.penyelenggara))
+        )
+    ';
+  END IF;
+END $$;
 
 INSERT INTO tower_registration_attempts (
   user_created,
