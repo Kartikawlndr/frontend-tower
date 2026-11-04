@@ -15,9 +15,42 @@ function SetPasswordForm() {
   const validMode = mode === "invite" || mode === "reset" || forcedChange;
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [continuing, setContinuing] = useState(false);
+
+  async function continueToPortal() {
+    setMessage("");
+    setContinuing(true);
+    try {
+      const response = await fetch("/api/auth/session", { cache: "no-store" });
+      const session = (await response.json().catch(() => null)) as
+        | { authenticated?: boolean; user?: typeof user; error?: string }
+        | null;
+      if (response.status === 401) {
+        router.replace("/");
+        return;
+      }
+      if (!response.ok || session?.authenticated !== true || !session.user) {
+        throw new Error(session?.error || "Status akun tidak dapat diperiksa.");
+      }
+      setUser(session.user);
+      if (session.user.mustChangePassword) {
+        setPassword("");
+        setConfirmation("");
+        setSuccess(false);
+        return;
+      }
+      router.replace("/dashboard");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Status akun tidak dapat diperiksa.");
+    } finally {
+      setContinuing(false);
+    }
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,18 +64,38 @@ function SetPasswordForm() {
       setMessage("Konfirmasi password belum sama.");
       return;
     }
+    if (
+      mode === "invite" &&
+      (!firstName.trim() ||
+        firstName.trim().length > 50 ||
+        !lastName.trim() ||
+        lastName.trim().length > 50)
+    ) {
+      setMessage("Nama depan dan nama belakang wajib diisi (maksimal 50 karakter).");
+      return;
+    }
 
     setSubmitting(true);
     try {
       const response = await fetch(
         forcedChange ? "/api/account/forced-password" : "/api/account/complete-password",
         {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          forcedChange ? { password } : { token, password, mode },
-        ),
-      });
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            forcedChange
+              ? { password }
+              : {
+                  token,
+                  password,
+                  mode,
+                  ...(mode === "invite"
+                    ? { first_name: firstName.trim(), last_name: lastName.trim() }
+                    : {}),
+                },
+          ),
+        },
+      );
       const result = (await response.json().catch(() => null)) as
         | { message?: string; error?: string }
         | null;
@@ -53,10 +106,6 @@ function SetPasswordForm() {
       setSuccess(true);
       setPassword("");
       setConfirmation("");
-      if (forcedChange) {
-        setUser({ ...user, mustChangePassword: false });
-        router.replace("/dashboard");
-      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Password tidak dapat disimpan.");
     } finally {
@@ -99,10 +148,28 @@ function SetPasswordForm() {
         ) : success ? (
           <div role="status" className="space-y-4">
             <p className="text-sm text-primary">{message}</p>
-            <Link href={forcedChange ? "/dashboard" : "/"} className="inline-flex rounded-card bg-primary px-4 py-2 text-sm font-semibold text-on-primary">{forcedChange ? "Lanjut ke portal" : "Lanjut ke login"}</Link>
+            {forcedChange ? (
+              <button type="button" disabled={continuing} onClick={continueToPortal} className="inline-flex rounded-card bg-primary px-4 py-2 text-sm font-semibold text-on-primary disabled:opacity-50">
+                {continuing ? "Memeriksa akun..." : "Lanjut ke portal"}
+              </button>
+            ) : (
+              <Link href="/" className="inline-flex rounded-card bg-primary px-4 py-2 text-sm font-semibold text-on-primary">Lanjut ke login</Link>
+            )}
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-4">
+            {mode === "invite" && (
+              <>
+                <label className="flex flex-col gap-2 text-sm font-medium text-heading">
+                  Nama depan
+                  <input autoComplete="given-name" type="text" value={firstName} onChange={(event) => setFirstName(event.target.value)} maxLength={50} required className="h-10 rounded-input border border-border px-3" />
+                </label>
+                <label className="flex flex-col gap-2 text-sm font-medium text-heading">
+                  Nama belakang
+                  <input autoComplete="family-name" type="text" value={lastName} onChange={(event) => setLastName(event.target.value)} maxLength={50} required className="h-10 rounded-input border border-border px-3" />
+                </label>
+              </>
+            )}
             <label className="flex flex-col gap-2 text-sm font-medium text-heading">
               Password baru
               <input autoComplete="new-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={12} maxLength={128} required className="h-10 rounded-input border border-border px-3" />

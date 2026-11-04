@@ -35,7 +35,10 @@ export async function POST(request: Request) {
   stagedFile.append("file", file, file.name);
   let uploadResponse: Response;
   try {
-    uploadResponse = await directusFetch("/files", { method: "POST", body: stagedFile });
+    uploadResponse = await directusFetch(
+      "/files?fields=id,type,filesize,filename_download,uploaded_by",
+      { method: "POST", body: stagedFile },
+    );
   } catch {
     return NextResponse.json(
       { error: "File tidak dapat dikirim ke Directus." },

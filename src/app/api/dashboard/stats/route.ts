@@ -4,7 +4,8 @@ import { directusFetch } from "@/lib/directus-session";
 type Attempt = {
   id?: string | number;
   status?: string;
-  registration_code?: string;
+  attempt_type?: string;
+  registration_code?: string | null;
   metode_pendaftaran?: string;
   date_created?: string;
   date_updated?: string;
@@ -38,7 +39,7 @@ export async function GET() {
   let towers: Tower[] = [];
   let totalTowers = 0;
   let rejectedAttempts: Attempt[] = [];
-  let draftAttempts: Attempt[] = [];
+  let draftCount = 0;
   let page = 1;
   try {
     do {
@@ -56,13 +57,16 @@ export async function GET() {
             data?: Tower[];
             meta?: { total?: number };
             rejected_attempts?: Attempt[];
-            draft_attempts?: Attempt[];
+            draft_count?: number;
           }
         | null;
       const pageTotal = payload?.meta?.total;
       if (
         !payload ||
         !Array.isArray(payload.data) ||
+        typeof payload.draft_count !== "number" ||
+        !Number.isInteger(payload.draft_count) ||
+        payload.draft_count < 0 ||
         typeof pageTotal !== "number" ||
         !Number.isInteger(pageTotal) ||
         pageTotal < 0
@@ -75,7 +79,7 @@ export async function GET() {
       if (page === 1) {
         totalTowers = pageTotal;
         rejectedAttempts = payload.rejected_attempts ?? [];
-        draftAttempts = payload.draft_attempts ?? [];
+        draftCount = payload.draft_count;
       }
       if (payload.data.length === 0 && towers.length < totalTowers) {
         return NextResponse.json(
@@ -93,41 +97,49 @@ export async function GET() {
     );
   }
   const attempts: DashboardActivity[] = towers.flatMap((tower) =>
-    (tower.registration_attempts ?? []).map((attempt) => ({
-      ...attempt,
-      towerId: tower.id,
-      towerCode: tower.id_menara || "—",
-      owner: tower.nama_pemilik || "—",
-    })),
+    (tower.registration_attempts ?? [])
+      .filter((attempt) => attempt.status !== "Draft")
+      .map((attempt) => ({
+        ...attempt,
+        towerId: tower.id,
+        towerCode: tower.id_menara || "—",
+        owner: tower.nama_pemilik || "—",
+      })),
   );
+  const registrationCodeByTowerId = new Map<string, string>();
+  for (const attempt of attempts) {
+    if (
+      attempt.towerId &&
+      attempt.status === "Registered" &&
+      attempt.attempt_type === "New Registration" &&
+      attempt.registration_code &&
+      !registrationCodeByTowerId.has(attempt.towerId)
+    ) {
+      registrationCodeByTowerId.set(
+        attempt.towerId,
+        attempt.registration_code,
+      );
+    }
+  }
   const registeredTowersWithoutRegisteredAttempt = towers.filter(
     (tower) =>
       !(tower.registration_attempts ?? []).some(
-        (attempt) => attempt.status === "Registered",
+        (attempt) =>
+          attempt.status === "Registered" || attempt.status === "Draft",
       ),
   );
   const fallbackRegisteredAttempts: DashboardActivity[] =
     registeredTowersWithoutRegisteredAttempt.map((tower) => ({
-    id: `tower-${tower.id}`,
-    status: "Registered",
-    metode_pendaftaran: tower.metode_pendaftaran,
-    date_created: tower.date_created,
-    registration_code: tower.id_menara,
-    submission_data: { nama_pemilik: tower.nama_pemilik },
-    towerId: tower.id,
-    towerCode: tower.id_menara || "—",
-    owner: tower.nama_pemilik || "—",
+      id: `tower-${tower.id}`,
+      status: "Registered",
+      metode_pendaftaran: tower.metode_pendaftaran,
+      date_created: tower.date_created,
+      submission_data: { nama_pemilik: tower.nama_pemilik },
+      towerId: tower.id,
+      towerCode: tower.id_menara || "—",
+      owner: tower.nama_pemilik || "—",
     }));
   const detachedRejectedAttempts: DashboardActivity[] = rejectedAttempts.map((attempt) => ({
-    ...attempt,
-    towerId: null,
-    towerCode: "—",
-    owner:
-      attempt.submission_data?.nama_pemilik ||
-      [attempt.user_first_name, attempt.user_last_name].filter(Boolean).join(" ") ||
-      "—",
-  }));
-  const draftActivityAttempts: DashboardActivity[] = draftAttempts.map((attempt) => ({
     ...attempt,
     towerId: null,
     towerCode: "—",
@@ -140,7 +152,6 @@ export async function GET() {
     ...attempts,
     ...fallbackRegisteredAttempts,
     ...detachedRejectedAttempts,
-    ...draftActivityAttempts,
   ];
   const methodCounts = allActivities.reduce(
     (counts, attempt) => {
@@ -199,13 +210,13 @@ export async function GET() {
     system: { directusConnected: true, directusStatus: "healthy" },
     metrics: {
       totalTowers,
-      totalCompanies: new Set(towers.map((tower) => tower.nama_pemilik).filter(Boolean)).size,
+      totalCompanies: tenantCounts.size,
       totalProvinces: provinceKeys.size,
-      totalSubmissions: allActivities.length,
+      totalSubmissions: allActivities.length + draftCount,
       registeredSubmissions: towers.length,
       rejectedSubmissions: rejectedAttempts.length +
         attempts.filter((attempt) => attempt.status === "Rejected").length,
-      draftSubmissions: draftAttempts.length,
+      draftSubmissions: draftCount,
     },
     methodDistribution: {
       excelCount: methodCounts.excel,
@@ -221,7 +232,12 @@ export async function GET() {
       )
       .map((attempt) => ({
         id: `${attempt.towerId ?? "attempt"}-${attempt.id}`,
-        regNumber: attempt.registration_code || attempt.towerCode,
+        regNumber:
+          attempt.registration_code ||
+          (attempt.towerId
+            ? registrationCodeByTowerId.get(attempt.towerId)
+            : undefined) ||
+          "—",
         company: attempt.owner,
         method: attempt.metode_pendaftaran || "—",
         rows: 1,

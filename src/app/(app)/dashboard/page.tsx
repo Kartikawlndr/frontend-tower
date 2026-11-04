@@ -18,6 +18,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InsightsAnalytics } from "@/components/dashboard/insights-analytics";
+import { SearchableYearSelect } from "@/components/ui/searchable-year-select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { INDONESIAN_REGIONS } from "@/lib/indonesian-administrative-regions";
+import { formatDateWib, getWibDateKey } from "@/lib/date-time";
 
 const ROLE_DISPLAY: Record<string, string> = {
   "Normal User": "Pengguna",
@@ -59,6 +63,7 @@ export interface TowerRecord {
   tinggiAgl: number;
   kapasitasMaks?: number;
   registrationNo: string;
+  hasBeenEdited: boolean;
   status?: "REGISTERED" | "PENDING" | "REJECTED";
 }
 
@@ -103,11 +108,13 @@ type QueryFilters = {
   tahun: string;
   jenisMenara: string;
   tenant: string;
+  provinsi: string;
+  kabKota: string;
   alamat: string;
   longitude: string;
   latitude: string;
   date: string;
-  tinggiMin: string;
+  tinggi: string;
   registrationNo: string;
 };
 
@@ -117,26 +124,18 @@ const DEFAULT_FILTERS: QueryFilters = {
   tahun: "",
   jenisMenara: "",
   tenant: "",
+  provinsi: "",
+  kabKota: "",
   alamat: "",
   longitude: "",
   latitude: "",
   date: "",
-  tinggiMin: "",
+  tinggi: "",
   registrationNo: "",
 };
 
-const CURRENT_YEAR = new Date().getFullYear();
-const YEAR_OPTIONS = Array.from(
-  { length: CURRENT_YEAR - 1900 + 1 },
-  (_, i) => CURRENT_YEAR - i
-);
-
 function localDateKey(value: string) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "";
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
+  return getWibDateKey(value);
 }
 
 interface DashboardStatsData {
@@ -175,7 +174,7 @@ interface DashboardStatsData {
     method: string;
     rows: number;
     timestamp: string;
-    status: "Registered" | "Rejected" | "Draft";
+    status: "Registered" | "Rejected";
   }[];
 }
 
@@ -194,6 +193,7 @@ type PortalTower = {
   kelurahan?: string;
   metode_pendaftaran?: string;
   date_created?: string;
+  date_updated?: string;
   tinggi_menara?: number | string;
   kapasitas_maksimal?: number | string;
   tenants?: Array<{ penyelenggara?: string }>;
@@ -308,6 +308,11 @@ export default function DashboardPage() {
                 attempt.attempt_type === "New Registration" &&
                 attempt.registration_code,
             )?.registration_code || "",
+          hasBeenEdited: tower.registration_attempts?.some(
+            (attempt) =>
+              attempt.status === "Registered" &&
+              attempt.attempt_type === "Update",
+          ) ?? false,
           status: "REGISTERED",
         })));
     } catch (error) {
@@ -381,7 +386,7 @@ export default function DashboardPage() {
   const filteredTowers = useMemo(() => {
     const longitude = parseFloat(appliedFilters.longitude);
     const latitude = parseFloat(appliedFilters.latitude);
-    const tinggiMin = parseFloat(appliedFilters.tinggiMin);
+    const tinggi = parseFloat(appliedFilters.tinggi);
 
     return dashboardTowers.filter((t) => {
       if (
@@ -390,6 +395,16 @@ export default function DashboardPage() {
       ) {
         return false;
       }
+      if (
+        appliedFilters.provinsi &&
+        t.provinsi?.trim().toLocaleLowerCase("id-ID") !==
+          appliedFilters.provinsi.trim().toLocaleLowerCase("id-ID")
+      ) return false;
+      if (
+        appliedFilters.kabKota &&
+        t.kab_kota?.trim().toLocaleLowerCase("id-ID") !==
+          appliedFilters.kabKota.trim().toLocaleLowerCase("id-ID")
+      ) return false;
       if (
         appliedFilters.namaPemilik &&
         !t.namaPemilik
@@ -406,7 +421,8 @@ export default function DashboardPage() {
       }
       if (
         appliedFilters.jenisMenara &&
-        t.jenisMenara !== appliedFilters.jenisMenara
+        t.jenisMenara.trim().toLowerCase() !==
+          appliedFilters.jenisMenara.trim().toLowerCase()
       ) {
         return false;
       }
@@ -435,7 +451,7 @@ export default function DashboardPage() {
       ) return false;
       const registrationDate = localDateKey(t.dateCreated);
       if (appliedFilters.date && registrationDate !== appliedFilters.date) return false;
-      if (!Number.isNaN(tinggiMin) && t.tinggiAgl < tinggiMin) return false;
+      if (!Number.isNaN(tinggi) && t.tinggiAgl !== tinggi) return false;
       if (
         appliedFilters.registrationNo &&
         !t.registrationNo
@@ -521,6 +537,13 @@ export default function DashboardPage() {
 
   const displayTopCompanies = stats?.topCompanies || [];
   const displayActivities = stats?.recentActivities || [];
+  const selectedProvince = INDONESIAN_REGIONS.find(
+    (region) => region.name === draftFilters.provinsi,
+  );
+  const cityOptions = selectedProvince?.kabKota.map((city) => ({
+    label: city.name,
+    value: city.name,
+  })) ?? [];
 
   return (
     <div className="space-y-6 pb-12">
@@ -624,7 +647,7 @@ export default function DashboardPage() {
                   Total Permohonan Menara
                 </div>
                 <div className="mt-1 text-2xl font-bold tracking-tight text-primary">
-                  {displayMetrics.totalTowers.toLocaleString("id-ID")}
+                  {displayMetrics.totalTowers.toLocaleString("id-ID")} Menara
                 </div>
                 <div className="mt-1 flex items-center gap-1 text-2xs text-muted">
                   <span className="font-semibold text-primary">Aktif</span> dalam basis data nasional
@@ -639,13 +662,13 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between rounded-card border border-border-soft bg-surface p-5 shadow-card transition-shadow hover:shadow-pop">
               <div>
                 <div className="text-xs font-medium text-muted">
-                  Instansi / Perusahaan
+                  Penyelenggara jaringan
                 </div>
                 <div className="mt-1 text-2xl font-bold tracking-tight text-[#00a8e8]">
-                  {displayMetrics.totalCompanies} Instansi
+                  {displayMetrics.totalCompanies.toLocaleString("id-ID")} Tenants
                 </div>
                 <div className="mt-1 text-2xs text-muted">
-                  Penyelenggara jaringan aktif
+                  Berdasarkan data tenant pada menara terdata
                 </div>
               </div>
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#e0f6ff] text-[#00a8e8]">
@@ -693,6 +716,7 @@ export default function DashboardPage() {
           {/* 1.3 MIDDLE ANALYTICS (Donut & Trend Charts) */}
           <InsightsAnalytics
            totalSubmissions={displayMetrics.totalSubmissions}
+           draftCount={displayMetrics.draftSubmissions}
            methods={displayMethods}
            topCompanies={displayTopCompanies}
            trendRecords={stats?.trendRecords ?? []}
@@ -706,7 +730,32 @@ export default function DashboardPage() {
       {/* ========================================================= */}
       {(!canViewInsights || currentTab === "map") && (
         <div className="space-y-6">
-          {/* 2.1 Query Data Card */}
+          {/* 2.1 Tower Map Card */}
+          <div className="rounded-card border border-border-soft bg-surface p-6 shadow-card">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-heading">
+                  Peta Menara Telekomunikasi
+                </h2>
+                <p className="text-xs text-muted">
+                  Menampilkan {filteredTowers.length} menara sesuai filter; titik berdekatan dikelompokkan
+                </p>
+              </div>
+              {selectedPinId && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedPinId(null)}
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
+                  Bersihkan pilihan pin
+                </button>
+              )}
+            </div>
+
+            <TowerMap towers={filteredTowers} />
+          </div>
+
+          {/* 2.2 Query Data Card */}
           <form
             onSubmit={handleQuerySubmit}
             className="rounded-card border border-border-soft bg-surface p-6 shadow-card"
@@ -761,26 +810,72 @@ export default function DashboardPage() {
 
               {/* 3. Tahun pembangunan */}
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-heading">
+                <label htmlFor="dashboard-year-filter" className="mb-1.5 block text-xs font-medium text-heading">
                   Tahun pembangunan
                 </label>
-                <select
+                <SearchableYearSelect
+                  id="dashboard-year-filter"
+                  ariaLabel="Tahun pembangunan"
+                  searchLabel="Cari tahun pembangunan"
+                  optionsLabel="Tahun pembangunan"
                   value={draftFilters.tahun}
-                  onChange={(e) =>
-                    setDraftFilters((p: QueryFilters) => ({
-                      ...p,
-                      tahun: e.target.value,
+                  onChange={(year) =>
+                    setDraftFilters((current) => ({ ...current, tahun: year }))
+                  }
+                  placeholder="Semua Tahun"
+                  triggerClassName="h-9 bg-white text-xs text-heading"
+                  allowAll
+                />
+              </div>
+
+              <div>
+                <label htmlFor="dashboard-province-filter" className="mb-1.5 block text-xs font-medium text-heading">
+                  Provinsi
+                </label>
+                <SearchableSelect
+                  id="dashboard-province-filter"
+                  ariaLabel="Provinsi"
+                  searchLabel="Cari provinsi"
+                  optionsLabel="Daftar provinsi"
+                  options={INDONESIAN_REGIONS.map((region) => ({
+                    label: region.name,
+                    value: region.name,
+                  }))}
+                  value={draftFilters.provinsi}
+                  onChange={(provinsi) =>
+                    setDraftFilters((current) => ({
+                      ...current,
+                      provinsi,
+                      kabKota: "",
                     }))
                   }
-                  className="h-9 w-full rounded-input border border-border bg-white px-3 text-xs text-heading focus:border-primary focus:outline-none"
-                >
-                  <option value="">Semua Tahun</option>
-                  {YEAR_OPTIONS.map((year) => (
-                    <option key={year} value={String(year)}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Semua Provinsi"
+                  allowAll
+                />
+              </div>
+
+              <div>
+                <label htmlFor="dashboard-city-filter" className="mb-1.5 block text-xs font-medium text-heading">
+                  Kabupaten/Kota
+                </label>
+                <SearchableSelect
+                  id="dashboard-city-filter"
+                  ariaLabel="Kabupaten/Kota"
+                  searchLabel="Cari kabupaten atau kota"
+                  optionsLabel="Daftar kabupaten dan kota"
+                  options={cityOptions}
+                  value={draftFilters.kabKota}
+                  onChange={(kabKota) =>
+                    setDraftFilters((current) => ({ ...current, kabKota }))
+                  }
+                  placeholder={
+                    draftFilters.provinsi
+                      ? "Semua Kabupaten/Kota"
+                      : "Pilih provinsi dulu"
+                  }
+                  allowAll={Boolean(draftFilters.provinsi)}
+                  disabled={!draftFilters.provinsi}
+                />
               </div>
 
               {/* 4. Jenis menara */}
@@ -887,18 +982,18 @@ export default function DashboardPage() {
                 />
               </div>
 
-              {/* 9. Tinggi AGL minimum */}
+              {/* 9. Tinggi AGL */}
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-heading">
-                  Tinggi AGL min (meter)
+                  Tinggi AGL (meter)
                 </label>
                 <input
                   type="number"
-                  value={draftFilters.tinggiMin}
+                  value={draftFilters.tinggi}
                   onChange={(e) =>
                     setDraftFilters((p: QueryFilters) => ({
                       ...p,
-                      tinggiMin: e.target.value,
+                      tinggi: e.target.value,
                     }))
                   }
                   placeholder="Contoh: 30"
@@ -956,31 +1051,6 @@ export default function DashboardPage() {
               </Button>
             </div>
           </form>
-
-          {/* 2.2 Tower Map Card */}
-          <div className="rounded-card border border-border-soft bg-surface p-6 shadow-card">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-heading">
-                  Peta Menara Telekomunikasi
-                </h2>
-                <p className="text-xs text-muted">
-                  Menampilkan {filteredTowers.length} menara sesuai filter; titik berdekatan dikelompokkan
-                </p>
-              </div>
-              {selectedPinId && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedPinId(null)}
-                  className="text-xs font-semibold text-primary hover:underline"
-                >
-                  Bersihkan pilihan pin
-                </button>
-              )}
-            </div>
-
-            <TowerMap towers={filteredTowers} />
-          </div>
 
           {/* 2.3 Tower Data Table Card */}
           <div className="rounded-card border border-border-soft bg-surface p-6 shadow-card">
@@ -1146,7 +1216,7 @@ export default function DashboardPage() {
                         {visibleCols.dateCreated && (
                           <td className="whitespace-nowrap p-3">
                             {tower.dateCreated
-                              ? new Date(tower.dateCreated).toLocaleDateString("id-ID")
+                              ? formatDateWib(tower.dateCreated)
                               : "—"}
                           </td>
                         )}
@@ -1156,6 +1226,15 @@ export default function DashboardPage() {
                         {visibleCols.registrationNo && (
                           <td className="p-3 font-mono text-2xs text-muted">
                             {tower.registrationNo}
+                            {tower.hasBeenEdited && (
+                              <span
+                                aria-label="Pernah diedit"
+                                title="Data ini pernah diedit"
+                                className="ml-1 font-sans font-bold text-amber"
+                              >
+                                *
+                              </span>
+                            )}
                           </td>
                         )}
                       </tr>

@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import QRCode from "qrcode";
 import {
+  consumePasswordResetRequest,
+  consumeLoginStatusCheck,
+  countDrafts,
   csvForTowers,
   getPortalRole,
+  hasSuspendedValidCredentials,
   isApplicant,
   sanitizeDraftData,
   validateBulkDeleteIds,
@@ -10,8 +15,201 @@ import {
 import {
   createRegisteredTowers,
   createRejectedAttempt,
+  formatTowerId,
   setRecordCreator,
 } from "../../../shared/normalized-registration.js";
+import { sendRegistrationReceipts } from "../../../shared/registration-receipt.js";
+
+test("draft counts are global for admins and scoped to the Applicant", async () => {
+  const countForRole = async (role) => {
+    const filters = [];
+    const query = {
+      where(...args) {
+        filters.push(args);
+        return query;
+      },
+      async count() {
+        return [{ count: "3" }];
+      },
+    };
+    const database = (table) => {
+      assert.equal(table, "tower_registration_attempts");
+      return query;
+    };
+
+    const count = await countDrafts(database, { user: "applicant-1" }, role);
+    return { count, filters };
+  };
+
+  assert.deepEqual(await countForRole("Super Admin"), {
+    count: 3,
+    filters: [[{ status: "Draft", attempt_type: "New Registration" }]],
+  });
+  assert.deepEqual(await countForRole("Applicant"), {
+    count: 3,
+    filters: [
+      [{ status: "Draft", attempt_type: "New Registration" }],
+      ["user_created", "applicant-1"],
+    ],
+  });
+});
+
+test("registration receipts contain a local QR attachment with all required fields", async () => {
+  const messages = [];
+  const errors = [];
+  const database = (table) => {
+    assert.equal(table, "directus_users");
+    const query = {
+      select() {
+        return query;
+      },
+      where({ id }) {
+        assert.equal(id, "applicant-1");
+        return query;
+      },
+      async first() {
+        return { email: "applicant@example.com", first_name: "Alya" };
+      },
+    };
+    return query;
+  };
+  class MailService {
+    constructor(options) {
+      assert.deepEqual(options, {
+        schema: { id: "schema" },
+        accountability: null,
+        knex: database,
+      });
+    }
+
+    async send(message) {
+      messages.push(message);
+    }
+  }
+
+  const sent = await sendRegistrationReceipts({
+    database,
+    QRCode,
+    MailService,
+    getSchema: async () => ({ id: "schema" }),
+    logger: { error: (...args) => errors.push(args) },
+    userId: "applicant-1",
+    registrations: [{
+      tower: {
+        nama_pemilik: "Pemilik Menara",
+        tahun_pembangunan: 2020,
+      },
+    }],
+    created: [{ id: "tower-1", id_menara: "TWR-2026-001" }],
+    registeredAt: new Date("2026-05-22T00:00:00.000Z"),
+  });
+
+  assert.equal(sent, true);
+  assert.equal(errors.length, 0);
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0].to, "applicant@example.com");
+  assert.match(messages[0].text, /ID Menara: TWR-2026-001/);
+  assert.match(messages[0].text, /Tanggal Pendaftaran: 22\/5\/2026/);
+  assert.match(messages[0].text, /Tahun Pembangunan: 2020/);
+  assert.match(messages[0].text, /Nama Pemilik: Pemilik Menara/);
+  assert.match(messages[0].html, /cid:tower-registration-qr/);
+  assert.equal(messages[0].attachments[0].contentType, "image/png");
+  assert.deepEqual(
+    messages[0].attachments[0].content.subarray(0, 8),
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+  );
+});
+
+test("suspended login status is returned only after the password is verified", async () => {
+  const accounts = [
+    { id: "suspended-user", email: "paused@example.com", status: "suspended", provider: "default" },
+    { id: "active-user", email: "active@example.com", status: "active", provider: "default" },
+    { id: "dummy-user", email: "dummy@example.com", status: "active", provider: "default" },
+  ];
+  const database = (table) => {
+    assert.equal(table, "directus_users");
+    const query = { clauses: {} };
+    query.select = () => query;
+    query.whereRaw = (_statement, bindings) => {
+      query.email = bindings[1].toLowerCase();
+      return query;
+    };
+    query.where = (clauses) => {
+      query.clauses = clauses;
+      return query;
+    };
+    query.whereNotNull = () => query;
+    query.first = async () =>
+      query.email
+        ? accounts.find((account) => account.email === query.email)
+        : accounts.find((account) => account.provider === query.clauses.provider);
+    return query;
+  };
+  class AuthenticationService {
+    async verifyPassword(userId, password) {
+      if (
+        (userId === "suspended-user" || userId === "active-user") &&
+        password === "correct-password"
+      ) {
+        return;
+      }
+      if (userId === "dummy-user" && password === "dummy-password") return;
+      throw Object.assign(new Error("Invalid credentials"), {
+        code: "INVALID_CREDENTIALS",
+      });
+    }
+  }
+  const check = (email, password) =>
+    hasSuspendedValidCredentials({
+      database,
+      AuthenticationService,
+      schema: {},
+      email,
+      password,
+    });
+
+  assert.equal(await check("paused@example.com", "wrong-password"), false);
+  assert.equal(await check("paused@example.com", "correct-password"), true);
+  assert.equal(await check("active@example.com", "correct-password"), false);
+  assert.equal(await check("missing@example.com", "wrong-password"), false);
+  assert.equal(await check("missing@example.com", "dummy-password"), false);
+});
+
+test("login status checks are limited per normalized email over a time window", () => {
+  const now = 1_000_000;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    assert.equal(
+      consumeLoginStatusCheck("Rate.Limit@example.com", now + attempt),
+      true,
+    );
+  }
+  assert.equal(
+    consumeLoginStatusCheck("rate.limit@example.com", now + 5),
+    false,
+  );
+  assert.equal(
+    consumeLoginStatusCheck("rate.limit@example.com", now + 15 * 60 * 1000),
+    true,
+  );
+});
+
+test("password reset requests are limited per normalized email over a time window", () => {
+  const now = 1_000_000;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    assert.equal(
+      consumePasswordResetRequest("Reset.Me@example.com", now + attempt),
+      true,
+    );
+  }
+  assert.equal(
+    consumePasswordResetRequest("reset.me@example.com", now + 5),
+    false,
+  );
+  assert.equal(
+    consumePasswordResetRequest("reset.me@example.com", now + 15 * 60 * 1000),
+    true,
+  );
+});
 
 test("role checks accept only authenticated Applicant accounts", () => {
   assert.equal(isApplicant({ user: "user-1", role: "applicant" }, "applicant"), true);
@@ -115,14 +313,14 @@ test("bulk deletion accepts a bounded unique list only", () => {
 test("draft snapshots keep tenant names without duplicated tenant capacity", () => {
   assert.deepEqual(
     sanitizeDraftData({
-      id_menara: "T-01",
+      id_menara: "000701",
       longitude: "",
       provinsi: "Sumatera Barat",
       kab_kota: "Kota Padang",
       tenants: [{ penyelenggara: "Tenant A", kapasitas_disewakan: "legacy value" }],
     }),
     {
-      id_menara: "T-01",
+      id_menara: "000701",
       longitude: "",
       provinsi: "Sumatera Barat",
       kab_kota: "Kota Padang",
@@ -131,6 +329,15 @@ test("draft snapshots keep tenant names without duplicated tenant capacity", () 
   );
   assert.throws(() => sanitizeDraftData({ verification_status: "Registered" }));
   assert.throws(() => sanitizeDraftData({ id_menara: "x".repeat(201) }));
+});
+
+test("formats tower IDs using the registration year and preserves leading zeroes", () => {
+  assert.equal(
+    formatTowerId("000701", new Date("2025-12-31T23:59:59.000Z")),
+    "TWR-2025-000701",
+  );
+  assert.throws(() => formatTowerId("ID-000701", new Date("2025-01-01T00:00:00Z")));
+  assert.throws(() => formatTowerId("1".repeat(42), new Date("2025-01-01T00:00:00Z")));
 });
 
 test("registered submission transaction writes tower, tenants, attempt, and activity", async () => {
@@ -180,9 +387,10 @@ test("registered submission transaction writes tower, tenants, attempt, and acti
     schema: {},
     userId: "applicant-1",
     method: "Input Manual",
+    registeredAt: new Date("2025-12-31T23:59:59.000Z"),
     registrations: [{
       tower: {
-        id_menara: "T-01",
+        id_menara: "000701",
         longitude: 106.8,
         latitude: -6.2,
         kapasitas_disewakan: "2",
@@ -198,6 +406,7 @@ test("registered submission transaction writes tower, tenants, attempt, and acti
   assert.equal(records.filter(({ collection }) => collection === "tower_infrastruktur").length, 1);
   assert.equal(records.filter(({ collection }) => collection === "tower_tenant").length, 2);
   const tower = records.find(({ collection }) => collection === "tower_infrastruktur");
+  assert.equal(tower.data.id_menara, "TWR-2025-000701");
   assert.equal(tower.data.kapasitas_disewakan, "2");
   assert.equal("penyelenggara" in tower.data, false);
   const tenantRecords = records.filter(({ collection }) => collection === "tower_tenant");
@@ -209,6 +418,8 @@ test("registered submission transaction writes tower, tenants, attempt, and acti
   const attempt = records.find(({ collection }) => collection === "tower_registration_attempts");
   assert.equal(attempt.data.status, "Registered");
   assert.equal(attempt.data.registration_code, "REG-000001");
+  assert.equal(attempt.data.submission_data.id_menara, "TWR-2025-000701");
+  assert.equal(created[0].id_menara, "TWR-2025-000701");
   assert.equal(attempt.data.tower_id, created[0].id);
   assert.equal(attempt.data.submission_data.tenants.length, 2);
   assert.ok(Number.isFinite(Date.parse(attempt.data.date_created)));
@@ -271,7 +482,7 @@ test("registered submission does not persist legacy capacity values on tenant ro
     userId: "applicant-1",
     method: "Input Manual",
     registrations: [{
-      tower: { id_menara: "T-01", kapasitas_disewakan: "2" },
+      tower: { id_menara: "000701", kapasitas_disewakan: "2" },
       tenants: [
         { penyelenggara: "TENANT A", kapasitas_disewakan: "9" },
         { penyelenggara: "TENANT B", kapasitas_disewakan: "8" },
@@ -486,7 +697,7 @@ test("a successful submission converts its Applicant draft to Registered", async
     userId: "applicant-1",
     method: "Input Manual",
     registrations: [{
-      tower: { id_menara: "T-01", longitude: 106.8, latitude: -6.2 },
+      tower: { id_menara: "000701", longitude: 106.8, latitude: -6.2 },
       tenants: [{ penyelenggara: "Tenant A", kapasitas_disewakan: "2" }],
     }],
     draftId: 23,

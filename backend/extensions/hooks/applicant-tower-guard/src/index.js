@@ -1,4 +1,8 @@
 import { resolveAdministrativeRegions } from "./administrative-regions.js";
+import {
+  formatTowerId,
+  normalizeText,
+} from "../../../shared/normalized-registration.js";
 
 const COLLECTION = "tower_infrastruktur";
 const TENANT_COLLECTION = "tower_tenant";
@@ -6,6 +10,7 @@ const FILE_COLLECTION = "directus_files";
 const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_TEXT_LENGTH = 50;
+const MAX_TOWER_ID_DIGITS = 41;
 const TOWER_TEXT_FIELDS = new Set([
   "id_menara",
   "nama_pemilik",
@@ -48,12 +53,22 @@ function requireText(value, field, { numericAllowed = false } = {}) {
     throw new Error(`${field}: isi dengan teks yang valid.`);
   }
 
-  const text = String(value).normalize("NFC").trim();
+  const text = normalizeText(value);
   if (!text) throw new Error(`${field}: kolom wajib diisi.`);
   if (Array.from(text).length > MAX_TEXT_LENGTH) {
     throw new Error(`${field}: maksimal ${MAX_TEXT_LENGTH} karakter.`);
   }
   return text.toUpperCase();
+}
+
+function requireTowerId(value) {
+  const id = requireText(value, "id_menara");
+  if (!/^\d+$/.test(id) || id.length > MAX_TOWER_ID_DIGITS) {
+    throw new Error(
+      `id_menara: isi dengan 1 sampai ${MAX_TOWER_ID_DIGITS} digit angka.`,
+    );
+  }
+  return id;
 }
 
 export function uppercaseTowerTextFields(payload, collection) {
@@ -70,7 +85,7 @@ export function uppercaseTowerTextFields(payload, collection) {
     const result = { ...item };
     for (const field of fields) {
       if (typeof result[field] === "string") {
-        result[field] = result[field].toUpperCase();
+        result[field] = normalizeText(result[field]).toUpperCase();
       }
     }
     if (
@@ -262,9 +277,7 @@ export async function sanitizeTowerSubmission(
     Object.entries(input).filter(([field]) => ALLOWED_FIELDS.has(field)),
   );
   if (includeTenants) output.tenants = tenants;
-  output.id_menara = requireText(output.id_menara, "id_menara", {
-    numericAllowed: true,
-  });
+  output.id_menara = requireTowerId(output.id_menara);
   output.nama_pemilik = requireText(output.nama_pemilik, "nama_pemilik");
   output.tahun_pembangunan = requireNumber(
     output.tahun_pembangunan,
@@ -340,7 +353,14 @@ export async function sanitizeTowerSubmission(
 }
 
 export async function sanitizeTowerUpdate(input, context) {
-  const output = await sanitizeTowerSubmission(input, context);
+  const formattedId =
+    typeof input?.id_menara === "string"
+      ? /^TWR-\d{4}-(\d{1,41})$/.exec(input.id_menara)?.[1]
+      : undefined;
+  const output = await sanitizeTowerSubmission(
+    formattedId ? { ...input, id_menara: formattedId } : input,
+    context,
+  );
   delete output.id_menara;
   return output;
 }
@@ -383,16 +403,17 @@ export default ({ filter }, { env }) => {
     const normalized = uppercaseTowerTextFields(payload, meta.collection);
     if (!context.accountability?.user) return omitTowerProvider(normalized);
 
+    const sanitizeAndFormat = async (item) => {
+      const tower = await sanitizeTowerSubmission(item, context, {
+        includeTenants: true,
+      });
+      tower.id_menara = formatTowerId(tower.id_menara);
+      return tower;
+    };
     if (Array.isArray(normalized)) {
-      return Promise.all(
-        normalized.map((item) =>
-          sanitizeTowerSubmission(item, context, { includeTenants: true }),
-        ),
-      );
+      return Promise.all(normalized.map(sanitizeAndFormat));
     }
-    return sanitizeTowerSubmission(normalized, context, {
-      includeTenants: true,
-    });
+    return sanitizeAndFormat(normalized);
   });
 };
 

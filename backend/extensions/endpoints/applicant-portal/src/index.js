@@ -1,3 +1,5 @@
+import { createHash, timingSafeEqual } from "node:crypto";
+import QRCode from "qrcode";
 import { defineEndpoint } from "@directus/extensions-sdk";
 import {
   sanitizeTenantEntries,
@@ -9,12 +11,21 @@ import {
   createRejectedAttempt,
   setRecordCreator,
 } from "../../../shared/normalized-registration.js";
+import { sendRegistrationReceipts } from "../../../shared/registration-receipt.js";
 import { AdministrativeRegionLookupError } from "../../../hooks/applicant-tower-guard/src/administrative-regions.js";
 
 const COLLECTION = "tower_infrastruktur";
 const TENANT_COLLECTION = "tower_tenant";
 const ATTEMPT_COLLECTION = "tower_registration_attempts";
 const MAX_BULK_DELETE = 200;
+const LOGIN_STATUS_CHECK_WINDOW = 15 * 60 * 1000;
+const LOGIN_STATUS_CHECK_LIMIT = 5;
+const MAX_LOGIN_STATUS_CHECKS = 10000;
+const loginStatusChecks = new Map();
+const PASSWORD_RESET_REQUEST_WINDOW = 15 * 60 * 1000;
+const PASSWORD_RESET_REQUEST_LIMIT = 5;
+const MAX_PASSWORD_RESET_REQUESTS = 10000;
+const passwordResetRequests = new Map();
 const TOWER_FIELDS = [
   "id",
   "id_menara",
@@ -201,6 +212,21 @@ export function validateBulkDeleteIds(ids) {
   );
 }
 
+function getInviteEmail(token) {
+  const payload = token.split(".")[1];
+  if (!payload) return null;
+  try {
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (!claims || typeof claims !== "object") return null;
+    return claims.scope === "invite" && typeof claims.email === "string"
+      ? claims.email
+      : null;
+  } catch (error) {
+    if (error instanceof SyntaxError) return null;
+    throw error;
+  }
+}
+
 function forbidden(res) {
   return res.status(403).json({ error: "Akun Anda tidak memiliki akses ke fitur ini." });
 }
@@ -220,6 +246,83 @@ export async function getPortalRole(database, accountability, applicantRole) {
     .where({ id: user.role })
     .first();
   return PORTAL_ROLES.has(role?.name) ? role.name : null;
+}
+
+export function consumeLoginStatusCheck(email, now = Date.now()) {
+  const key = createHash("sha256")
+    .update(email.trim().toLowerCase())
+    .digest("hex");
+  for (const [candidate, entry] of loginStatusChecks) {
+    if (entry.resetAt <= now) loginStatusChecks.delete(candidate);
+  }
+  const current = loginStatusChecks.get(key);
+  if (current && current.count >= LOGIN_STATUS_CHECK_LIMIT) return false;
+  if (!current) {
+    if (loginStatusChecks.size >= MAX_LOGIN_STATUS_CHECKS) return false;
+    loginStatusChecks.set(key, {
+      count: 1,
+      resetAt: now + LOGIN_STATUS_CHECK_WINDOW,
+    });
+  } else {
+    current.count += 1;
+  }
+  return true;
+}
+
+export function consumePasswordResetRequest(email, now = Date.now()) {
+  const key = createHash("sha256")
+    .update(email.trim().toLowerCase())
+    .digest("hex");
+  for (const [candidate, entry] of passwordResetRequests) {
+    if (entry.resetAt <= now) passwordResetRequests.delete(candidate);
+  }
+  const current = passwordResetRequests.get(key);
+  if (current && current.count >= PASSWORD_RESET_REQUEST_LIMIT) return false;
+  if (!current) {
+    if (passwordResetRequests.size >= MAX_PASSWORD_RESET_REQUESTS) return false;
+    passwordResetRequests.set(key, {
+      count: 1,
+      resetAt: now + PASSWORD_RESET_REQUEST_WINDOW,
+    });
+  } else {
+    current.count += 1;
+  }
+  return true;
+}
+
+export async function hasSuspendedValidCredentials({
+  database,
+  AuthenticationService,
+  schema,
+  email,
+  password,
+}) {
+  const account = await database("directus_users")
+    .select("id", "status", "provider")
+    .whereRaw("LOWER(??) = ?", ["email", email.toLowerCase()])
+    .first();
+  const verificationAccount =
+    account?.provider === "default"
+      ? account
+      : await database("directus_users")
+          .select("id")
+          .where({ provider: "default" })
+          .whereNotNull("password")
+          .first();
+  if (!verificationAccount) return false;
+
+  const authentication = new AuthenticationService({
+    schema,
+    accountability: null,
+    knex: database,
+  });
+  try {
+    await authentication.verifyPassword(verificationAccount.id, password);
+  } catch (error) {
+    if (error?.code === "INVALID_CREDENTIALS") return false;
+    throw error;
+  }
+  return account?.status === "suspended" && account.provider === "default";
 }
 
 function towerFilter(accountability, role, search, status) {
@@ -252,6 +355,18 @@ export function parsePageSize(value, fallback = 25) {
     : fallback;
 }
 
+export async function countDrafts(database, accountability, role) {
+  const query = database(ATTEMPT_COLLECTION).where({
+    status: "Draft",
+    attempt_type: "New Registration",
+  });
+  if (role === "Applicant") {
+    query.where("user_created", accountability.user);
+  }
+  const [{ count }] = await query.count({ count: "id" });
+  return Number(count);
+}
+
 async function readTowers(
   ItemsService,
   database,
@@ -275,6 +390,7 @@ async function readTowers(
     });
   }
   const [{ count }] = await countQuery.count({ count: "id" });
+  const draftCount = await countDrafts(database, accountability, role);
   const service = new ItemsService(COLLECTION, {
     schema,
     accountability: null,
@@ -290,42 +406,30 @@ async function readTowers(
     limit,
     offset: (page - 1) * limit,
   });
-  const rejectedAttempts = role === "Applicant"
-    ? await database(ATTEMPT_COLLECTION)
-        .select(
-          "id",
-          "status",
-          "attempt_type",
-          "metode_pendaftaran",
-          "date_created",
-          "validation_errors",
-        )
-        .where({ user_created: accountability.user, status: "Rejected" })
-        .whereNull("tower_id")
-        .orderBy("date_created", "desc")
-        .limit(100)
-    : [];
-  const draftAttempt = role === "Applicant"
-    ? await database(ATTEMPT_COLLECTION)
-      .select("id", "date_updated", "date_created")
-        .where({
-          user_created: accountability.user,
-          status: "Draft",
-          attempt_type: "New Registration",
-        })
-        .orderBy("date_updated", "desc")
-        .orderBy("date_created", "desc")
-        .first()
-    : null;
+  const rejectedQuery = database(`${ATTEMPT_COLLECTION} as attempt`)
+    .leftJoin("directus_users as creator", "attempt.user_created", "creator.id")
+    .select(
+      "attempt.id",
+      "attempt.status",
+      "attempt.attempt_type",
+      "attempt.metode_pendaftaran",
+      "attempt.date_created",
+      "attempt.validation_errors",
+      "attempt.submission_data",
+      "creator.first_name as user_first_name",
+      "creator.last_name as user_last_name",
+    )
+    .where("attempt.status", "Rejected")
+    .whereNull("attempt.tower_id")
+    .orderBy("attempt.date_created", "desc");
+  if (role === "Applicant") {
+    rejectedQuery.where("attempt.user_created", accountability.user).limit(100);
+  }
+  const rejectedAttempts = await rejectedQuery;
   return {
     data: await attachRegistrationData(database, data),
     rejected_attempts: rejectedAttempts,
-    draft_attempt: draftAttempt
-      ? {
-          id: String(draftAttempt.id),
-          date_updated: draftAttempt.date_updated ?? draftAttempt.date_created,
-        }
-      : null,
+    draft_count: draftCount,
     meta: { page, limit, total: Number(count) },
   };
 }
@@ -437,10 +541,113 @@ function isAdministrator(role) {
 export default defineEndpoint(
   (router, { env, logger, services, database, getSchema }) => {
     const {
+      AuthenticationService,
       ItemsService,
       MailService,
       UsersService,
     } = services;
+
+    router.post("/request-password-reset", async (req, res) => {
+      const email =
+        typeof req.body?.email === "string" ? req.body.email.trim() : "";
+      if (
+        email.length === 0 ||
+        email.length > 254 ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+      ) {
+        return res.status(400).json({ error: "Alamat email tidak valid." });
+      }
+      if (!consumePasswordResetRequest(email)) {
+        return res.status(429).json({
+          error: "Terlalu banyak permintaan reset. Coba lagi dalam 15 menit.",
+        });
+      }
+
+      try {
+        const account = await database("directus_users as users")
+          .leftJoin("directus_roles as roles", "users.role", "roles.id")
+          .select("users.email", "users.status", "roles.name as role_name")
+          .whereRaw("LOWER(??) = ?", ["users.email", email.toLowerCase()])
+          .first();
+        if (
+          account?.email &&
+          account.status === "active" &&
+          PORTAL_ROLES.has(account.role_name)
+        ) {
+          const portalUrl = env.PORTAL_URL ?? "http://localhost:3000";
+          const resetUrl = new URL("/set-password?mode=reset", portalUrl).toString();
+          const users = new UsersService({
+            schema: await getSchema(),
+            accountability: null,
+          });
+          await users.requestPasswordReset(
+            account.email,
+            resetUrl,
+            "Permintaan reset password Portal Infrastruktur Pasif",
+          );
+        }
+        return res.status(202).json({
+          data: { requested: true },
+          message:
+            "Jika email terdaftar dan akun aktif, tautan reset akan dikirim ke email tersebut.",
+        });
+      } catch (error) {
+        logger.error(error, "Failed to request public portal password reset");
+        return res.status(502).json({
+          error: "Permintaan reset tidak dapat diproses saat ini. Coba lagi beberapa saat.",
+        });
+      }
+    });
+
+    router.post("/login-status", async (req, res) => {
+      const expectedSecret = env.PORTAL_LOGIN_STATUS_SECRET;
+      const providedSecret = req.get("x-portal-login-status-secret");
+      if (typeof expectedSecret !== "string" || !expectedSecret) {
+        logger.error("PORTAL_LOGIN_STATUS_SECRET is not configured");
+        return res.status(503).json({ error: "Status login tidak dapat diperiksa." });
+      }
+      if (
+        typeof providedSecret !== "string" ||
+        Buffer.byteLength(providedSecret) !== Buffer.byteLength(expectedSecret) ||
+        !timingSafeEqual(Buffer.from(providedSecret), Buffer.from(expectedSecret))
+      ) {
+        return res.status(403).json({ error: "Permintaan tidak valid." });
+      }
+
+      const email =
+        typeof req.body?.email === "string" ? req.body.email.trim() : "";
+      const password = req.body?.password;
+      if (
+        email.length === 0 ||
+        email.length > 254 ||
+        typeof password !== "string" ||
+        password.length === 0 ||
+        password.length > 1024
+      ) {
+        return res.status(400).json({ error: "Data login tidak valid." });
+      }
+      if (!consumeLoginStatusCheck(email)) {
+        return res.status(429).json({
+          error: "Terlalu banyak percobaan masuk. Coba lagi beberapa saat.",
+        });
+      }
+
+      try {
+        const suspended = await hasSuspendedValidCredentials({
+          database,
+          AuthenticationService,
+          schema: await getSchema(),
+          email,
+          password,
+        });
+        return res.json({ suspended });
+      } catch (error) {
+        logger.error(error, "Failed to verify suspended account credentials");
+        return res.status(500).json({
+          error: "Status akun tidak dapat diverifikasi.",
+        });
+      }
+    });
 
     async function sendValidationFailureEmail(
       userId,
@@ -521,22 +728,41 @@ export default defineEndpoint(
     }
 
     router.post("/accept-invite", async (req, res) => {
-      const { token, password } = req.body ?? {};
+      const { token, password, first_name, last_name } = req.body ?? {};
+      const firstName = typeof first_name === "string" ? first_name.trim() : "";
+      const lastName = typeof last_name === "string" ? last_name.trim() : "";
       if (
         typeof token !== "string" ||
         token.length > 4096 ||
         typeof password !== "string" ||
         password.length < 12 ||
-        password.length > 128
+        password.length > 128 ||
+        !firstName ||
+        firstName.length > 50 ||
+        !lastName ||
+        lastName.length > 50
       ) {
         return res.status(400).json({ error: "Tautan atau password tidak valid." });
       }
+      const inviteEmail = getInviteEmail(token);
+      if (!inviteEmail) {
+        return res.status(400).json({ error: "Tautan undangan tidak valid atau sudah kedaluwarsa." });
+      }
       try {
-        const users = new UsersService({
-          schema: await getSchema(),
-          accountability: null,
+        const schema = await getSchema();
+        await database.transaction(async (transaction) => {
+          const users = new UsersService({
+            schema,
+            accountability: null,
+            knex: transaction,
+          });
+          await users.acceptInvite(token, password);
+          // acceptInvite verifies this token before its email claim is used for the update.
+          const updated = await transaction("directus_users")
+            .whereRaw("LOWER(??) = ?", ["email", inviteEmail.toLowerCase()])
+            .update({ first_name: firstName, last_name: lastName });
+          if (updated !== 1) throw new Error("Accepted invitation user was not updated.");
         });
-        await users.acceptInvite(token, password);
         return res.status(204).end();
       } catch (error) {
         logger.warn(error, "Applicant invitation acceptance failed");
@@ -725,26 +951,21 @@ export default defineEndpoint(
           };
           let id;
           let action = "create";
-          const currentQuery = transaction(ATTEMPT_COLLECTION)
-            .select("id")
-            .where({
-              user_created: req.accountability.user,
-              status: "Draft",
-              attempt_type: "New Registration",
-            });
-          if (draftId !== null) currentQuery.where({ id: draftId });
-          else {
-            currentQuery
-              .orderBy("date_updated", "desc")
-              .orderBy("date_created", "desc");
-          }
-          const current = await currentQuery.forUpdate().first();
-          if (current) {
+          if (draftId !== null) {
+            const current = await transaction(ATTEMPT_COLLECTION)
+              .select("id")
+              .where({
+                id: draftId,
+                user_created: req.accountability.user,
+                status: "Draft",
+                attempt_type: "New Registration",
+              })
+              .forUpdate()
+              .first();
+            if (!current) return null;
             await attempts.updateOne(current.id, attemptData);
             id = current.id;
             action = "update";
-          } else if (draftId !== null) {
-            return null;
           } else {
             id = await attempts.createOne({
               user_created: req.accountability.user,
@@ -849,6 +1070,7 @@ export default defineEndpoint(
       }
 
       try {
+        const registeredAt = new Date();
         const created = await createRegisteredTowers({
           database,
           ItemsService,
@@ -857,9 +1079,25 @@ export default defineEndpoint(
           method: "Input Manual",
           registrations: [{ tower, tenants }],
           draftId,
+          registeredAt,
+        });
+        const emailSent = await sendRegistrationReceipts({
+          database,
+          QRCode,
+          MailService,
+          getSchema,
+          logger,
+          userId: req.accountability.user,
+          registrations: [{ tower, tenants }],
+          created,
+          registeredAt,
         });
         return res.status(201).json({
-          data: { id: created[0].id, status: "Registered" },
+          data: {
+            id: created[0].id,
+            status: "Registered",
+            email_sent: emailSent,
+          },
         });
       } catch (error) {
         if (error?.code === "23505") {
@@ -1273,7 +1511,6 @@ export default defineEndpoint(
             "id",
             "action",
             "collection",
-            "item",
             "timestamp",
             "user.first_name",
             "user.last_name",
@@ -1390,15 +1627,28 @@ export default defineEndpoint(
 
     router.patch("/users/:id", async (req, res) => {
       if (!isAdministrator(req.portalRole)) return forbidden(res);
-      const { role: requestedRole, status: requestedStatus } = req.body ?? {};
+      const {
+        role: requestedRole,
+        status: requestedStatus,
+        email: requestedEmail,
+      } = req.body ?? {};
+      const normalizedEmail =
+        typeof requestedEmail === "string" ? requestedEmail.trim().toLowerCase() : "";
       if (
         (requestedRole !== undefined &&
           !USER_ROLE_NAMES.includes(requestedRole)) ||
         (requestedStatus !== undefined &&
           !["active", "suspended"].includes(requestedStatus)) ||
-        (requestedRole === undefined && requestedStatus === undefined)
+        (requestedEmail !== undefined &&
+          (normalizedEmail.length > 254 ||
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail))) ||
+        (requestedRole === undefined &&
+          requestedStatus === undefined &&
+          requestedEmail === undefined)
       ) {
-        return res.status(400).json({ error: "Perubahan role atau status tidak valid." });
+        return res.status(400).json({
+          error: "Perubahan email, role, atau status tidak valid.",
+        });
       }
       if (req.params.id === req.accountability.user) {
         return res.status(400).json({
@@ -1409,10 +1659,24 @@ export default defineEndpoint(
       try {
         const roles = await getPortalRoleIds(database);
         const target = await database("directus_users")
-          .select("id", "role", "status")
+          .select("id", "email", "role", "status")
           .where({ id: req.params.id })
           .first();
         if (!target) return res.status(404).json({ error: "Akun tidak ditemukan." });
+        const targetEmail =
+          typeof target.email === "string" ? target.email.toLowerCase() : "";
+        if (requestedEmail !== undefined && normalizedEmail !== targetEmail) {
+          const duplicate = await database("directus_users")
+            .select("id")
+            .whereRaw("LOWER(??) = ?", ["email", normalizedEmail])
+            .whereNot({ id: req.params.id })
+            .first();
+          if (duplicate) {
+            return res.status(409).json({
+              error: "Email sudah digunakan oleh akun lain.",
+            });
+          }
+        }
 
         const currentRole = roles.find(({ id }) => id === target.role)?.name;
         const nextRole = requestedRole ?? currentRole;
@@ -1433,6 +1697,7 @@ export default defineEndpoint(
         }
 
         const updates = {};
+        if (requestedEmail !== undefined) updates.email = normalizedEmail;
         if (requestedRole !== undefined) {
           const roleId = roleIdByName(roles, requestedRole);
           if (!roleId) return res.status(409).json({ error: "Role tujuan tidak tersedia." });

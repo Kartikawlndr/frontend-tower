@@ -70,7 +70,7 @@ services:
       CORS_ENABLED: ${CORS_ENABLED:-true}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       CORS_CREDENTIALS: ${CORS_CREDENTIALS:-true}
-      USER_REGISTER: ${USER_REGISTER:-true}
+      USER_REGISTER: "false"
       USER_REGISTER_ROLE: ${USER_REGISTER_ROLE-Applicant}
       USER_REGISTER_URL_ALLOW_LIST: ${USER_REGISTER_URL_ALLOW_LIST:-http://localhost:3000/api/verify-email}
       USER_INVITE_URL_ALLOW_LIST: ${USER_INVITE_URL_ALLOW_LIST:-http://localhost:3000/set-password}

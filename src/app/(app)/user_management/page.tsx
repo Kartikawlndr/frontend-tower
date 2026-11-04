@@ -32,6 +32,7 @@ export default function UserManagement() {
   const [users, setUsers] = useState<PortalUser[]>([]);
   const [roleEdits, setRoleEdits] = useState<Record<string, PortalRole>>({});
   const [statusEdits, setStatusEdits] = useState<Record<string, "active" | "suspended">>({});
+  const [emailEdits, setEmailEdits] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<PortalRole>("Applicant");
@@ -53,6 +54,7 @@ export default function UserManagement() {
     setUsers(payload?.data ?? []);
     setRoleEdits({});
     setStatusEdits({});
+    setEmailEdits({});
   }, []);
 
   useEffect(() => {
@@ -109,13 +111,10 @@ export default function UserManagement() {
     }
   }
 
-  async function saveUser(entry: PortalUser) {
-    const role = roleEdits[entry.id] ?? entry.role_name;
-    const status = statusEdits[entry.id];
-    const changes: { role?: PortalRole; status?: "active" | "suspended" } = {};
-    if (role !== entry.role_name) changes.role = role;
-    if (status && status !== entry.status) changes.status = status;
-    if (Object.keys(changes).length === 0) return;
+  async function updateUser(
+    entry: PortalUser,
+    changes: { role?: PortalRole; status?: "active" | "suspended"; email?: string },
+  ) {
     setWorking(true);
     setError("");
     setMessage("");
@@ -127,26 +126,33 @@ export default function UserManagement() {
       });
       const payload = (await response.json().catch(() => null)) as { error?: string } | null;
       if (!response.ok) throw new Error(payload?.error || "Perubahan akun gagal disimpan.");
-      setMessage(`Perubahan untuk ${entry.email} berhasil disimpan.`);
+      setMessage(
+        `Perubahan akun ${changes.email?.trim() || entry.email} tersimpan otomatis.`,
+      );
       await refresh();
     } catch (requestError) {
+      if (changes.role) {
+        setRoleEdits((current) => {
+          const next = { ...current };
+          delete next[entry.id];
+          return next;
+        });
+      }
+      if (changes.status) {
+        setStatusEdits((current) => {
+          const next = { ...current };
+          delete next[entry.id];
+          return next;
+        });
+      }
+      if (changes.email !== undefined) {
+        setEmailEdits((current) => {
+          const next = { ...current };
+          delete next[entry.id];
+          return next;
+        });
+      }
       setError(requestError instanceof Error ? requestError.message : "Perubahan akun gagal disimpan.");
-    } finally {
-      setWorking(false);
-    }
-  }
-
-  async function resetPassword(entry: PortalUser) {
-    setWorking(true);
-    setError("");
-    setMessage("");
-    try {
-      const response = await fetch(`/api/users/${encodeURIComponent(entry.id)}/password-reset`, { method: "POST" });
-      const payload = (await response.json().catch(() => null)) as { error?: string; message?: string } | null;
-      if (!response.ok) throw new Error(payload?.error || "Permintaan reset password gagal.");
-      setMessage(payload?.message || `Tautan reset dikirim ke ${entry.email}.`);
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Permintaan reset password gagal.");
     } finally {
       setWorking(false);
     }
@@ -248,14 +254,44 @@ export default function UserManagement() {
                 return (
                   <tr key={entry.id}>
                     <td className="p-3 font-medium text-heading">{`${entry.first_name ?? ""} ${entry.last_name ?? ""}`.trim() || "—"}</td>
-                    <td className="p-3">{entry.email}</td>
-                    <td className="p-3"><select disabled={isSelf || working} value={roleEdits[entry.id] ?? entry.role_name} onChange={(event) => setRoleEdits({ ...roleEdits, [entry.id]: event.target.value as PortalRole })} className="rounded-input border border-border bg-surface px-2 py-1"><option value="Applicant">{ROLE_TEXT.Applicant}</option><option value="Web Manager">{ROLE_TEXT["Web Manager"]}</option><option value="Administrator">{ROLE_TEXT.Administrator}</option></select></td>
-                    <td className="p-3"><select disabled={isSelf || working} value={statusEdits[entry.id] ?? entry.status} onChange={(event) => setStatusEdits({ ...statusEdits, [entry.id]: event.target.value as "active" | "suspended" })} className="rounded-input border border-border bg-surface px-2 py-1"><option value="active">Aktif</option><option value="suspended">Ditangguhkan</option>{!["active", "suspended"].includes(entry.status) && <option value={entry.status}>{entry.status}</option>}</select></td>
+                    <td className="min-w-64 p-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="email"
+                          aria-label={`Email ${entry.email}`}
+                          maxLength={254}
+                          disabled={isSelf || working}
+                          value={emailEdits[entry.id] ?? entry.email}
+                          onChange={(event) =>
+                            setEmailEdits((current) => ({
+                              ...current,
+                              [entry.id]: event.target.value,
+                            }))
+                          }
+                          className="min-w-0 flex-1 rounded-input border border-border bg-surface px-2 py-1"
+                        />
+                        {emailEdits[entry.id] !== undefined &&
+                          emailEdits[entry.id].trim().toLowerCase() !== entry.email.toLowerCase() && (
+                            <button
+                              type="button"
+                              disabled={working}
+                              onClick={() =>
+                                void updateUser(entry, {
+                                  email: emailEdits[entry.id].trim(),
+                                })
+                              }
+                              className="whitespace-nowrap font-semibold text-primary hover:underline disabled:opacity-50"
+                            >
+                              Simpan
+                            </button>
+                          )}
+                      </div>
+                    </td>
+                    <td className="p-3"><select disabled={isSelf || working} value={roleEdits[entry.id] ?? entry.role_name} onChange={(event) => { const role = event.target.value as PortalRole; setRoleEdits((current) => ({ ...current, [entry.id]: role })); void updateUser(entry, { role }); }} className="rounded-input border border-border bg-surface px-2 py-1"><option value="Applicant">{ROLE_TEXT.Applicant}</option><option value="Web Manager">{ROLE_TEXT["Web Manager"]}</option><option value="Administrator">{ROLE_TEXT.Administrator}</option></select></td>
+                    <td className="p-3"><select disabled={isSelf || working} value={statusEdits[entry.id] ?? entry.status} onChange={(event) => { const status = event.target.value as "active" | "suspended"; setStatusEdits((current) => ({ ...current, [entry.id]: status })); void updateUser(entry, { status }); }} className="rounded-input border border-border bg-surface px-2 py-1"><option value="active">Aktif</option><option value="suspended">Ditangguhkan</option>{!["active", "suspended"].includes(entry.status) && <option value={entry.status}>{entry.status}</option>}</select></td>
                     <td className="p-3">{entry.must_change_password ? "Wajib diganti saat login" : "Normal"}</td>
                     <td className="space-x-3 whitespace-nowrap p-3">
-                      <button disabled={isSelf || working} onClick={() => saveUser(entry)} className="font-semibold text-primary hover:underline disabled:opacity-50">Simpan</button>
                       <button disabled={isSelf || entry.status !== "active" || working} onClick={() => { setError(""); setPasswordError(""); setPasswordUser(entry); }} className="font-semibold text-primary hover:underline disabled:opacity-50">Atur password</button>
-                      <button disabled={isSelf || entry.status !== "active" || working} onClick={() => resetPassword(entry)} className="font-semibold text-primary hover:underline disabled:opacity-50">Kirim tautan email</button>
                     </td>
                   </tr>
                 );

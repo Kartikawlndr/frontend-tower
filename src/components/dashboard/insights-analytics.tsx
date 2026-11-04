@@ -3,6 +3,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  createWibCalendarDate,
+  formatDateTimeWib,
+  getWibDateKey,
+  getWibDateParts,
+} from "@/lib/date-time";
 
 const PRIMARY = "#016db0";
 const ACCENT = "#00a8e8";
@@ -42,11 +48,12 @@ export interface ActivityData {
   method: string;
   rows: number;
   timestamp: string;
-  status: "Registered" | "Rejected" | "Draft";
+  status: "Registered" | "Rejected";
 }
 
 interface InsightsAnalyticsProps {
   totalSubmissions: number;
+  draftCount: number;
   methods: MethodData;
   topCompanies: CompanyData[];
   trendRecords: TrendRecord[];
@@ -266,34 +273,27 @@ const METRICS: Record<Metric, { label: string; unit: string; color: string }> =
     towers: { label: "Menara", unit: "menara", color: ACCENT },
   };
 
-function localDateKey(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function TrendChart({ records }: { records: TrendRecord[] }) {
   const [metric, setMetric] = useState<Metric>("submissions");
   const [mode, setMode] = useState<TrendMode>("year");
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth();
-  const currentDay = currentDate.getDate();
+  const currentDateParts = getWibDateParts(new Date())!;
+  const currentYear = currentDateParts.year;
+  const currentMonth = currentDateParts.month - 1;
+  const currentDay = currentDateParts.day;
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [startDate, setStartDate] = useState(
-    localDateKey(new Date(currentYear, currentMonth, 1)),
+    getWibDateKey(createWibCalendarDate(currentYear, currentMonth, 1)),
   );
   const [endDate, setEndDate] = useState(
-    localDateKey(new Date(currentYear, currentMonth, currentDay)),
+    getWibDateKey(createWibCalendarDate(currentYear, currentMonth, currentDay)),
   );
   const [active, setActive] = useState<number | null>(null);
   const [wrapRef, width] = useElementWidth<HTMLDivElement>();
 
   const availableYears = records.flatMap((record) => {
-    const date = new Date(record.timestamp);
-    return Number.isNaN(date.getTime()) ? [] : [date.getFullYear()];
+    const parts = getWibDateParts(record.timestamp);
+    return parts ? [parts.year] : [];
   });
   const firstYear = Math.min(
     currentYear,
@@ -309,23 +309,23 @@ function TrendChart({ records }: { records: TrendRecord[] }) {
     let interval: "day" | "month";
 
     if (mode === "year") {
-      rangeStart = new Date(selectedYear, 0, 1);
+      rangeStart = createWibCalendarDate(selectedYear, 0, 1);
       rangeEnd =
         selectedYear === currentYear
-          ? new Date(currentYear, currentMonth, currentDay)
-          : new Date(selectedYear, 11, 31);
+          ? createWibCalendarDate(currentYear, currentMonth, currentDay)
+          : createWibCalendarDate(selectedYear, 11, 31);
       interval = "month";
     } else if (mode === "month") {
-      rangeStart = new Date(selectedYear, selectedMonth, 1);
+      rangeStart = createWibCalendarDate(selectedYear, selectedMonth, 1);
       rangeEnd =
         selectedYear === currentYear &&
         selectedMonth === currentMonth
-          ? new Date(currentYear, currentMonth, currentDay)
-          : new Date(selectedYear, selectedMonth + 1, 0);
+          ? createWibCalendarDate(currentYear, currentMonth, currentDay)
+          : createWibCalendarDate(selectedYear, selectedMonth + 1, 0);
       interval = "day";
     } else {
-      rangeStart = new Date(`${startDate}T00:00:00`);
-      rangeEnd = new Date(`${endDate}T00:00:00`);
+      rangeStart = new Date(`${startDate}T12:00:00Z`);
+      rangeEnd = new Date(`${endDate}T12:00:00Z`);
       const dayCount = Math.floor(
         (rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000,
       ) + 1;
@@ -341,31 +341,37 @@ function TrendChart({ records }: { records: TrendRecord[] }) {
     }
 
     const bounds = {
-      start: localDateKey(rangeStart),
-      end: localDateKey(rangeEnd),
+      start: getWibDateKey(rangeStart),
+      end: getWibDateKey(rangeEnd),
     };
     const bucketTotals = new Map<string, TrendPoint>();
     const addBucket = (date: Date) => {
+      const parts = getWibDateParts(date)!;
       const key =
         interval === "month"
-          ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
-          : localDateKey(date);
+          ? `${parts.year}-${String(parts.month).padStart(2, "0")}`
+          : getWibDateKey(date);
       if (!bucketTotals.has(key)) {
         bucketTotals.set(key, {
           month:
             interval === "month"
-              ? new Intl.DateTimeFormat("id-ID", { month: "short" }).format(date)
-              : String(date.getDate()),
+              ? new Intl.DateTimeFormat("id-ID", {
+                  month: "short",
+                  timeZone: "Asia/Jakarta",
+                }).format(date)
+              : String(parts.day),
           periodLabel:
             interval === "month"
               ? new Intl.DateTimeFormat("id-ID", {
                   month: "long",
                   year: "numeric",
+                  timeZone: "Asia/Jakarta",
                 }).format(date)
               : new Intl.DateTimeFormat("id-ID", {
                   day: "numeric",
                   month: "long",
                   year: "numeric",
+                  timeZone: "Asia/Jakarta",
                 }).format(date),
           submissions: 0,
           towers: 0,
@@ -375,25 +381,27 @@ function TrendChart({ records }: { records: TrendRecord[] }) {
     };
 
     if (interval === "month") {
-      const cursor = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
-      const last = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), 1);
+      const startParts = getWibDateParts(rangeStart)!;
+      const endParts = getWibDateParts(rangeEnd)!;
+      const cursor = createWibCalendarDate(startParts.year, startParts.month - 1, 1);
+      const last = createWibCalendarDate(endParts.year, endParts.month - 1, 1);
       while (cursor <= last) {
         addBucket(cursor);
-        cursor.setMonth(cursor.getMonth() + 1);
+        cursor.setUTCMonth(cursor.getUTCMonth() + 1);
       }
     } else {
       const cursor = new Date(rangeStart);
       while (cursor <= rangeEnd) {
         addBucket(cursor);
-        cursor.setDate(cursor.getDate() + 1);
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
       }
     }
 
     for (const record of records) {
-      const date = new Date(record.timestamp);
-      if (Number.isNaN(date.getTime())) continue;
-      const dateKey = localDateKey(date);
+      const dateKey = getWibDateKey(record.timestamp);
+      if (!dateKey) continue;
       if (dateKey < bounds.start || dateKey > bounds.end) continue;
+      const date = new Date(`${dateKey}T12:00:00Z`);
       const bucket = addBucket(date);
       if (record.type === "submission") bucket.submissions += 1;
       else bucket.towers += 1;
@@ -814,7 +822,7 @@ function TopCompanies({ items }: { items: CompanyData[] }) {
   );
 }
 
-type StatusFilter = "all" | ActivityData["status"];
+type StatusFilter = "all" | ActivityData["status"] | "Draft";
 
 const STATUS_META: Record<
   ActivityData["status"],
@@ -824,11 +832,6 @@ const STATUS_META: Record<
     label: "Terdaftar",
     badge: "bg-emerald-100 text-emerald-800",
     dot: "bg-emerald-600",
-  },
-  Draft: {
-    label: "Draf",
-    badge: "bg-amber text-amber-text",
-    dot: "bg-amber-text",
   },
   Rejected: {
     label: "Ditolak",
@@ -845,23 +848,33 @@ function methodLabel(method: string) {
   return method;
 }
 
-function RecentActivities({ items }: { items: ActivityData[] }) {
+function RecentActivities({
+  items,
+  draftCount,
+}: {
+  items: ActivityData[];
+  draftCount: number;
+}) {
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   const counts = useMemo(
     () => ({
-      all: items.length,
+      all: items.length + draftCount,
       Registered: items.filter((i) => i.status === "Registered").length,
-      Draft: items.filter((i) => i.status === "Draft").length,
+      Draft: draftCount,
       Rejected: items.filter((i) => i.status === "Rejected").length,
     }),
-    [items]
+    [items, draftCount]
   );
 
   const filtered =
-    filter === "all" ? items : items.filter((i) => i.status === filter);
+    filter === "all"
+      ? items
+      : filter === "Draft"
+        ? []
+        : items.filter((i) => i.status === filter);
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const visible = filtered.slice(
@@ -889,7 +902,11 @@ function RecentActivities({ items }: { items: ActivityData[] }) {
         {(["all", "Registered", "Draft", "Rejected"] as StatusFilter[]).map(
           (key) => {
             const label =
-              key === "all" ? "Semua" : STATUS_META[key].label;
+              key === "all"
+                ? "Semua"
+                : key === "Draft"
+                  ? "Draf"
+                  : STATUS_META[key].label;
             const count = counts[key];
             const active = filter === key;
             return (
@@ -936,7 +953,9 @@ function RecentActivities({ items }: { items: ActivityData[] }) {
             {visible.length === 0 ? (
               <tr>
                 <td colSpan={4} className="py-6 text-center text-muted">
-                  Tidak ada aktivitas dengan status ini.
+                  {filter === "Draft" && draftCount > 0
+                    ? "Draft terhitung di dashboard; detailnya tidak tersedia."
+                    : "Tidak ada aktivitas dengan status ini."}
                 </td>
               </tr>
             ) : (
@@ -947,7 +966,7 @@ function RecentActivities({ items }: { items: ActivityData[] }) {
                     <td className="py-3 font-semibold text-primary">
                       {act.regNumber}
                       <span className="block text-[10px] font-normal text-muted">
-                        {act.timestamp}
+                        {formatDateTimeWib(act.timestamp)}
                       </span>
                     </td>
                     <td className="py-3 max-w-[150px] truncate text-muted">
@@ -1027,6 +1046,7 @@ function RecentActivities({ items }: { items: ActivityData[] }) {
 
 export function InsightsAnalytics({
   totalSubmissions,
+  draftCount,
   methods,
   topCompanies,
   trendRecords,
@@ -1040,7 +1060,7 @@ export function InsightsAnalytics({
       </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <TopCompanies items={topCompanies} />
-        <RecentActivities items={activities} />
+        <RecentActivities items={activities} draftCount={draftCount} />
       </div>
     </div>
   );

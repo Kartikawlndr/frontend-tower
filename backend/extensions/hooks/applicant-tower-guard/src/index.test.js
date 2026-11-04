@@ -10,10 +10,11 @@ import {
   validateApplicantFile,
   uppercaseTowerTextFields,
 } from "./index.js";
+import { UnmatchedAdministrativeRegionError } from "./administrative-regions.js";
 
 function validTower(overrides = {}) {
   return {
-    id_menara: "T-01",
+    id_menara: "000001",
     nama_pemilik: "Pemilik",
     tahun_pembangunan: 2020,
     penyelenggara: "Penyelenggara",
@@ -53,6 +54,7 @@ function databaseWithRegion(region = {
 
 test("forces Applicant submissions to the allowed fields and Submitted status", async () => {
   const result = await sanitizeApplicantTower(validTower({
+    nama_pemilik: " Pemilik   Menara ",
     provinsi: "Sumatera Barat",
     kab_kota: "Kota Padang",
   }), {
@@ -63,8 +65,8 @@ test("forces Applicant submissions to the allowed fields and Submitted status", 
   assert.equal(result.verification_status, "Submitted");
   assert.equal(result.metode_pendaftaran, "Input Manual");
   assert.equal("user_created" in result, false);
-  assert.equal(result.id_menara, "T-01");
-  assert.equal(result.nama_pemilik, "PEMILIK");
+  assert.equal(result.id_menara, "000001");
+  assert.equal(result.nama_pemilik, "PEMILIK MENARA");
   assert.equal("penyelenggara" in result, false);
   assert.equal(result.alamat, "JAKARTA");
   assert.equal(result.provinsi, "JAWA BARAT");
@@ -82,11 +84,11 @@ test("forces Applicant submissions to the allowed fields and Submitted status", 
 test("uppercases manually entered tower and tenant text without changing system fields", () => {
   const tower = uppercaseTowerTextFields(
     {
-      nama_pemilik: "Pemilik Menara",
+      nama_pemilik: "  Pemilik   Menara\t",
       provinsi: "Sumatera Barat",
       kab_kota: "Kota Padang",
       verification_status: "Submitted",
-      tenants: [{ penyelenggara: "Tenant A", kapasitas_disewakan: "2 site" }],
+      tenants: [{ penyelenggara: "Tenant\u00a0  A", kapasitas_disewakan: "2 site" }],
     },
     "tower_infrastruktur",
   );
@@ -120,35 +122,35 @@ test("rejects invalid coordinates, years, and heights", async () => {
   );
 });
 
-test("manual submissions with no matching boundary save blank administrative fields", async () => {
-  const result = await sanitizeApplicantTower(
-    validTower({
-      provinsi: undefined,
-      kab_kota: undefined,
-      kecamatan: undefined,
-      kelurahan: undefined,
-    }),
-    {
-      accountability: { user: "applicant-id" },
-      database: databaseWithRegion({
-        province: null,
-        regency_city: null,
-        district: null,
-        village: null,
+test("rejects manual submissions with coordinates outside administrative boundaries", async () => {
+  await assert.rejects(
+    sanitizeApplicantTower(
+      validTower({
+        provinsi: undefined,
+        kab_kota: undefined,
+        kecamatan: undefined,
+        kelurahan: undefined,
       }),
-    },
+      {
+        accountability: { user: "applicant-id" },
+        database: databaseWithRegion({
+          province: null,
+          regency_city: null,
+          district: null,
+          village: null,
+        }),
+      },
+    ),
+    (error) =>
+      error instanceof UnmatchedAdministrativeRegionError &&
+      error.field === "longitude",
   );
-
-  assert.equal(result.provinsi, null);
-  assert.equal(result.kab_kota, null);
-  assert.equal(result.kecamatan, null);
-  assert.equal(result.kelurahan, null);
 });
 
 test("revalidates Applicant edits without allowing ID or system-field changes", async () => {
   const result = await sanitizeTowerUpdate(
     validTower({
-      id_menara: "T-01",
+      id_menara: "000001",
       verification_status: "Approved",
       user_created: "another-user",
       deleted_at: "2026-01-01",
@@ -164,6 +166,29 @@ test("revalidates Applicant edits without allowing ID or system-field changes", 
   assert.equal("deleted_at" in result, false);
   assert.equal(result.verification_status, "Submitted");
   assert.equal(result.metode_pendaftaran, "Input Manual");
+});
+
+test("accepts a formatted ID while revalidating an existing tower update", async () => {
+  const result = await sanitizeTowerUpdate(
+    validTower({ id_menara: "TWR-2026-000001" }),
+    {
+      accountability: { user: "applicant-id" },
+      database: databaseWithRegion(),
+    },
+  );
+  assert.equal("id_menara" in result, false);
+});
+
+test("rejects non-numeric and overlong tower IDs on registration", async () => {
+  for (const id_menara of ["ID-000001", "1".repeat(42)]) {
+    await assert.rejects(
+      sanitizeApplicantTower(validTower({ id_menara }), {
+        accountability: { user: "applicant-id" },
+        database: databaseWithRegion(),
+      }),
+      /id_menara: isi dengan 1 sampai 41 digit angka/,
+    );
+  }
 });
 
 test("accepts only the current Applicant's XLSX attachment", async () => {

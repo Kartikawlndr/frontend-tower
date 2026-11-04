@@ -12,7 +12,8 @@ function AuthContent() {
   const { setUser } = useAuth();
   
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{
     type: 'success' | 'error';
@@ -22,12 +23,6 @@ function AuthContent() {
   // Form State Sign In
   const [signInUsername, setSignInUsername] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
-
-  // Form State Sign Up
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [signUpPassword, setSignUpPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
 
   const [showPassword, setShowPassword] = useState(false);
 
@@ -99,63 +94,29 @@ function AuthContent() {
     }
   };
 
-  const handleSignUpSubmit = async (e: React.FormEvent) => {
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatusMessage(null);
-
-    // Validasi Cloudflare Turnstile untuk Sign Up
-    if (
-      clientEnv.turnstileSiteKey &&
-      !captchaToken &&
-      process.env.NODE_ENV === 'production' &&
-      typeof window !== 'undefined' &&
-      window.location.hostname !== 'localhost'
-    ) {
-      setStatusMessage({
-        type: 'error',
-        text: 'Mohon selesaikan verifikasi Cloudflare terlebih dahulu!',
-      });
-      return;
-    }
-
-    if (signUpPassword !== confirmPassword) {
-      setStatusMessage({
-        type: 'error',
-        text: 'Kata sandi dan konfirmasi kata sandi tidak cocok!',
-      });
-      return;
-    }
-
     setLoading(true);
-
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullName,
-          email,
-          password: signUpPassword,
-        }),
+        body: JSON.stringify({ email: forgotEmail }),
       });
-
       const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Pendaftaran gagal.');
+      if (!res.ok) {
+        throw new Error(data.error || 'Permintaan reset password gagal.');
       }
-
       setStatusMessage({
         type: 'success',
-        text: data.message || 'Pendaftaran berhasil! Silakan masuk.',
+        text: data.message || 'Jika email terdaftar, tautan reset akan dikirim.',
       });
-      setIsSignUp(false);
-      setSignInUsername(email);
     } catch (err: unknown) {
       const error = err as Error;
       setStatusMessage({
         type: 'error',
-        text: error.message || 'Terjadi kesalahan saat pendaftaran.',
+        text: error.message || 'Permintaan reset password gagal. Coba lagi.',
       });
     } finally {
       setLoading(false);
@@ -185,22 +146,13 @@ function AuthContent() {
         <div className="md:col-span-5 bg-gradient-to-br from-[#005c99] via-[#0070ba] to-[#004a80] p-6 xl:p-8 text-white flex flex-col justify-between relative overflow-hidden select-none">        
           <div className="relative z-10 space-y-3">
             <h1 className="text-3xl xl:text-4xl font-extrabold leading-tight tracking-tight text-white">
-              {isSignUp ? (
-                <>
-                  Mulai registrasi <br />
-                  <span className="text-sky-300"> dengan mudah.</span>
-                </>
-              ) : (
-                <>
-                  Selamat Datang <br />
-                  <span className="text-sky-300">Kembali</span>
-                </>
-              )}
+              <>
+                Selamat Datang <br />
+                <span className="text-sky-300">Kembali</span>
+              </>
             </h1>
             <p className="text-xs xl:text-sm text-sky-100/90 leading-relaxed max-w-xs pt-1 font-normal">
-              {isSignUp 
-                ? "Buat akun untuk mengajukan dan memantau registrasi infrastruktur pasif Anda dalam satu tempat."
-                : "Masuk untuk melanjutkan pengajuan data registrasi infrastruktur pasif."}
+              Masuk untuk melanjutkan pengajuan data registrasi infrastruktur pasif.
             </p>
           </div>
 
@@ -237,10 +189,12 @@ function AuthContent() {
           {/* JUDUL UTAMA FORM */}
           <div className="w-full max-w-md mx-auto pt-1">
             <h2 className="text-xl xl:text-2xl font-extrabold text-slate-900 tracking-tight">
-              {isSignUp ? 'Daftar Akun Baru' : 'Masuk'}
+              {isForgotPassword ? 'Lupa Kata Sandi?' : 'Masuk'}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              {isSignUp ? 'Lengkapi data berikut untuk membuat akun baru.' : 'Silakan masukkan akun Anda untuk melanjutkan.'}
+              {isForgotPassword
+                ? 'Masukkan email akun Anda untuk menerima tautan reset kata sandi.'
+                : 'Silakan masukkan akun Anda untuk melanjutkan.'}
             </p>
           </div>
 
@@ -259,7 +213,32 @@ function AuthContent() {
 
           {/* FORM CONTENT */}
           <div className="w-full max-w-md mx-auto my-auto py-2 space-y-3 text-xs">
-            {!isSignUp ? (
+            {isForgotPassword ? (
+              <form onSubmit={handleForgotPasswordSubmit} className="space-y-3">
+                <div className="space-y-1">
+                  <label className="block font-bold tracking-wider text-slate-600 text-[10px] uppercase">
+                    EMAIL
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    maxLength={254}
+                    autoComplete="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="Email akun Anda"
+                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0070ba] focus:ring-1 focus:ring-[#0070ba] text-slate-800 placeholder:text-slate-400 transition-all text-xs"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-2.5 bg-[#0070ba] hover:bg-[#005c99] active:bg-[#004a80] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md mt-1 disabled:opacity-50"
+                >
+                  {loading ? 'MENGIRIM...' : 'KIRIM TAUTAN RESET'}
+                </button>
+              </form>
+            ) : (
               /* ================= FORM SIGN IN ================= */
               <form onSubmit={handleSignInSubmit} className="space-y-3">
                 <div className="space-y-1">
@@ -316,7 +295,15 @@ function AuthContent() {
                     </button>
                   </div>
                   <div className="text-right pt-0.5">
-                    <button type="button" className="text-sky-600 hover:text-[#0070ba] font-semibold text-[11px] hover:underline transition-colors">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotEmail(signInUsername);
+                        setIsForgotPassword(true);
+                        setStatusMessage(null);
+                      }}
+                      className="text-sky-600 hover:text-[#0070ba] font-semibold text-[11px] hover:underline transition-colors"
+                    >
                       Lupa Kata Sandi?
                     </button>
                   </div>
@@ -341,101 +328,27 @@ function AuthContent() {
                   <span>{loading ? 'MEMPROSES...' : 'MASUK'}</span>
                 </button>
               </form>
-            ) : (
-              /* ================= FORM SIGN UP ================= */
-              <form onSubmit={handleSignUpSubmit} className="space-y-2.5">
-                <div className="space-y-1">
-                  <label className="block font-bold tracking-wider text-slate-600 text-[10px] uppercase">
-                    NAMA LENGKAP
-                  </label>
-                  <input 
-                    type="text" 
-                    required
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Nama Lengkap"
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0070ba] focus:ring-1 focus:ring-[#0070ba] text-slate-800 placeholder:text-slate-400 transition-all text-xs"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block font-bold tracking-wider text-slate-600 text-[10px] uppercase">
-                    ALAMAT EMAIL
-                  </label>
-                  <input 
-                    type="email" 
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="nama@perusahaan.com"
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0070ba] focus:ring-1 focus:ring-[#0070ba] text-slate-800 placeholder:text-slate-400 transition-all text-xs"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div className="space-y-1">
-                    <label className="block font-bold tracking-wider text-slate-600 text-[10px] uppercase">
-                      KATA SANDI
-                    </label>
-                    <input 
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={signUpPassword}
-                      onChange={(e) => setSignUpPassword(e.target.value)}
-                      placeholder="Kata Sandi"
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0070ba] focus:ring-1 focus:ring-[#0070ba] text-slate-800 placeholder:text-slate-400 transition-all text-xs"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block font-bold tracking-wider text-slate-600 text-[10px] uppercase">
-                      KONFIRMASI SANDI
-                    </label>
-                    <input 
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Konfirmasi Kata Sandi"
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#0070ba] focus:ring-1 focus:ring-[#0070ba] text-slate-800 placeholder:text-slate-400 transition-all text-xs"
-                    />
-                  </div>
-                </div>
-
-                {clientEnv.turnstileSiteKey && (
-                  <div className="flex justify-center my-1">
-                    <Turnstile
-                      siteKey={clientEnv.turnstileSiteKey}
-                      onSuccess={(token) => setCaptchaToken(token)}
-                      onExpire={() => setCaptchaToken(null)}
-                    />
-                  </div>
-                )}
-
-                <button 
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-2.5 bg-[#0070ba] hover:bg-[#005c99] active:bg-[#004a80] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md mt-2 disabled:opacity-50"
-                >
-                  <span>{loading ? 'MENDAFTAR...' : 'DAFTAR AKUN'}</span>
-                </button>
-              </form>
             )}
 
             {/* NAVIGASI TOGGLE FORM */}
             <div className="pt-3 border-t border-slate-100 flex items-center justify-center gap-1.5 text-[11px]">
               <span className="text-slate-500">
-                {isSignUp ? 'Sudah punya akun?' : 'Belum punya akun?'}
+                {isForgotPassword
+                  ? 'Ingat kata sandi?'
+                  : 'Akun hanya tersedia melalui undangan admin.'}
               </span>
-              <button 
-                type="button"
-                onClick={() => {
-                  setIsSignUp(!isSignUp);
-                  setStatusMessage(null);
-                }}
-                className="text-[#0070ba] font-bold hover:underline transition-all"
-              >
-                {isSignUp ? 'Masuk' : 'Daftar Akun Baru'}
-              </button>
+              {isForgotPassword && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgotPassword(false);
+                    setStatusMessage(null);
+                  }}
+                  className="text-[#0070ba] font-bold hover:underline transition-all"
+                >
+                  Kembali masuk
+                </button>
+              )}
             </div>
 
           </div>

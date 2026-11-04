@@ -101,13 +101,13 @@ const expandedValidRow = (id) => [
 
 test("groups tower rows and stores rented capacity once on the tower", async () => {
   const items = await parseTowerWorkbook(
-    await workbookBuffer([validRow("tower-1"), validRow("tower-2")]),
+    await workbookBuffer([validRow("000001"), validRow("000002")]),
   );
   assert.equal(items.length, 2);
   assert.equal(items[0].tower.longitude, 106.8);
   assert.equal(items[0].tower.latitude, -6.2);
   assert.equal("map" in items[0].tower, false);
-  assert.equal(items[0].tower.id_menara, "TOWER-1");
+  assert.equal(items[0].tower.id_menara, "000001");
   assert.equal(items[0].tower.nama_pemilik, "PEMILIK MENARA");
   assert.equal(items[0].tower.alamat, "JAKARTA");
   assert.equal(items[0].tower.jenis_menara, "TELEKOMUNIKASI");
@@ -117,11 +117,27 @@ test("groups tower rows and stores rented capacity once on the tower", async () 
   assert.equal(items[0].tower.kapasitas_maksimal, "10");
 });
 
+test("normalizes repeated whitespace in imported text fields", async () => {
+  const row = validRow("000001");
+  row[1] = "  Pemilik\u00a0  Menara\t";
+  row[3] = "TIKA   WULAN";
+  row[6] = "Jl.   Melati\tNo. 1";
+
+  const [registration] = await parseTowerWorkbook(
+    await workbookBuffer([row]),
+    2026,
+  );
+
+  assert.equal(registration.tower.nama_pemilik, "PEMILIK MENARA");
+  assert.equal(registration.tower.alamat, "JL. MELATI NO. 1");
+  assert.equal(registration.tenants[0].penyelenggara, "TIKA WULAN");
+});
+
 test("rejects the workbook if any row has invalid coordinates", async () => {
-  const invalid = validRow("tower-2");
+  const invalid = validRow("000002");
   invalid[4] = 150;
   await assert.rejects(
-    parseTowerWorkbook(await workbookBuffer([validRow("tower-1"), invalid])),
+    parseTowerWorkbook(await workbookBuffer([validRow("000001"), invalid])),
     (error) => {
       assert.equal(error.errors[0].row, 3);
       assert.equal(error.errors[0].column, "longitude");
@@ -131,11 +147,11 @@ test("rejects the workbook if any row has invalid coordinates", async () => {
 });
 
 test("groups repeated tower IDs when tower attributes match and tenant names differ", async () => {
-  const secondTenant = validRow("tower-1");
+  const secondTenant = validRow("000001");
   secondTenant[3] = "Penyelenggara B";
   secondTenant[10] = 6;
   const groups = await parseTowerWorkbook(
-    await workbookBuffer([validRow("tower-1"), secondTenant]),
+    await workbookBuffer([validRow("000001"), secondTenant]),
   );
   assert.equal(groups.length, 1);
   assert.equal(groups[0].tenants.length, 2);
@@ -144,43 +160,43 @@ test("groups repeated tower IDs when tower attributes match and tenant names dif
 });
 
 test("rejects repeated tower IDs with differing tower fields or duplicate tenants", async () => {
-  const changedTower = validRow("tower-1");
+  const changedTower = validRow("000001");
   changedTower[6] = "Bandung";
   await assert.rejects(
-    parseTowerWorkbook(await workbookBuffer([validRow("tower-1"), changedTower])),
+    parseTowerWorkbook(await workbookBuffer([validRow("000001"), changedTower])),
     (error) => error.errors.some((issue) => issue.column === "id_menara" && issue.row === 3),
   );
   await assert.rejects(
-    parseTowerWorkbook(await workbookBuffer([validRow("tower-1"), validRow("tower-1")])),
+    parseTowerWorkbook(await workbookBuffer([validRow("000001"), validRow("000001")])),
     (error) => error.errors.some((issue) => issue.column === "penyelenggara" && issue.row === 3),
   );
-  const changedCapacity = validRow("tower-1");
+  const changedCapacity = validRow("000001");
   changedCapacity[3] = "Penyelenggara B";
   changedCapacity[10] = 5;
   await assert.rejects(
     parseTowerWorkbook(
-      await workbookBuffer([validRow("tower-1"), changedCapacity]),
+      await workbookBuffer([validRow("000001"), changedCapacity]),
     ),
     (error) => error.errors.some((issue) => issue.column === "id_menara" && issue.row === 3),
   );
 });
 
 test("rejects values that exceed the diagram's field limits", async () => {
-  const longOwner = validRow("tower-1");
+  const longOwner = validRow("000001");
   longOwner[1] = "x".repeat(51);
   await assert.rejects(
     parseTowerWorkbook(await workbookBuffer([longOwner])),
     (error) => error.errors.some((issue) => issue.column === "nama_pemilik"),
   );
 
-  const tallTower = validRow("tower-2");
+  const tallTower = validRow("000002");
   tallTower[8] = 1000;
   await assert.rejects(
     parseTowerWorkbook(await workbookBuffer([tallTower])),
     (error) => error.errors.some((issue) => issue.column === "tinggi_menara"),
   );
 
-  const tooPrecise = validRow("tower-3");
+  const tooPrecise = validRow("000003");
   tooPrecise[4] = 106.1234567;
   await assert.rejects(
     parseTowerWorkbook(await workbookBuffer([tooPrecise])),
@@ -189,7 +205,7 @@ test("rejects values that exceed the diagram's field limits", async () => {
 });
 
 test("accepts six coordinate decimals and rejects non-ZIP files before parsing", async () => {
-  const row = validRow("tower-1");
+  const row = validRow("000001");
   row[4] = 106.123456;
   row[5] = -6.123456;
   const buffer = await workbookBuffer([row]);
@@ -209,9 +225,9 @@ test("finds the template headers on the data sheet", async () => {
   workbook.addWorksheet("Petunjuk").addRow(["Baca petunjuk upload"]);
   const data = workbook.addWorksheet("Template");
   data.addRow(headers);
-  data.addRow(validRow("tower-1"));
+  data.addRow(validRow("000001"));
   const items = await parseTowerWorkbook(await workbook.xlsx.writeBuffer());
-  assert.equal(items[0].tower.id_menara, "TOWER-1");
+  assert.equal(items[0].tower.id_menara, "000001");
 });
 
 test("accepts the previous template but does not trust manually entered regions", async () => {
@@ -242,6 +258,27 @@ test("rejects expanded-template IDs entered as numeric cells", async () => {
     parseTowerWorkbook(await workbookBuffer([row], "Template", expandedHeaders)),
     (error) =>
       error.errors.some((issue) => issue.column === "id_menara" && issue.row === 2),
+  );
+});
+
+test("rejects numeric IDs in the official template to prevent losing leading zeros", async () => {
+  const row = validRow(101);
+  await assert.rejects(
+    parseTowerWorkbook(await workbookBuffer([row])),
+    (error) =>
+      error.errors.some((issue) => issue.column === "id_menara" && issue.row === 2),
+  );
+});
+
+test("rejects non-numeric tower IDs", async () => {
+  await assert.rejects(
+    parseTowerWorkbook(await workbookBuffer([validRow("ID-000101")])),
+    (error) =>
+      error.errors.some(
+        (issue) =>
+          issue.column === "id_menara" &&
+          issue.message === "ID menara hanya boleh berisi angka.",
+      ),
   );
 });
 
@@ -278,7 +315,7 @@ test("accepts the shipped template archive and recognizes its headers", async ()
   );
 });
 
-test("resolves all tower regions in one PostGIS query and leaves unmatched points blank", async () => {
+test("resolves all tower regions in one PostGIS query and rejects unmatched points", async () => {
   const registrations = [
     { tower: { longitude: 106.8, latitude: -6.2 } },
     { tower: { longitude: 120, latitude: -8 } },
@@ -287,35 +324,23 @@ test("resolves all tower regions in one PostGIS query and leaves unmatched point
   const database = {
     async raw(sql, bindings) {
       queries.push({ sql, bindings });
+      const points = JSON.parse(bindings[0]);
       return {
-        rows: [
-          {
-            row_number: 1,
-            province: "Jawa Tengah",
-            regency_city: "Kota Semarang",
-            district: "Semarang Tengah",
-            village: "Miroto",
-          },
-          {
-            row_number: 2,
-            province: null,
-            regency_city: null,
-            district: null,
-            village: null,
-          },
-        ],
+        rows: points.map(({ row_number }, index) => ({
+          row_number,
+          province: index === 1 ? null : "Jawa Tengah",
+          regency_city: index === 1 ? null : "Kota Semarang",
+          district: index === 1 ? null : "Semarang Tengah",
+          village: index === 1 ? null : "Miroto",
+        })),
       };
     },
   };
 
-  const resolved = await resolveAdministrativeRegions(database, registrations);
-  assert.equal(queries.length, 1);
-  assert.match(queries[0].sql, /ST_Covers/);
-  assert.match(queries[0].sql, /ST_MakePoint\(input_points\.longitude, input_points\.latitude\)/);
-  assert.deepEqual(JSON.parse(queries[0].bindings[0]), [
-    { row_number: 1, longitude: 106.8, latitude: -6.2 },
-    { row_number: 2, longitude: 120, latitude: -8 },
-  ]);
+  const resolved = await resolveAdministrativeRegions(
+    database,
+    registrations.slice(0, 1),
+  );
   assert.deepEqual(
     [
       resolved[0].tower.provinsi,
@@ -325,27 +350,31 @@ test("resolves all tower regions in one PostGIS query and leaves unmatched point
     ],
     ["JAWA TENGAH", "KOTA SEMARANG", "SEMARANG TENGAH", "MIROTO"],
   );
-  assert.deepEqual(
-    [
-      resolved[1].tower.provinsi,
-      resolved[1].tower.kab_kota,
-      resolved[1].tower.kecamatan,
-      resolved[1].tower.kelurahan,
-    ],
-    [null, null, null, null],
+  await assert.rejects(
+    resolveAdministrativeRegions(database, registrations),
+    (error) =>
+      error.name === "UnmatchedAdministrativeRegionError" &&
+      error.registrationIndexes.includes(1),
   );
+  assert.equal(queries.length, 2);
+  assert.match(queries[0].sql, /ST_Covers/);
+  assert.match(queries[0].sql, /ST_MakePoint\(input_points\.longitude, input_points\.latitude\)/);
+  assert.deepEqual(JSON.parse(queries[1].bindings[0]), [
+    { row_number: 1, longitude: 106.8, latitude: -6.2 },
+    { row_number: 2, longitude: 120, latitude: -8 },
+  ]);
 });
 
 test("accepts the current construction year and rejects future years", async () => {
   const currentYear = new Date().getFullYear();
-  const currentYearRow = validRow("tower-current-year");
+  const currentYearRow = validRow("000001");
   currentYearRow[2] = currentYear;
   const [parsedCurrentYear] = await parseTowerWorkbook(
     await workbookBuffer([currentYearRow]),
   );
   assert.equal(parsedCurrentYear.tower.tahun_pembangunan, currentYear);
 
-  const futureYearRow = validRow("tower-future-year");
+  const futureYearRow = validRow("000002");
   futureYearRow[2] = currentYear + 1;
   await assert.rejects(
     parseTowerWorkbook(await workbookBuffer([futureYearRow])),

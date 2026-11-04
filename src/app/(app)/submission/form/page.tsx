@@ -3,14 +3,14 @@
 import { useRef, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { ChevronDown, Plus, Search, Send } from "lucide-react";
+import { Plus, Send } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { SearchableYearSelect } from "@/components/ui/searchable-year-select";
 import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
 
@@ -190,7 +190,12 @@ function validate(values: Values, tenants: Tenant[]): Errors {
     if (message) fields[key] = message;
   };
 
-  set("kode", textError(values.kode));
+  const towerCode = values.kode.trim();
+  if (!towerCode) {
+    set("kode", "Wajib diisi");
+  } else if (!/^\d{1,41}$/.test(towerCode)) {
+    set("kode", "Masukkan 1 sampai 41 digit angka; nol di depan tetap dipakai");
+  }
   set("pemilik", textError(values.pemilik));
   set("jenis", values.jenis ? undefined : "Wajib diisi");
   set("longitude", coordError(values.longitude, 95, 141));
@@ -244,151 +249,25 @@ function YearField({
   onChange: (value: string) => void;
   error?: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [activeIndex, setActiveIndex] = useState(0);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
-  const currentYear = new Date().getFullYear();
-  const years = Array.from(
-    { length: currentYear - 1900 + 1 },
-    (_, index) => currentYear - index,
-  ).filter((year) => year.toString().includes(search.trim()));
-  const selectedLabel = value || "Pilih tahun pembangunan";
-
-  useEffect(() => {
-    if (open) searchRef.current?.focus();
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    function closeOnOutsideClick(event: PointerEvent) {
-      if (
-        event.target instanceof Node &&
-        !dropdownRef.current?.contains(event.target)
-      ) {
-        setOpen(false);
-      }
-    }
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("pointerdown", closeOnOutsideClick);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeOnOutsideClick);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [open]);
-
-  function selectYear(year: number) {
-    onChange(String(year));
-    setOpen(false);
-    setSearch("");
-  }
-
-  function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      setActiveIndex((index) => Math.min(index + 1, years.length - 1));
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      setActiveIndex((index) => Math.max(index - 1, 0));
-    } else if (event.key === "Enter" && open && years[activeIndex] !== undefined) {
-      event.preventDefault();
-      selectYear(years[activeIndex]);
-    }
-  }
-
   return (
     <div className="flex w-full flex-col gap-1">
       <label htmlFor="tahun-pembangunan" className="text-field-label">
         Tahun Pembangunan
         <span className="ml-0.5 text-danger">*</span>
       </label>
-      <div ref={dropdownRef} className="relative">
-        <button
-          id="tahun-pembangunan"
-          type="button"
-          role="combobox"
-          aria-label="Tahun Pembangunan"
-          aria-expanded={open}
-          aria-controls="tahun-pembangunan-options"
-          aria-haspopup="listbox"
-          aria-invalid={error ? "true" : "false"}
-          aria-describedby="tahun-pembangunan-note"
-          onKeyDown={(event) => {
-            if (event.key === "ArrowDown" && !open) {
-              event.preventDefault();
-              setOpen(true);
-            }
-          }}
-          onClick={() => setOpen((isOpen) => !isOpen)}
-          className={cn(
-            "flex h-9 w-full cursor-pointer items-center justify-between rounded-input border border-border bg-surface px-2.5 text-left text-sm text-text transition-colors duration-150 focus:border-primary focus:outline-none",
-            error && "border-danger",
-          )}
-        >
-          <span className={cn(!value && "text-muted")}>{selectedLabel}</span>
-          <ChevronDown
-            aria-hidden
-            className={cn("h-4 w-4 text-muted transition-transform", open && "rotate-180")}
-          />
-        </button>
-        {open && (
-          <div
-            className="absolute z-30 mt-1 w-full overflow-hidden rounded-input border border-border bg-surface shadow-lg"
-          >
-            <div className="border-b border-border-soft p-2">
-              <div className="relative">
-                <Search
-                  aria-hidden
-                  className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
-                />
-                <input
-                  ref={searchRef}
-                  type="search"
-                  aria-label="Cari tahun pembangunan"
-                  value={search}
-                  onChange={(event) => {
-                    setSearch(event.target.value);
-                    setActiveIndex(0);
-                  }}
-                  onKeyDown={handleSearchKeyDown}
-                  placeholder="Cari"
-                  className="h-9 w-full rounded-input border border-border bg-surface pl-9 pr-3 text-sm text-text focus:border-primary focus:outline-none"
-                />
-              </div>
-            </div>
-            <div id="tahun-pembangunan-options" role="listbox" aria-label="Tahun pembangunan" className="max-h-60 overflow-y-auto p-1">
-              {years.length > 0 ? (
-                years.map((year, index) => (
-                  <button
-                    key={year}
-                    type="button"
-                    role="option"
-                    aria-selected={value === String(year)}
-                    onMouseEnter={() => setActiveIndex(index)}
-                    onClick={() => selectYear(year)}
-                    className={cn(
-                      "flex min-h-8 w-full items-center rounded-input px-2.5 text-left text-sm text-text hover:bg-nav-active-bg",
-                      activeIndex === index && "bg-nav-active-bg",
-                      value === String(year) && "font-semibold text-primary",
-                    )}
-                  >
-                    {year}
-                  </button>
-                ))
-              ) : (
-                <p className="px-2.5 py-3 text-sm text-muted">
-                  Tahun tidak ditemukan.
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-        <input type="hidden" name="tahun_pembangunan" value={value} />
-      </div>
+      <SearchableYearSelect
+        id="tahun-pembangunan"
+        ariaLabel="Tahun Pembangunan"
+        searchLabel="Cari tahun pembangunan"
+        optionsLabel="Tahun pembangunan"
+        value={value}
+        onChange={onChange}
+        placeholder="Pilih tahun pembangunan"
+        triggerClassName="h-9 bg-surface text-sm text-text"
+        name="tahun_pembangunan"
+        describedBy="tahun-pembangunan-note"
+        invalid={Boolean(error)}
+      />
       {error ? (
         <p id="tahun-pembangunan-note" className="text-helper text-danger" role="alert">
           {error}
@@ -408,7 +287,7 @@ function ApplicationFormContent({
   requestedDraftId: string | null;
 }) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { authenticated, loading: authLoading, user } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
   const nextId = useRef(2);
   const [values, setValues] = useState<Values>(EMPTY);
@@ -423,15 +302,42 @@ function ApplicationFormContent({
     messages: string[];
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingDraft, setIsLoadingDraft] = useState(Boolean(requestedDraftId));
   const [draftId, setDraftId] = useState<string | null>(null);
+  const [loadedDraftId, setLoadedDraftId] = useState<string | null>(null);
+  const [failedDraft, setFailedDraft] = useState<{
+    id: string;
+    message: string;
+  } | null>(null);
 
   const [mapInput, setMapInput] = useState("");
   const [isLocked, setIsLocked] = useState(false);
+  const draftAccessDenied =
+    Boolean(requestedDraftId) &&
+    !authLoading &&
+    (!authenticated || user.role !== "USER");
+  const draftLoadError =
+    Boolean(requestedDraftId) &&
+    (draftAccessDenied || failedDraft?.id === requestedDraftId);
+  const isLoadingDraft =
+    Boolean(requestedDraftId) &&
+    !draftAccessDenied &&
+    loadedDraftId !== requestedDraftId &&
+    failedDraft?.id !== requestedDraftId;
+  const draftLoadMessage = draftAccessDenied
+    ? authenticated
+      ? "Draf hanya dapat dibuka oleh akun Applicant pemiliknya."
+      : "Silakan masuk dengan akun Applicant pemilik draf."
+    : failedDraft?.id === requestedDraftId
+      ? failedDraft.message
+      : "";
 
   useEffect(() => {
-    if (!requestedDraftId) return;
-
+    if (
+      !requestedDraftId ||
+      authLoading ||
+      !authenticated ||
+      user.role !== "USER"
+    ) return;
     let active = true;
     fetch(`/api/towers/drafts?id=${encodeURIComponent(requestedDraftId)}`, {
       cache: "no-store",
@@ -487,26 +393,31 @@ function ApplicationFormContent({
         );
         nextId.current = Math.max(restoredTenants.length, 1) + 1;
         setDraftId(payload.data.id);
+        setLoadedDraftId(requestedDraftId);
+        setFailedDraft(null);
         setNotice("Draf berhasil dimuat. Anda dapat melanjutkan pengisian.");
+        setNoticeIsError(false);
       })
       .catch((loadError) => {
         if (!active) return;
         setDraftId(null);
-        setNotice(
-          loadError instanceof Error
-            ? loadError.message
-            : "Draf tidak dapat dimuat.",
-        );
+        setValues(EMPTY);
+        setMapInput("");
+        setTenants([{ id: 1, name: "" }]);
+        nextId.current = 2;
+        setIsLocked(false);
+        const message = loadError instanceof Error
+          ? loadError.message
+          : "Draf tidak dapat dimuat.";
+        setNotice(message);
         setNoticeIsError(true);
-      })
-      .finally(() => {
-        if (active) setIsLoadingDraft(false);
+        setFailedDraft({ id: requestedDraftId, message });
       });
 
     return () => {
       active = false;
     };
-  }, [requestedDraftId]);
+  }, [requestedDraftId, authLoading, authenticated, user.id, user.role]);
 
   function revalidate(nextValues: Values, nextTenants: Tenant[]) {
     if (attempted) setErrors(validate(nextValues, nextTenants));
@@ -640,6 +551,16 @@ function ApplicationFormContent({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (
+      requestedDraftId &&
+      (!authenticated ||
+        user.role !== "USER" ||
+        draftId !== requestedDraftId ||
+        isLoadingDraft ||
+        draftLoadError)
+    ) {
+      return;
+    }
     setAttempted(true);
     const result = validate(values, tenants);
     setErrors(result);
@@ -675,12 +596,23 @@ function ApplicationFormContent({
         }),
       });
       const payload = (await response.json().catch(() => null)) as
-        | { error?: string; errors?: Array<{ message?: string }> }
+        | {
+            error?: string;
+            errors?: Array<{ message?: string }>;
+            data?: { email_sent?: boolean };
+          }
         | null;
       if (!response.ok) {
         const messages = payload?.errors
           ?.map(({ message }) => message)
           .filter((message): message is string => Boolean(message)) ?? [];
+        if (
+          draftId &&
+          (response.status === 409 || response.status === 422)
+        ) {
+          setDraftId(null);
+          router.replace("/submission/form", { scroll: false });
+        }
         setSubmissionFeedback({
           title:
             response.status === 409 || response.status === 422
@@ -694,7 +626,11 @@ function ApplicationFormContent({
         return;
       }
 
-      router.push("/submission/history");
+      router.push(
+        payload?.data?.email_sent === false
+          ? "/submission/history?receipt_email=failed"
+          : "/submission/history",
+      );
     } catch (error) {
       setSubmissionFeedback({
         title: "Pengajuan Belum Berhasil",
@@ -754,6 +690,28 @@ function ApplicationFormContent({
 
   const invalid = attempted && hasErrors(errors);
 
+  if (requestedDraftId && isLoadingDraft) {
+    return (
+      <div role="status" className="mx-auto max-w-[960px] rounded-card border border-border-soft bg-surface p-6 text-sm text-muted">
+        Memeriksa akses dan memuat draf...
+      </div>
+    );
+  }
+
+  if (requestedDraftId && draftLoadError) {
+    return (
+      <div className="mx-auto flex max-w-[960px] flex-col gap-4 rounded-card border border-danger bg-danger-bg p-6">
+        <h1 className="text-lg font-semibold text-heading">Draf tidak dapat dibuka</h1>
+        <p role="alert" className="text-sm text-danger">{draftLoadMessage}</p>
+        <div>
+          <Button type="button" variant="outline" onClick={() => router.replace("/submission")}>
+            Kembali ke pengajuan
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form
       ref={formRef}
@@ -768,7 +726,9 @@ function ApplicationFormContent({
           <Input 
             id="kode-menara" 
             label="Kode/ID Menara" 
-            placeholder="Contoh: TWR-TAHUN-XXXX" 
+            placeholder="Contoh: 000701"
+            inputMode="numeric"
+            hint="Masukkan angka saja. Sistem menambahkan prefix TWR dan tahun pendaftaran; nol di depan dipertahankan."
             requiredMark 
             {...field("kode")} 
           />
@@ -1038,10 +998,11 @@ function ApplicationFormContent({
 
 function ApplicationFormWithSearchParams() {
   const searchParams = useSearchParams();
+  const { authenticated, user } = useAuth();
   const requestedDraftId = searchParams.get("draft_id");
   return (
     <ApplicationFormContent
-      key={requestedDraftId ?? "new"}
+      key={`${authenticated ? user.id ?? user.email : "anonymous"}:${user.role}`}
       requestedDraftId={requestedDraftId}
     />
   );

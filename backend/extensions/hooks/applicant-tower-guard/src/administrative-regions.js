@@ -12,6 +12,15 @@ export class AdministrativeRegionLookupError extends Error {
   }
 }
 
+export class UnmatchedAdministrativeRegionError extends Error {
+  constructor(registrationIndexes) {
+    super("Koordinat tidak berada di wilayah administrasi yang terdaftar. Periksa longitude dan latitude.");
+    this.name = "UnmatchedAdministrativeRegionError";
+    this.registrationIndexes = registrationIndexes;
+    this.field = "longitude";
+  }
+}
+
 export async function resolveAdministrativeRegions(database, registrations) {
   const points = registrations.map(({ tower }, index) => ({
     row_number: index + 1,
@@ -59,14 +68,23 @@ export async function resolveAdministrativeRegions(database, registrations) {
     );
   }
 
-  return registrations.map((registration, index) => {
-    const region = rows[index];
+  for (const [index, region] of rows.entries()) {
     if (region.row_number !== index + 1) {
       throw new AdministrativeRegionLookupError(
         new Error("PostGIS returned administrative results in an invalid order."),
       );
     }
+  }
 
+  const unmatchedIndexes = rows.flatMap((region, index) =>
+    normalizeRegionName(region.province) ? [] : [index],
+  );
+  if (unmatchedIndexes.length) {
+    throw new UnmatchedAdministrativeRegionError(unmatchedIndexes);
+  }
+
+  return registrations.map((registration, index) => {
+    const region = rows[index];
     return {
       ...registration,
       tower: {

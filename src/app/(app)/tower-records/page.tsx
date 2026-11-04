@@ -11,6 +11,7 @@ import { Table, Th, Td } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import { Dialog } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { formatDateWib, getWibDateKey } from "@/lib/date-time";
 
 type TowerRecord = {
   id: string;
@@ -65,7 +66,7 @@ type Filters = {
   reg: string;
   tanggal: string;
 };
-type Pending = { title: string; ids: string[]; confirmLabel?: string } | null;
+type Pending = { title: string; ids: string[]; action: "delete" | "archive" } | null;
 
 const COLUMNS: Field[] = [
   { key: "kode", label: "Kode/ID Menara" },
@@ -138,18 +139,11 @@ function includes(value: string, query: string) {
 }
 
 function localDateKey(value: string) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "";
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
+  return getWibDateKey(value);
 }
 
 function formatDate(value: string) {
-  const date = new Date(value);
-  return Number.isFinite(date.getTime())
-    ? date.toLocaleDateString("id-ID")
-    : "—";
+  return formatDateWib(value);
 }
 
 function plural(count: number) {
@@ -257,7 +251,9 @@ export default function TowerRecordsPage() {
           return (
           includes(record.kode, applied.kode) &&
           includes(record.pemilik, applied.pemilik) &&
-          (!applied.jenis || record.jenis === applied.jenis) &&
+          (!applied.jenis ||
+            record.jenis.trim().toLowerCase() ===
+              applied.jenis.trim().toLowerCase()) &&
           includes(record.reg, applied.reg) &&
           (!applied.tanggal || registrationDate === applied.tanggal)
           );
@@ -304,7 +300,7 @@ export default function TowerRecordsPage() {
     });
   }
 
-  async function confirmDelete() {
+  async function confirmTowerAction() {
     if (!pending) return;
     setMessage("");
     try {
@@ -325,12 +321,11 @@ export default function TowerRecordsPage() {
       setSelected((currentSelection) =>
         new Set(Array.from(currentSelection).filter((id) => !pending.ids.includes(id))),
       );
-      const wasDeleteAction = pending.confirmLabel === "Hapus";
       setPending(null);
       setMessageIsError(false);
       setMessage(
-        wasDeleteAction
-          ? `${plural(pending.ids.length)} berhasil dihapus dari daftar aktif (diarsipkan).`
+        pending.action === "delete"
+          ? `${plural(pending.ids.length)} berhasil dihapus dari daftar aktif.`
           : `${plural(pending.ids.length)} berhasil diarsipkan.`,
       );
       await refresh();
@@ -413,12 +408,14 @@ export default function TowerRecordsPage() {
               <Button variant="download" disabled={selected.size === 0 && results.length === 0} onClick={download}>
                 <Download className="h-4 w-4" strokeWidth={2} /> {selected.size > 0 ? `Unduh Terpilih (${selected.size})` : "Unduh"}
               </Button>
-              <Button variant="destructive" disabled={selected.size === 0} onClick={() => setPending({ title: "Hapus data terpilih", ids: Array.from(selected), confirmLabel: "Hapus" })}>
-                Hapus Terpilih
+              <Button variant="danger-outline" disabled={selected.size === 0} onClick={() => setPending({ title: "Hapus data terpilih", ids: Array.from(selected), action: "delete" })}>
+                Hapus
               </Button>
-              <Button variant="danger-outline" disabled={results.length === 0} onClick={() => setPending({ title: "Hapus semua data yang cocok", ids: results.map((record) => record.id), confirmLabel: "Hapus" })}>
-                Hapus Massal
-              </Button>
+              {role !== "Normal User" && (
+                <Button variant="danger-outline" disabled={results.length === 0} onClick={() => setPending({ title: "Arsipkan semua data yang cocok", ids: results.map((record) => record.id), action: "archive" })}>
+                  Arsipkan
+                </Button>
+              )}
             </div>
           </div>
 
@@ -455,12 +452,6 @@ export default function TowerRecordsPage() {
                   ))}
                   <Td className="whitespace-nowrap">
                     <button type="button" onClick={() => setViewing(record)} className="cursor-pointer font-semibold text-primary hover:underline">Lihat</button>
-                    {role !== "Normal User" && (
-                      <>
-                        <span className="px-2 text-faint" aria-hidden>|</span>
-                        <button type="button" onClick={() => setPending({ title: `Arsipkan ${record.kode}`, ids: [record.id] })} className="cursor-pointer font-semibold text-danger hover:underline">Arsipkan</button>
-                      </>
-                    )}
                   </Td>
                 </tr>
               ))}
@@ -482,8 +473,11 @@ export default function TowerRecordsPage() {
         open={pending !== null}
         onClose={() => setPending(null)}
         title={pending?.title ?? ""}
-        description={pending ? `${plural(pending.ids.length)} akan diarsipkan (soft delete), dikeluarkan dari daftar aktif, dan tetap tercatat di log audit.` : undefined}
-        footer={<><Button variant="outline" onClick={() => setPending(null)}>Batal</Button><Button variant="destructive" onClick={confirmDelete}>{pending?.confirmLabel ?? "Arsipkan"}</Button></>}
+        description={pending ? pending.action === "delete"
+          ? `${plural(pending.ids.length)} akan dihapus dari daftar aktif dan tetap tercatat di log audit.`
+          : `${plural(pending.ids.length)} akan diarsipkan, dikeluarkan dari daftar aktif, dan tetap tercatat di log audit.`
+          : undefined}
+        footer={<><Button variant="outline" onClick={() => setPending(null)}>Batal</Button><Button variant="destructive" onClick={confirmTowerAction}>{pending?.action === "delete" ? "Hapus" : "Arsipkan"}</Button></>}
       />
     </div>
   );

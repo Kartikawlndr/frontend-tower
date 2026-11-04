@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,15 +11,18 @@ import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, Th, Td } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
+import { formatDateWib } from "@/lib/date-time";
 
 type Filters = { search: string; from: string; to: string; status: string };
 type RegistrationRow = {
   id: string;
   towerId: string | null;
   towerCode: string;
+  registrationCode: string;
   date: string;
   method: string;
   status: string;
+  hasBeenEdited?: boolean;
   validationErrors?: Array<{
     row?: number | null;
     column?: string | null;
@@ -30,6 +34,7 @@ type PortalAttempt = {
   id: string | number;
   status: string;
   attempt_type?: string;
+  registration_code?: string;
   metode_pendaftaran?: string;
   date_created?: string;
   validation_errors?: RegistrationRow["validationErrors"];
@@ -43,7 +48,7 @@ type PortalTower = {
 type HistoryResponse = {
   data?: PortalTower[];
   rejected_attempts?: PortalAttempt[];
-  draft_attempt?: { id: string | number; date_updated?: string } | null;
+  draft_attempts?: Array<{ id: string | number; date_updated?: string }>;
   error?: string;
 };
 
@@ -79,17 +84,26 @@ function compareNewestFirst(a: RegistrationRow, b: RegistrationRow) {
   return b.id.localeCompare(a.id, undefined, { numeric: true });
 }
 
-function toRows(payload: HistoryResponse): RegistrationRow[] {
+function toRows(
+  payload: HistoryResponse,
+  includeApplicantDrafts: boolean,
+): RegistrationRow[] {
   const rows: RegistrationRow[] = [];
   for (const tower of payload.data ?? []) {
+    const hasBeenEdited = tower.registration_attempts?.some(
+      (attempt) => attempt.attempt_type === "Update" && attempt.status === "Registered",
+    ) ?? false;
     for (const attempt of tower.registration_attempts ?? []) {
+      if (attempt.attempt_type === "Update") continue;
       rows.push({
         id: String(attempt.id),
         towerId: tower.id,
         towerCode: tower.id_menara,
+        registrationCode: attempt.registration_code || "—",
         date: attempt.date_created ?? tower.date_created ?? "",
         method: attempt.metode_pendaftaran ?? "",
         status: attempt.status,
+        hasBeenEdited,
         validationErrors: attempt.validation_errors,
       });
     }
@@ -99,27 +113,34 @@ function toRows(payload: HistoryResponse): RegistrationRow[] {
       id: String(attempt.id),
       towerId: null,
       towerCode: "—",
+      registrationCode: "—",
       date: attempt.date_created ?? "",
       method: attempt.metode_pendaftaran ?? "",
       status: "Rejected",
       validationErrors: attempt.validation_errors,
     });
   }
-  if (payload.draft_attempt) {
-    rows.push({
-      id: String(payload.draft_attempt.id),
-      towerId: null,
-      towerCode: "—",
-      date: payload.draft_attempt.date_updated ?? "",
-      method: "Input Manual",
-      status: "Draft",
-    });
+  if (includeApplicantDrafts) {
+    for (const draft of payload.draft_attempts ?? []) {
+      rows.push({
+        id: String(draft.id),
+        towerId: null,
+        towerCode: "—",
+        registrationCode: "—",
+        date: draft.date_updated ?? "",
+        method: "Input Manual",
+        status: "Draft",
+      });
+    }
   }
   return rows.sort(compareNewestFirst);
 }
 
-export default function SubmissionHistoryPage() {
-  const { role } = useAuth();
+function SubmissionHistoryContent() {
+  const { authenticated, role, user } = useAuth();
+  const searchParams = useSearchParams();
+  const receiptEmailFailed = searchParams.get("receipt_email") === "failed";
+  const identity = `${authenticated ? user.id ?? user.email : "anonymous"}:${role}`;
   const [draft, setDraft] = useState<Filters>(EMPTY_FILTERS);
   const [applied, setApplied] = useState<Filters>(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
@@ -127,6 +148,7 @@ export default function SubmissionHistoryPage() {
   const [rows, setRows] = useState<RegistrationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [loadedIdentity, setLoadedIdentity] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -139,27 +161,35 @@ export default function SubmissionHistoryPage() {
         if (!response.ok) {
           throw new Error(payload?.error || "Riwayat pengajuan tidak dapat dimuat.");
         }
-        setRows(toRows(payload ?? {}));
+        setRows(toRows(payload ?? {}, role === "Normal User"));
+        setError("");
+        setLoadedIdentity(identity);
       })
       .catch((requestError) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return;
+        setRows([]);
         setError(
           requestError instanceof Error
             ? requestError.message
             : "Riwayat pengajuan tidak dapat dimuat.",
         );
+        setLoadedIdentity(identity);
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, []);
+  }, [identity, role]);
 
   const results = useMemo(
     () =>
       rows.filter((row) => {
         const search = applied.search.trim().toLowerCase();
-        if (search && !row.towerCode.toLowerCase().includes(search)) return false;
+        if (
+          search &&
+          !row.towerCode.toLowerCase().includes(search) &&
+          !row.registrationCode.toLowerCase().includes(search)
+        ) return false;
         if (applied.status && row.status !== applied.status) return false;
         const date = toDate(row.date);
         if (applied.from && date < applied.from) return false;
@@ -169,7 +199,12 @@ export default function SubmissionHistoryPage() {
     [applied, rows],
   );
 
-  const visible = results.slice((page - 1) * pageSize, page * pageSize);
+  const identityReady = loadedIdentity === identity;
+  const visible = identityReady
+    ? results
+        .filter((row) => role === "Normal User" || row.status !== "Draft")
+        .slice((page - 1) * pageSize, page * pageSize)
+    : [];
 
   function search(event: React.FormEvent) {
     event.preventDefault();
@@ -188,6 +223,15 @@ export default function SubmissionHistoryPage() {
       <h1 className="text-page-title">
         Riwayat Pengajuan {role === "Normal User" ? "(Data Sendiri)" : ""}
       </h1>
+      {receiptEmailFailed && (
+        <div
+          role="alert"
+          className="rounded-card border border-amber bg-amber/10 px-4 py-3 text-sm text-heading"
+        >
+          Pendaftaran berhasil, tetapi ada email bukti yang gagal terkirim. Jangan
+          kirim ulang pengajuan; hubungi admin untuk meminta bukti pendaftaran.
+        </div>
+      )}
 
       <Card title="Filter">
         <CardBody className="pt-4">
@@ -222,7 +266,7 @@ export default function SubmissionHistoryPage() {
                 <option value="">Semua</option>
                 <option value="Registered">Terdaftar</option>
                 <option value="Rejected">Ditolak</option>
-                <option value="Draft">Draf</option>
+                {role === "Normal User" && <option value="Draft">Draf</option>}
               </Select>
             </div>
             <div className="flex justify-end gap-3">
@@ -240,6 +284,7 @@ export default function SubmissionHistoryPage() {
             <thead>
               <tr>
                 <Th>ID Menara</Th>
+                <Th>No. Registrasi</Th>
                 <Th>Tanggal</Th>
                 <Th>Metode</Th>
                 <Th>Status</Th>
@@ -247,14 +292,26 @@ export default function SubmissionHistoryPage() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr><Td colSpan={5} className="py-8 text-center text-muted">Memuat riwayat...</Td></tr>
+              {loading || !identityReady ? (
+                <tr><Td colSpan={6} className="py-8 text-center text-muted">Memuat riwayat...</Td></tr>
               ) : visible.length === 0 ? (
-                <tr><Td colSpan={5} className="py-8 text-center text-muted">Tidak ada pengajuan yang cocok dengan filter pencarian Anda.</Td></tr>
+                <tr><Td colSpan={6} className="py-8 text-center text-muted">Tidak ada pengajuan yang cocok dengan filter pencarian Anda.</Td></tr>
               ) : visible.map((row) => (
                 <tr key={`${row.towerId ?? "attempt"}-${row.id}`}>
                   <Td>{row.towerCode}</Td>
-                  <Td>{row.date ? new Date(row.date).toLocaleDateString("id-ID") : "—"}</Td>
+                  <Td>
+                    {row.registrationCode}
+                    {row.hasBeenEdited && (
+                      <span
+                        aria-label="Pernah diedit"
+                        title="Data ini pernah diedit"
+                        className="ml-1 font-bold text-amber"
+                      >
+                        *
+                      </span>
+                    )}
+                  </Td>
+                  <Td>{formatDateWib(row.date)}</Td>
                   <Td>{METHOD_TEXT[row.method] || row.method || "—"}</Td>
                   <Td>
                     <Badge variant={STATUS_VARIANT[row.status] ?? "warning"}>
@@ -310,5 +367,13 @@ export default function SubmissionHistoryPage() {
         </CardBody>
       </Card>
     </div>
+  );
+}
+
+export default function SubmissionHistoryPage() {
+  return (
+    <Suspense fallback={<p className="text-helper">Memuat riwayat...</p>}>
+      <SubmissionHistoryContent />
+    </Suspense>
   );
 }

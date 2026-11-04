@@ -51,11 +51,68 @@ export async function POST(request: Request) {
   }
 
   if (!loginResponse.ok) {
+    if (loginResponse.status === 401) {
+      const loginStatusSecret = process.env.PORTAL_LOGIN_STATUS_SECRET;
+      if (!loginStatusSecret) {
+        return NextResponse.json(
+          { error: "Status akun tidak dapat diverifikasi saat ini. Coba lagi." },
+          { status: 503 },
+        );
+      }
+
+      let statusResponse: Response;
+      try {
+        statusResponse = await fetch(
+          `${directusUrl}/applicant-portal/login-status`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-portal-login-status-secret": loginStatusSecret,
+            },
+            body: JSON.stringify({ email, password }),
+            cache: "no-store",
+          },
+        );
+      } catch {
+        return NextResponse.json(
+          { error: "Status akun tidak dapat diverifikasi saat ini. Coba lagi." },
+          { status: 503 },
+        );
+      }
+
+      if (statusResponse.status === 429) {
+        return NextResponse.json(
+          { error: "Terlalu banyak percobaan masuk. Coba lagi beberapa saat." },
+          { status: 429 },
+        );
+      }
+      if (!statusResponse.ok) {
+        return NextResponse.json(
+          { error: "Status akun tidak dapat diverifikasi saat ini. Coba lagi." },
+          { status: 503 },
+        );
+      }
+
+      const statusPayload = (await statusResponse.json().catch(() => null)) as
+        | { suspended?: boolean }
+        | null;
+      if (typeof statusPayload?.suspended !== "boolean") {
+        return NextResponse.json(
+          { error: "Respons status akun tidak valid." },
+          { status: 502 },
+        );
+      }
+      if (statusPayload.suspended) {
+        return NextResponse.json(
+          { error: "Akun Anda ditangguhkan. Hubungi Admin untuk bantuan." },
+          { status: 403 },
+        );
+      }
+    }
+
     return NextResponse.json(
-      {
-        error:
-          "Email atau kata sandi tidak sesuai, atau akun ditangguhkan. Pastikan data login benar; jika benar, hubungi Super Admin.",
-      },
+      { error: "Email atau kata sandi salah." },
       { status: 401 },
     );
   }

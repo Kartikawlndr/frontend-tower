@@ -21,7 +21,7 @@ type UploadIssue = {
 const TEXT_RULE = "Maksimal 50 karakter";
 
 const COLUMNS = [
-  { field: "Kode/ID Menara", type: "Teks", rule: "Maksimal 50 karakter; contoh 000101" },
+  { field: "Kode/ID Menara", type: "Teks", rule: "1–41 digit; format sel sebagai Teks agar nol di depan tidak hilang. Sistem menambahkan prefix TWR dan tahun pendaftaran." },
   { field: "Nama Pemilik Menara Telekomunikasi", type: "Teks", rule: TEXT_RULE },
   { field: "Tahun Pembangunan Menara Telekomunikasi", type: "Dropdown", rule: `1900 sampai ${CURRENT_YEAR}` },
   { field: "Penyelenggara Jaringan Telekomunikasi", type: "Teks", rule: "Maksimal 50 karakter; multi-tenant dipisahkan koma" },
@@ -100,7 +100,11 @@ export default function UploadExcelPage() {
         body,
       });
       const payload = (await response.json().catch(() => null)) as
-        | { error?: string; errors?: UploadIssue[] }
+        | {
+            error?: string;
+            errors?: UploadIssue[];
+            data?: { email_sent?: boolean };
+          }
         | null;
       if (!response.ok) {
         const messages = payload?.errors
@@ -114,7 +118,11 @@ export default function UploadExcelPage() {
         });
         return;
       }
-      router.push("/submission/history");
+      router.push(
+        payload?.data?.email_sent === false
+          ? "/submission/history?receipt_email=failed"
+          : "/submission/history",
+      );
     } catch (uploadError) {
       setFeedback({
         title: "Unggah Belum Berhasil",

@@ -15,5 +15,8 @@
   },
   "devDependencies": {
     "@directus/extensions-sdk": "18.0.6"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
   }
 }

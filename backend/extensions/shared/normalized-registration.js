@@ -2,6 +2,23 @@ export const TOWER_COLLECTION = "tower_infrastruktur";
 export const TENANT_COLLECTION = "tower_tenant";
 export const ATTEMPT_COLLECTION = "tower_registration_attempts";
 
+export function normalizeText(value) {
+  return String(value).normalize("NFC").replace(/\s+/gu, " ").trim();
+}
+
+export function formatTowerId(value, registeredAt = new Date()) {
+  const id = normalizeText(value);
+  if (!/^\d{1,41}$/.test(id)) {
+    throw new Error("ID menara harus berupa 1 sampai 41 digit angka.");
+  }
+  const date =
+    registeredAt instanceof Date ? registeredAt : new Date(registeredAt);
+  if (!Number.isFinite(date.getTime())) {
+    throw new Error("Tahun pendaftaran ID menara tidak valid.");
+  }
+  return `TWR-${date.getUTCFullYear()}-${id}`;
+}
+
 function service(ItemsService, collection, schema, knex) {
   return new ItemsService(collection, {
     schema,
@@ -110,6 +127,7 @@ export async function createRegisteredTowers({
   registrations,
   documentId = null,
   draftId = null,
+  registeredAt = new Date(),
 }) {
   return database.transaction(async (transaction) => {
     if (draftId !== null && registrations.length !== 1) {
@@ -129,10 +147,14 @@ export async function createRegisteredTowers({
       if (!registration.tenants[0]) {
         throw new Error("Tambahkan minimal satu tenant untuk setiap menara.");
       }
-      const registeredAt = new Date().toISOString();
-      const towerId = await towers.createOne({
+      const registeredAtValue = registeredAt.toISOString();
+      const towerData = {
         ...registration.tower,
-        date_created: registeredAt,
+        id_menara: formatTowerId(registration.tower.id_menara, registeredAt),
+      };
+      const towerId = await towers.createOne({
+        ...towerData,
+        date_created: registeredAtValue,
         metode_pendaftaran: method,
         verification_status: "Submitted",
         document: documentId,
@@ -162,12 +184,12 @@ export async function createRegisteredTowers({
         tower_id: towerId,
         status: "Registered",
         registration_code: registrationCode,
-        date_created: registeredAt,
+        date_created: registeredAtValue,
         attempt_type: "New Registration",
         metode_pendaftaran: method,
         submission_data: {
-          ...registration.tower,
-          date_created: registeredAt,
+          ...towerData,
+          date_created: registeredAtValue,
           tenants: registration.tenants,
           document: documentId,
         },
@@ -205,7 +227,7 @@ export async function createRegisteredTowers({
         activity(userId, TOWER_COLLECTION, towerId),
         { ...activity(userId, ATTEMPT_COLLECTION, attemptId), action: attemptAction },
       ]);
-      created.push({ id: towerId, id_menara: registration.tower.id_menara });
+      created.push({ id: towerId, id_menara: towerData.id_menara });
     }
 
     return created;

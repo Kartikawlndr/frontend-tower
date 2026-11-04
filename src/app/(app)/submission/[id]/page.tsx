@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { INDONESIAN_REGIONS } from "@/lib/indonesian-administrative-regions";
+import { formatDateWib } from "@/lib/date-time";
 
 function YearField({
   value,
@@ -189,6 +190,11 @@ type Tower = {
   verification_status?: string;
   date_created?: string;
   tenants?: Array<{ penyelenggara?: string }>;
+  registration_attempts?: Array<{
+    status?: string;
+    attempt_type?: string;
+    registration_code?: string | null;
+  }>;
 };
 type TowerResponse = { data?: Tower; error?: string };
 type EditableValues = {
@@ -344,11 +350,21 @@ export default function SubmissionDetailPage({
     return <div role="alert" className="text-sm text-danger">{error || "Detail menara tidak ditemukan."}</div>;
   }
 
+  const hasBeenEdited = tower.registration_attempts?.some(
+    (attempt) => attempt.attempt_type === "Update" && attempt.status === "Registered",
+  ) ?? false;
+  const registrationCode = tower.registration_attempts?.find(
+    (attempt) =>
+      attempt.attempt_type === "New Registration" &&
+      attempt.status === "Registered" &&
+      attempt.registration_code,
+  )?.registration_code;
   const readOnlyFields = [
-    ["ID Menara", tower.id_menara],
-    ["Status", tower.verification_status || "Registered"],
-    ["Metode pendaftaran", tower.metode_pendaftaran || "—"],
-    ["Tanggal", tower.date_created ? new Date(tower.date_created).toLocaleDateString("id-ID") : "—"],
+    { label: "ID Menara", value: tower.id_menara },
+    { label: "No. Registrasi", value: registrationCode || "—", edited: hasBeenEdited },
+    { label: "Status", value: tower.verification_status || "Registered" },
+    { label: "Metode pendaftaran", value: tower.metode_pendaftaran || "—" },
+    { label: "Tanggal", value: formatDateWib(tower.date_created) },
   ];
   const editableFields: Array<[keyof EditableValues, string]> = [
     ["nama_pemilik", "Nama Pemilik"],
@@ -384,10 +400,21 @@ export default function SubmissionDetailPage({
       <Card title="Ringkasan">
         <CardBody className="pt-4">
           <dl className="grid gap-4 sm:grid-cols-3">
-            {readOnlyFields.map(([label, value]) => (
+            {readOnlyFields.map(({ label, value, edited }) => (
               <div key={label} className="flex flex-col gap-1">
                 <dt className="text-field-label">{label}</dt>
-                <dd className="text-sm text-text">{value}</dd>
+                <dd className="text-sm text-text">
+                  {value}
+                  {edited && (
+                    <span
+                      aria-label="Pernah diedit"
+                      title="Data ini pernah diedit"
+                      className="ml-1 font-bold text-amber"
+                    >
+                      *
+                    </span>
+                  )}
+                </dd>
               </div>
             ))}
           </dl>

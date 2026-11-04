@@ -26,6 +26,7 @@
     "@directus/extensions-sdk": "18.0.6"
   },
   "dependencies": {
-    "exceljs": "^4.4.0"
+    "exceljs": "^4.4.0",
+    "qrcode": "^1.5.4"
   }
 }

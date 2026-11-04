@@ -11,8 +11,12 @@ Prerequisites: Docker Desktop with Compose, Node.js/npm, and Python 3 with
 
 1. Copy `.env.example` to `.env`. Replace every placeholder with local values;
    use strong, unique values for `KEY`, `SECRET`, database/admin passwords, and
-   SMTP credentials. Set `PUBLIC_URL=http://localhost:8055` for local use and
-   set `USER_REGISTER_ROLE` to the Directus Applicant role UUID.
+   SMTP credentials. Set `PUBLIC_URL=http://localhost:8055` for local use,
+   `USER_REGISTER_ROLE` to the Directus Applicant role UUID, and the same
+   random `PORTAL_LOGIN_STATUS_SECRET` in the frontend and Directus environment
+   files. Public registration must remain disabled; create accounts through
+   administrator invitations. Assign the Applicant role and set the password
+   policy to require 12-128 characters.
 2. From this directory, start the services:
 
    ```powershell
@@ -56,10 +60,12 @@ Prerequisites: Docker Desktop with Compose, Node.js/npm, and Python 3 with
    Get-Content -Raw .\database\tower-registration-update-attempts.sql | docker compose exec -T database psql -U directus -d directus
    Get-Content -Raw .\database\successful-registration-codes.sql | docker compose exec -T database psql -U directus -d directus
    Get-Content -Raw .\database\active-tower-id-uniqueness.sql | docker compose exec -T database psql -U directus -d directus
+   Get-Content -Raw .\database\disable-public-registration.sql | docker compose exec -T database psql -v ON_ERROR_STOP=1 -U directus -d directus
    ```
 
    These examples use the `DB_USER` and `DB_DATABASE` defaults in `.env.example`;
-   replace `directus` if you configured different names.
+   replace `directus` if you configured different names. The final statement
+   sets Directus's `public_registration` project setting to `false`.
 6. From each extension directory that contains a `package.json`, run
    `npm ci` followed by `npm run build`. For the bulk-upload endpoint, also run
    `npm test`. Directus loads the built extension files from the mounted
@@ -67,10 +73,14 @@ Prerequisites: Docker Desktop with Compose, Node.js/npm, and Python 3 with
 7. In a separate terminal, configure the frontend using the repository-root
    `.env.example`, then run `npm ci` and `npm run dev` from the repository root.
 
-Configure Directus roles/permissions, public registration, email verification,
-SMTP, and the registration email Flow for the local instance. These settings
-are not all portable through the schema snapshot. Do not copy production
-credentials or data into a local environment.
+Configure Directus roles/permissions and SMTP for the local instance. Account
+invitations use Directus mail; successful tower registrations send a receipt
+with a locally generated QR code from the portal and bulk-upload extensions.
+Keep Public Registration disabled in Directus Project Settings. The SQL
+statement above enforces this for the local instance because Directus reads
+the setting from its database. These settings are not all portable through the
+schema snapshot. Do not copy production credentials or data into a local
+environment.
 
 ## Bulk registration workbook
 

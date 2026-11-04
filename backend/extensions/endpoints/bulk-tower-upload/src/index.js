@@ -1,11 +1,18 @@
 import { defineEndpoint } from "@directus/extensions-sdk";
 import ExcelJS from "exceljs";
+import QRCode from "qrcode";
 import { fileURLToPath } from "node:url";
 import {
   createRegisteredTowers,
   createRejectedAttempt,
+  formatTowerId,
+  normalizeText,
 } from "../../../shared/normalized-registration.js";
-import { resolveAdministrativeRegions } from "../../../hooks/applicant-tower-guard/src/administrative-regions.js";
+import { sendRegistrationReceipts } from "../../../shared/registration-receipt.js";
+import {
+  resolveAdministrativeRegions,
+  UnmatchedAdministrativeRegionError,
+} from "../../../hooks/applicant-tower-guard/src/administrative-regions.js";
 
 export { resolveAdministrativeRegions } from "../../../hooks/applicant-tower-guard/src/administrative-regions.js";
 
@@ -20,6 +27,7 @@ const MAX_COMPRESSION_RATIO = 100;
 const MAX_ROWS = 1000;
 const MAX_ERRORS = 200;
 const MAX_TEXT_LENGTH = 50;
+const MAX_TOWER_ID_DIGITS = 41;
 const HEADERS = [
   "id_menara",
   "nama_pemilik",
@@ -328,7 +336,11 @@ function readText(
   column,
   rowNumber,
   errors,
-  { numericAllowed = false, field = HEADERS[column - 1] } = {},
+  {
+    numericAllowed = false,
+    field = HEADERS[column - 1],
+    maxLength = MAX_TEXT_LENGTH,
+  } = {},
 ) {
   let value;
   try {
@@ -339,17 +351,24 @@ function readText(
   }
 
   if (typeof value === "number" && (!numericAllowed || !Number.isFinite(value))) {
-    errors.push({ row: rowNumber, column: field, message: "Isi dengan teks yang valid." });
-    return "";
-  }
-  const normalized = String(value).normalize("NFC").trim();
-  if (!normalized) {
-    errors.push({ row: rowNumber, column: field, message: "Kolom wajib diisi." });
-  } else if (Array.from(normalized).length > MAX_TEXT_LENGTH) {
     errors.push({
       row: rowNumber,
       column: field,
-      message: `Maksimal ${MAX_TEXT_LENGTH} karakter.`,
+      message:
+        field === "id_menara"
+          ? "ID menara harus berupa teks agar nol di depan tidak hilang. Ubah format sel Excel menjadi Text sebelum mengisi ID."
+          : "Isi dengan teks yang valid.",
+    });
+    return "";
+  }
+  const normalized = normalizeText(value);
+  if (!normalized) {
+    errors.push({ row: rowNumber, column: field, message: "Kolom wajib diisi." });
+  } else if (Array.from(normalized).length > maxLength) {
+    errors.push({
+      row: rowNumber,
+      column: field,
+      message: `Maksimal ${maxLength} karakter.`,
     });
   }
   return normalized.toUpperCase();
@@ -461,8 +480,15 @@ export async function parseTowerWorkbook(buffer) {
       readNumber(row, columns.get(field), index, errors, { ...options, field });
 
     const id_menara = readFieldText("id_menara", {
-      numericAllowed: !officialTemplate,
+      maxLength: MAX_TOWER_ID_DIGITS,
     });
+    if (id_menara && !/^\d+$/.test(id_menara)) {
+      errors.push({
+        row: index,
+        column: "id_menara",
+        message: "ID menara hanya boleh berisi angka.",
+      });
+    }
     const nama_pemilik = readFieldText("nama_pemilik");
     const tahun_pembangunan = readFieldNumber("tahun_pembangunan", {
       integer: true,
@@ -562,9 +588,10 @@ export async function parseTowerWorkbook(buffer) {
   if (errors.length) {
     throw new WorkbookValidationError(errors.slice(0, MAX_ERRORS));
   }
-  return [...groups.values()].map(({ tower, tenants }) => ({
+  return [...groups.values()].map(({ tower, tenants, firstRow }) => ({
     tower,
     tenants,
+    sourceRow: firstRow,
   }));
 }
 
@@ -581,7 +608,7 @@ async function removeUploadedFile(ItemsService, req, schema, fileId, logger) {
 }
 
 export default defineEndpoint((router, { logger, services, database, getSchema }) => {
-  const { AssetsService, ItemsService } = services;
+  const { AssetsService, ItemsService, MailService } = services;
 
   router.get("/template", (_req, res) => {
     return res
@@ -660,16 +687,29 @@ export default defineEndpoint((router, { logger, services, database, getSchema }
       }
 
       const parsedRegistrations = await parseTowerWorkbook(fileBuffer);
-      const registrations = await resolveAdministrativeRegions(
-        database,
-        parsedRegistrations,
+      let registrations;
+      try {
+        registrations = await resolveAdministrativeRegions(
+          database,
+          parsedRegistrations,
+        );
+      } catch (error) {
+        if (!(error instanceof UnmatchedAdministrativeRegionError)) throw error;
+        throw new WorkbookValidationError(
+          error.registrationIndexes.map((index) => ({
+            row: parsedRegistrations[index]?.sourceRow ?? null,
+            column: "longitude",
+            message: error.message,
+          })),
+        );
+      }
+      const registeredAt = new Date();
+      const formattedIds = registrations.map(({ tower }) =>
+        formatTowerId(tower.id_menara, registeredAt),
       );
       const existing = await database(COLLECTION)
         .select("id_menara")
-        .whereIn(
-          "id_menara",
-          registrations.map(({ tower }) => tower.id_menara),
-        )
+        .whereIn("id_menara", formattedIds)
       if (existing.length) {
         throw new WorkbookValidationError(
           existing.map(({ id_menara }) => ({
@@ -688,10 +728,25 @@ export default defineEndpoint((router, { logger, services, database, getSchema }
         method: "Upload Document (.xlsx)",
         documentId: fileId,
         registrations,
+        registeredAt,
+      });
+
+      const emailSent = await sendRegistrationReceipts({
+        database,
+        QRCode,
+        MailService,
+        getSchema,
+        logger,
+        userId: req.accountability.user,
+        registrations,
+        created,
+        registeredAt,
       });
 
       shouldRemoveFile = false;
-      return res.status(201).json({ data: { created: created.length } });
+      return res.status(201).json({
+        data: { created: created.length, email_sent: emailSent },
+      });
     } catch (error) {
       if (error instanceof WorkbookValidationError) {
         try {

@@ -6,6 +6,10 @@ Directus `POST /files`; the endpoint verifies that the file belongs to the
 current user, parses it, and removes the staged file if the upload is rejected.
 Applicant, Web Manager, and Administrator accounts may process workbooks;
 ownership is recorded as the authenticated uploader.
+Before saving, tower and tenant text is normalized to Unicode NFC, repeated
+whitespace is collapsed to one space, and leading/trailing whitespace is
+removed. The same text normalization applies to manual submissions and
+Directus create/update requests.
 The same endpoint serves the official workbook at
 `GET /bulk-tower-upload/template`, so the template link does not depend on the
 signup application's development server.
@@ -15,18 +19,22 @@ regency/city, district, or village. The endpoint accepts the previous
 16-column workbook for existing files, but ignores its manually entered
 administrative values. After validating all rows, it resolves all tower
 coordinates in one PostGIS query against `indonesian_administrative_boundaries`
-using `ST_Covers`. An unmatched point (for example, one in the sea) receives
-blank administrative fields. Every non-empty data row is validated before any
-records are written. One invalid row rejects the whole file. A successful file
+using `ST_Covers`. A coordinate not covered by an administrative boundary is
+rejected before any records are written. Enter
+tower IDs as text in Excel so leading zeros are preserved; numeric ID cells are
+rejected because Excel may already have removed their leading zeros.
+Every non-empty data row is validated before any records are written. One invalid row rejects the whole file. A successful file
 is written in a single database transaction. Each distinct
 `id_menara` becomes one `tower_infrastruktur` record with status `Submitted`,
 method `Upload Document (.xlsx)`, separate numeric `longitude` and `latitude`
 fields, and a reference to the uploaded workbook. Each tower stores its
+numeric input ID as `TWR-<registration year>-<input ID>` while preserving
+leading zeroes. The registration year is assigned when the upload is saved.
 `kapasitas_disewakan` once in `tower_infrastruktur`; each tenant name is stored
 in a separate `tower_tenant` row without a duplicated capacity. Each created
-tower gets a `Registered` row in `tower_registration_attempts`. The
-existing `Submitted` tower status is retained for the Directus receipt email
-flow. The current workbook maps its displayed headers to the Directus fields;
+tower gets a `Registered` row in `tower_registration_attempts` and a receipt
+email with a locally generated QR code. The current workbook maps its
+displayed headers to the Directus fields;
 the previous `penyelenggara_penyewa` heading remains supported. Multiple
 tenant names in the current workbook are separated by commas and create
 separate `tower_tenant` records.

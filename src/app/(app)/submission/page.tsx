@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { Table, Th, Td } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import { formatDateWib } from "@/lib/date-time";
 
 const METHODS = [
   {
@@ -39,6 +41,7 @@ const STATUS_VARIANT: Record<string, "success" | "destructive" | "warning"> = {
 type SubmissionAttempt = {
   id: string | number;
   status: string;
+  attempt_type?: string;
   registration_code?: string;
   metode_pendaftaran?: string;
   date_created?: string;
@@ -62,7 +65,8 @@ type SubmissionTower = {
 type RecentSubmission = {
   id: string;
   towerId: string | null;
-  code: string;
+  towerCode: string;
+  registrationCode: string;
   date: string;
   method: string;
   status: string;
@@ -72,22 +76,27 @@ type RecentSubmission = {
 type SubmissionsResponse = {
   data?: SubmissionTower[];
   rejected_attempts?: SubmissionAttempt[];
-  draft_attempt?: {
+  draft_attempts?: Array<{
     id: string | number;
     date_updated?: string;
     date_created?: string;
-  } | null;
+  }>;
   error?: string;
 };
 
-function recentSubmissions(payload: SubmissionsResponse): RecentSubmission[] {
+function recentSubmissions(
+  payload: SubmissionsResponse,
+  includeApplicantDrafts: boolean,
+): RecentSubmission[] {
   const rows: RecentSubmission[] = [];
   for (const tower of payload.data ?? []) {
     for (const attempt of tower.registration_attempts ?? []) {
+      if (attempt.attempt_type === "Update") continue;
       rows.push({
         id: `${tower.id}-${attempt.id}`,
         towerId: tower.id,
-        code: attempt.registration_code || tower.id_menara || "—",
+        towerCode: tower.id_menara || "—",
+        registrationCode: attempt.registration_code || "—",
         date: attempt.date_created || tower.date_created || "",
         method: attempt.metode_pendaftaran || tower.metode_pendaftaran || "",
         status: attempt.status,
@@ -99,22 +108,26 @@ function recentSubmissions(payload: SubmissionsResponse): RecentSubmission[] {
     rows.push({
       id: `rejected-${attempt.id}`,
       towerId: null,
-      code: "—",
+      towerCode: "—",
+      registrationCode: "—",
       date: attempt.date_created || "",
       method: attempt.metode_pendaftaran || "",
       status: "Rejected",
       validationErrors: attempt.validation_errors,
     });
   }
-  if (payload.draft_attempt) {
-    rows.push({
-      id: `draft-${payload.draft_attempt.id}`,
-      towerId: null,
-      code: "—",
-      date: payload.draft_attempt.date_updated || payload.draft_attempt.date_created || "",
-      method: "Input Manual",
-      status: "Draft",
-    });
+  if (includeApplicantDrafts) {
+    for (const draft of payload.draft_attempts ?? []) {
+      rows.push({
+        id: `draft-${draft.id}`,
+        towerId: null,
+        towerCode: "—",
+        registrationCode: "—",
+        date: draft.date_updated || draft.date_created || "",
+        method: "Input Manual",
+        status: "Draft",
+      });
+    }
   }
   return rows
     .sort((left, right) => {
@@ -130,12 +143,15 @@ function recentSubmissions(payload: SubmissionsResponse): RecentSubmission[] {
 }
 
 export default function SubmissionPage() {
+  const { authenticated, role, user } = useAuth();
+  const identity = `${authenticated ? user.id ?? user.email : "anonymous"}:${role}`;
   const router = useRouter();
   const [method, setMethod] = useState<MethodValue>("upload");
   const [recent, setRecent] = useState<RecentSubmission[]>([]);
   const [selectedRejection, setSelectedRejection] = useState<RecentSubmission | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [loadedIdentity, setLoadedIdentity] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -144,11 +160,17 @@ export default function SubmissionPage() {
         const payload = (await response.json().catch(() => null)) as SubmissionsResponse | null;
         if (!response.ok) throw new Error(payload?.error || "Pengajuan terbaru tidak dapat dimuat.");
         if (active) {
-          setRecent(recentSubmissions(payload ?? {}));
+          setRecent(recentSubmissions(payload ?? {}, role === "Normal User"));
+          setError("");
+          setLoadedIdentity(identity);
         }
       })
       .catch((requestError) => {
-        if (active) setError(requestError instanceof Error ? requestError.message : "Pengajuan terbaru tidak dapat dimuat.");
+        if (active) {
+          setRecent([]);
+          setError(requestError instanceof Error ? requestError.message : "Pengajuan terbaru tidak dapat dimuat.");
+          setLoadedIdentity(identity);
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -156,9 +178,14 @@ export default function SubmissionPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [identity, role]);
 
   const selected = METHODS.find((m) => m.value === method)!;
+  const identityLoading = loading || loadedIdentity !== identity;
+  const visibleRecent =
+    loadedIdentity === identity
+      ? recent.filter((row) => role === "Normal User" || row.status !== "Draft")
+      : [];
 
   return (
     <div className="mx-auto flex max-w-240 flex-col gap-6">
@@ -217,6 +244,7 @@ export default function SubmissionPage() {
           <Table>
             <thead>
               <tr>
+                <Th>ID Menara</Th>
                 <Th>No. Registrasi</Th>
                 <Th>Tanggal</Th>
                 <Th>Metode</Th>
@@ -225,14 +253,15 @@ export default function SubmissionPage() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr><Td colSpan={5} className="py-8 text-center text-muted">Memuat pengajuan...</Td></tr>
-              ) : recent.length === 0 ? (
-                <tr><Td colSpan={5} className="py-8 text-center text-muted">{error || "Belum ada data pengajuan."}</Td></tr>
-              ) : recent.map((r) => (
+              {identityLoading ? (
+                <tr><Td colSpan={6} className="py-8 text-center text-muted">Memuat pengajuan...</Td></tr>
+              ) : visibleRecent.length === 0 ? (
+                <tr><Td colSpan={6} className="py-8 text-center text-muted">{error || "Belum ada data pengajuan."}</Td></tr>
+              ) : visibleRecent.map((r) => (
                 <tr key={r.id}>
-                  <Td>{r.code}</Td>
-                  <Td>{r.date ? new Date(r.date).toLocaleDateString("id-ID") : "—"}</Td>
+                  <Td>{r.towerCode}</Td>
+                  <Td>{r.registrationCode}</Td>
+                  <Td>{formatDateWib(r.date)}</Td>
                   <Td>
                     {r.method === "Upload Document (.xlsx)"
                       ? r.method
